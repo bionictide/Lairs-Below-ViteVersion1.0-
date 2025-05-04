@@ -1,11 +1,14 @@
 //checkpoint
 // Only Phaser/game logic here, no React, no JSX
-import { initGame } from './Game.js';
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App.jsx';
 
-var container = document.getElementById('renderDiv');
-if (!container) {
-    container = document.createElement('div');
-    container.id = 'renderDiv';
-    document.body.appendChild(container);
-}
-initGame(container);
+const container = document.getElementById('root') || (() => {
+  const el = document.createElement('div');
+  el.id = 'root';
+  document.body.appendChild(el);
+  return el;
+})();
+
+createRoot(container).render(<App />);

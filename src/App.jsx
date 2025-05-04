@@ -1,3 +1,4 @@
+import React from 'react';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -749,6 +750,17 @@ function App() {
   };
   const handleHostServer = () => setScreen('loading');
 
+  // Start Phaser only when entering the 'game' screen
+  React.useEffect(() => {
+    if (screen === 'game') {
+      if (!window._phaserGame) {
+        import('./Game.js').then(({ initGame }) => {
+          window._phaserGame = initGame(document.getElementById('renderDiv'));
+        });
+      }
+    }
+  }, [screen]);
+
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
       setScreen('login');
@@ -839,5 +851,4 @@ function AutoShrinkText({ text, maxWidth, minFontSize = 16, maxFontSize = 20 }) 
   );
 }
 
-// Render the app using ReactDOM from the global scope
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+export default App;
