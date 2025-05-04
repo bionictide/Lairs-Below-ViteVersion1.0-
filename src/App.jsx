@@ -3,8 +3,26 @@ import React from 'react';
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
 
+// Add global style for html/body
+if (typeof document !== 'undefined' && !document.getElementById('global-game-style')) {
+  const style = document.createElement('style');
+  style.id = 'global-game-style';
+  style.innerHTML = `
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: #000;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 function ResponsiveGameContainer({ children }) {
   const [scale, setScale] = React.useState(1);
+  const containerRef = React.useRef(null);
   React.useEffect(() => {
     function updateScale() {
       const w = window.innerWidth;
@@ -15,8 +33,24 @@ function ResponsiveGameContainer({ children }) {
     updateScale();
     return () => window.removeEventListener('resize', updateScale);
   }, []);
+
+  // Fullscreen logic
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen();
+      }
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      }
+    }
+  };
+  const isFullscreen = !!document.fullscreenElement;
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: 'fixed',
         left: '50%',
@@ -31,6 +65,27 @@ function ResponsiveGameContainer({ children }) {
         boxShadow: '0 0 32px #000a',
       }}
     >
+      <button
+        onClick={handleFullscreen}
+        style={{
+          position: 'absolute',
+          right: 16,
+          top: 16,
+          zIndex: 10000,
+          background: '#222',
+          color: '#fff',
+          border: '2px solid #fff',
+          borderRadius: 8,
+          padding: '6px 16px',
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: 'pointer',
+          opacity: 0.85,
+        }}
+        title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+      >
+        {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+      </button>
       {children}
     </div>
   );
@@ -796,7 +851,9 @@ function App() {
     }} />;
   }
   if (screen === 'game') {
-    return <div id="renderDiv" style={{ width: '100vw', height: '100vh', background: '#111' }}></div>;
+    return (
+      <div id="renderDiv" style={{ width: '100vw', height: '100vh', position: 'fixed', left: 0, top: 0, background: '#000' }} />
+    );
   }
   return null;
 }
