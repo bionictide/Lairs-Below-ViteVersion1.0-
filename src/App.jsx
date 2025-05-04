@@ -1,4 +1,5 @@
 import React from 'react';
+import { createClient } from '@supabase/supabase-js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -19,6 +20,11 @@ if (typeof document !== 'undefined' && !document.getElementById('global-game-sty
   `;
   document.head.appendChild(style);
 }
+
+const supabase = createClient(
+  'https://rcbqjftzzdtbghrrtxai.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJjYnFqZnR6emR0YmdocnJ0eGFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDYzNjU2MzksImV4cCI6MjA2MTk0MTYzOX0.htnnrcWi5OIOW6uKh5GDNg-GlMtziye6zXnkbGesYq4'
+);
 
 function ResponsiveGameContainer({ children }) {
   const [scale, setScale] = React.useState(1);
@@ -126,14 +132,46 @@ function LoginScreen({ onLogin }) {
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState('');
   const [hover, setHover] = React.useState(false);
-  const handleSubmit = (e) => {
+  const [isSignup, setIsSignup] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (username && password) {
-      onLogin(username);
-    } else {
-      setError('Please enter both username and password.');
+    setError('');
+    if (!username || !password) {
+      setError('Please enter both email and password.');
+      return;
+    }
+    setLoading(true);
+    try {
+      if (isSignup) {
+        const { error: signupError } = await supabase.auth.signUp({
+          email: username,
+          password,
+        });
+        if (signupError) {
+          setError(signupError.message);
+        } else {
+          setError('Signup successful! Please check your email to confirm your account.');
+        }
+      } else {
+        const { data, error: loginError } = await supabase.auth.signInWithPassword({
+          email: username,
+          password,
+        });
+        if (loginError) {
+          setError(loginError.message);
+        } else {
+          onLogin(data.user);
+        }
+      }
+    } catch (err) {
+      setError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
+
   return (
     <ResponsiveGameContainer>
       <div style={{ position: 'absolute', left: 0, top: 0, width: 1456, height: 816, backgroundImage: 'url(./Assets/Forward.png)', backgroundSize: 'cover', backgroundPosition: 'center', zIndex: 0 }} />
@@ -154,10 +192,12 @@ function LoginScreen({ onLogin }) {
           zIndex: 1,
         }}
       >
-        <h2 style={{ color: '#fff', textAlign: 'center', letterSpacing: 2, fontSize: 28, fontWeight: 900, marginBottom: 32, marginTop: -32 }}>Login</h2>
+        <h2 style={{ color: '#fff', textAlign: 'center', letterSpacing: 2, fontSize: 28, fontWeight: 900, marginBottom: 32, marginTop: -32 }}>
+          {isSignup ? 'Create Account' : 'Login'}
+        </h2>
         <input
           type="text"
-          placeholder="Username"
+          placeholder="Email"
           value={username}
           onChange={e => setUsername(e.target.value)}
           style={{ padding: 10, borderRadius: 2, border: '2px solid #fff', fontSize: 16, background: '#222', color: '#fff', width: 180, marginBottom: 4 }}
@@ -169,14 +209,23 @@ function LoginScreen({ onLogin }) {
           onChange={e => setPassword(e.target.value)}
           style={{ padding: 10, borderRadius: 2, border: '2px solid #fff', fontSize: 16, background: '#222', color: '#fff', width: 180, marginBottom: 4 }}
         />
-        {error && <div style={{ color: 'salmon', textAlign: 'center', fontWeight: 700 }}>{error}</div>}
+        {error && <div style={{ color: isSignup && error.startsWith('Signup successful') ? 'lightgreen' : 'salmon', textAlign: 'center', fontWeight: 700 }}>{error}</div>}
         <button
           type="submit"
-          style={{ ...combatButtonStyle, ...(hover ? combatButtonHover : {}), borderRadius: 2, width: 120, height: 32, fontSize: 14, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+          style={{ ...combatButtonStyle, ...(hover ? combatButtonHover : {}), borderRadius: 2, width: 120, height: 32, fontSize: 14, marginTop: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, opacity: loading ? 0.7 : 1 }}
           onMouseEnter={() => setHover(true)}
           onMouseLeave={() => setHover(false)}
+          disabled={loading}
         >
-          <span style={{ width: '100%', textAlign: 'center', lineHeight: '32px', display: 'block' }}>Login</span>
+          <span style={{ width: '100%', textAlign: 'center', lineHeight: '32px', display: 'block' }}>{isSignup ? 'Sign Up' : 'Login'}</span>
+        </button>
+        <button
+          type="button"
+          style={{ ...combatButtonStyle, background: 'transparent', color: '#fff', border: 'none', boxShadow: 'none', fontSize: 13, marginTop: 0, textDecoration: 'underline', width: 120, height: 24, padding: 0, cursor: 'pointer', marginBottom: -32 }}
+          onClick={() => { setIsSignup(s => !s); setError(''); }}
+          tabIndex={-1}
+        >
+          {isSignup ? 'Already have an account? Login' : 'Create an account'}
         </button>
       </form>
     </ResponsiveGameContainer>
