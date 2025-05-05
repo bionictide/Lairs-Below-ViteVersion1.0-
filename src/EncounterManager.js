@@ -243,20 +243,23 @@ export var EncounterManager = /*#__PURE__*/ function() {
                 console.log("[DEBUG] Encounter check: Roll succeeded! Creating new ".concat(selectedType, " (ID: ").concat(entityId1, ") in room ").concat(room.id));
                 // 6. Create entity (Cooldown recording moved to endEncounter)
                 // REMOVED: this.lastEncounterTime[selectedType] = now;
-                // --- Set Initial Health Based on Character Definition ---
+                // --- Set Initial Stats Based on Character Definition ---
                 var definition = getCharacterDefinition(selectedType);
-                var _definition_baseStats_health;
-                var initialHealth = (_definition_baseStats_health = definition === null || definition === void 0 ? void 0 : (_definition_baseStats = definition.baseStats) === null || _definition_baseStats === void 0 ? void 0 : _definition_baseStats.health) !== null && _definition_baseStats_health !== void 0 ? _definition_baseStats_health : 500; // Default to 500 if undefined
-                console.log("[DEBUG] Setting initial health for ".concat(selectedType, " from definition: ").concat(initialHealth));
-                // REMOVED: Old switch statement for initialHealth
+                var stats = definition && definition.stats ? definition.stats : { vit: 6, str: 5, int: 0, dex: 5, mnd: 5, spd: 5 };
+                // Use StatDefinitions.js for derived stats
+                var maxHealth = getHealthFromVIT(stats.vit);
+                var physicalBaseDamage = getPhysicalAttackFromSTR(stats.str);
+                var defense = getDefenseFromVIT(stats.vit);
+                // Store stat block and derived stats in entity
                 this.entities.set(entityId1, {
                     type: selectedType,
-                    health: initialHealth,
-                    maxHealth: initialHealth,
+                    statBlock: stats,
+                    maxHealth: maxHealth,
+                    health: maxHealth,
+                    physicalBaseDamage: physicalBaseDamage,
+                    defense: defense,
                     roomId: room.id,
-                    // Removed healthBar property
                     mood: 'neutral',
-                    // --- Initialize instanceLoot based on NPCLootManager ---
                     instanceLoot: this.calculateInitialLoot(selectedType)
                 });
                 // Pass the calculated enemyStartsFirst flag
@@ -616,20 +619,16 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         this.endTurn(initiatorId); // End turn to prevent hanging
                         return;
                     }
-                    // --- Determine Damage Based on Attacker's Character Definition ---
-                    var initiatorDef = getCharacterDefinition(initiator.type); // Get definition first
-                    var physicalBaseDamage = initiatorDef?.baseStats?.physicalBaseDamage ?? 10; // Default to 10 if undefined
-                    
-                    // Placeholder for potential damage modifiers (e.g., buffs, equipment)
-                    var finalPhysicalDamage = physicalBaseDamage;
-                    console.log("[DEBUG] Calculating damage for ".concat(initiator.type, ". Base physical damage from definition: ").concat(physicalBaseDamage));
-                    
-                    var initiatorName = initiatorDef ? initiatorDef.name : initiatorId; // Use name from definition
+                    // --- Determine Damage Based on Attacker's Stats ---
+                    var definition = getCharacterDefinition(initiator.type); // Get definition first
+                    var finalPhysicalDamage = initiator.physicalBaseDamage;
+                    console.log(`[DEBUG] Calculating damage for ${initiator.type}. Derived physicalBaseDamage: ${finalPhysicalDamage}`);
+                    var initiatorName = definition ? definition.name : initiatorId;
                     // Apply damage via PlayerStats AND get the actual damage dealt
-                    var finalPhysicalDamage = this.playerStats.applyDamage(finalPhysicalDamage, initiatorId);
+                    var actualDamage = this.playerStats.applyDamage(finalPhysicalDamage, initiatorId);
                     
                     // Trigger visual effects *after* damage calculation
-                    if (finalPhysicalDamage > 0 && this.combatVisuals) {
+                    if (actualDamage > 0 && this.combatVisuals) {
                         console.log("[EncounterManager] Player took damage, triggering CombatVisuals effect.");
                         this.combatVisuals.playPlayerDamageEffect();
                     }
