@@ -18,30 +18,31 @@ function _create_class(Constructor, protoProps, staticProps) {
     return Constructor;
 }
 import Phaser from 'https://esm.sh/phaser@3.60.0'; // For EventEmitter
+import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT, getMagicBonusFromINT, getMagicDefenseFromINT } from './StatDefinitions.js';
 export var PlayerStats = /*#__PURE__*/ function() {
     "use strict";
-    function PlayerStats(scene, playerId) {
+    function PlayerStats(scene, playerId, statBlock) {
         _class_call_check(this, PlayerStats);
         this.scene = scene; // Store the scene reference
         this.playerId = playerId; // Store the unique player ID
-        this._maxHealth = 1000; // Base max health
+        // --- Stat Block Initialization ---
+        // statBlock: { vit, str, int, dex, mnd, spd }
+        statBlock = statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 }; // fallback defaults
+        this.statBlock = statBlock;
+        // Derived stats from stat block
+        this._maxHealth = getHealthFromVIT(statBlock.vit);
         this._currentHealth = this._maxHealth;
-        
-        // Base damage values
-        this.physicalBaseDamage = 100; // Base physical damage output
-        this.magicalBaseDamage = 0;    // Base magical damage output
-        this.elementalBaseDamage = 0;   // Base elemental damage output
-        
-        this._defenseRating = 0.0; // Base 0% damage reduction
+        this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
+        this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100; // Example: scale base magic damage
+        this.elementalBaseDamage = 0; // Extend as needed
+        this._defenseRating = getDefenseFromVIT(statBlock.vit);
         this.events = new Phaser.Events.EventEmitter();
         this.itemDefenseBonus = 0; // Additive defense bonus from items
         this.swordCount = 0; // Count of swords for multiplicative damage
-
         // Damage multipliers
         this.physicalDamageMultiplier = 1.0;
         this.magicalDamageMultiplier = 1.0;
         this.elementalDamageMultiplier = 1.0;
-        
         // Define base stats/effects for known items
         this.ITEM_STATS = {
             'sword1': {

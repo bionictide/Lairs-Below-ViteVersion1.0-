@@ -217,6 +217,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerHealthBar = null; // Reference to the player's HealthBar instance
         _this.playerId = null; // Add property to store the player's unique ID
         _this.entitySprites = new Map(); // Map to store entityId -> sprite mapping
+        _this.statBlock = null; // <-- Add this property for stat block injection
         return _this;
     }
     _create_class(DungeonScene, [
@@ -296,14 +297,14 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.debugHelper = new DebugHelper(this);
 
                 // --- Player ID Generation ---
-                // Generate or retrieve player ID here (using generation for now)
                 this.playerId = "player-".concat(Phaser.Math.RND.uuid());
                 console.log("[DungeonScene] Generated Player ID: ".concat(this.playerId));
 
                 // --- Initialize Managers in Dependency Order ---
-                // First, managers with no dependencies
                 this.itemManager = new ItemManager(this);
-                this.playerStats = new PlayerStats(this, this.playerId);
+                // Use injected statBlock if available, else fallback
+                var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+                this.playerStats = new PlayerStats(this, this.playerId, statBlock);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
 

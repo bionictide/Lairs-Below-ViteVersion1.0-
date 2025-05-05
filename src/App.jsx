@@ -1,5 +1,11 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getCharacterDefinition } from './CharacterTypes.js';
+import {
+  getHealthFromVIT,
+  getPhysicalAttackFromSTR,
+  getDefenseFromVIT
+} from './StatDefinitions.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -234,14 +240,22 @@ function LoginScreen({ onLogin }) {
 
 // 3. CharacterSelectScreen with exact stats, animation, and in-game menu styling
 function CharacterSelectScreen({ onSelect, error }) {
-  // Exact stats/abilities from CharacterTypes.js
-  const characters = [
-    { name: 'Dwarf', img: './Assets/Dwarf1.png', baseStats: { health: 750, physicalBaseDamage: 60, defense: 8 }, abilities: ['Bash'] },
-    { name: 'Elvaan', img: './Assets/Elvaan1.png', baseStats: { health: 500, physicalBaseDamage: 80, defense: 6 }, abilities: ['Double Shot'] },
-    { name: 'Gnome', img: './Assets/Gnome1.png', baseStats: { health: 500, physicalBaseDamage: 40, defense: 4 }, abilities: ['Steal'] },
-    { name: '?????', img: '', baseStats: {}, abilities: [], comingSoon: true },
-    { name: '?????', img: '', baseStats: {}, abilities: [], comingSoon: true },
-  ];
+  // Use CharacterTypes.js for stat blocks
+  const characterTypes = ['dwarf', 'elvaan', 'gnome'];
+  const characters = characterTypes.map(typeKey => {
+    const def = getCharacterDefinition(typeKey);
+    return {
+      name: def.name,
+      img: `./Assets/${def.assetPrefix}1.png`,
+      stats: def.stats,
+      abilities: def.abilities,
+      type: def.type,
+      comingSoon: false
+    };
+  });
+  // Add placeholders for coming soon
+  characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
+  characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
   const [highlighted, setHighlighted] = React.useState(0);
   const [slideIn, setSlideIn] = React.useState(false);
   const [reveal, setReveal] = React.useState(false);
@@ -411,25 +425,27 @@ function CharacterSelectScreen({ onSelect, error }) {
             transform: statVisibilities[0] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[0] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Health: {char.baseStats.health}</div>
+          }}>Health: {getHealthFromVIT(char.stats?.vit || 0)}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[1] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[1] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Damage: {char.baseStats.physicalBaseDamage}</div>
+          }}>Attack: {getPhysicalAttackFromSTR(char.stats?.str || 0)}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[2] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[2] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Defense: {char.baseStats.defense}</div>
+          }}>Defense: {getDefenseFromVIT(char.stats?.vit || 0)}</div>
           <div style={{
             marginTop: 8,
             transform: statVisibilities[3] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[3] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Abilities: {char.abilities.join(', ')}</div>
+          }}>
+            VIT: {char.stats?.vit || 0}, STR: {char.stats?.str || 0}, INT: {char.stats?.int || 0}, DEX: {char.stats?.dex || 0}, MND: {char.stats?.mnd || 0}, SPD: {char.stats?.spd || 0}
+          </div>
         </div>
       )}
       {/* Select button and name entry, always in front */}
@@ -896,6 +912,9 @@ function App() {
       setCharCreateError('User not logged in.');
       return;
     }
+    // Get the stat block from CharacterTypes.js for the selected type
+    const def = getCharacterDefinition(charData.type?.toLowerCase());
+    const stats = def?.stats || { vit: 0, str: 0, int: 0, dex: 0, mnd: 0, spd: 0 };
     // Insert character into Supabase
     const { data, error } = await supabase
       .from('characters')
@@ -905,12 +924,12 @@ function App() {
           name: charData.name,
           type: charData.type,
           level: charData.level || 1,
-          vit: 0,
-          mnd: 0,
-          str: 0,
-          int: 0,
-          dex: 0,
-          spd: 0,
+          vit: stats.vit,
+          str: stats.str,
+          int: stats.int,
+          dex: stats.dex,
+          mnd: stats.mnd,
+          spd: stats.spd,
         }
       ])
       .select();
@@ -918,7 +937,7 @@ function App() {
       setCharCreateError('Failed to create character: ' + error.message);
       return;
     }
-    const newChar = data && data[0] ? { ...charData, id: data[0].id } : charData;
+    const newChar = data && data[0] ? { ...charData, id: data[0].id, ...stats } : { ...charData, ...stats };
     const idx = characters.findIndex(c => !c);
     if (idx !== -1) {
       const newChars = [...characters];
@@ -979,10 +998,34 @@ function App() {
       if (!window._phaserGame) {
         import('./Game.js').then(({ initGame }) => {
           window._phaserGame = initGame(document.getElementById('renderDiv'));
+          // --- Inject stat block into DungeonScene ---
+          // Wait for Phaser to create the scene, then set statBlock before create() runs
+          const tryInjectStatBlock = () => {
+            // Find the DungeonScene instance
+            const game = window._phaserGame;
+            if (!game || !game.scene || !game.scene.scenes) return;
+            const dungeonScene = game.scene.scenes.find(s => s.sys && s.sys.config && s.sys.config.key === 'default');
+            if (dungeonScene && !dungeonScene.statBlock) {
+              // Get selected character's stat block
+              const char = characters[selectedCharacter];
+              const statBlock = char ? {
+                vit: char.vit,
+                str: char.str,
+                int: char.int,
+                dex: char.dex,
+                mnd: char.mnd,
+                spd: char.spd
+              } : { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+              dungeonScene.statBlock = statBlock;
+            }
+          };
+          // Try immediately, then again after a short delay (Phaser may not instantiate instantly)
+          setTimeout(tryInjectStatBlock, 50);
+          setTimeout(tryInjectStatBlock, 200);
         });
       }
     }
-  }, [screen]);
+  }, [screen, characters, selectedCharacter]);
 
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
