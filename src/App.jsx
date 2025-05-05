@@ -233,7 +233,7 @@ function LoginScreen({ onLogin }) {
 }
 
 // 3. CharacterSelectScreen with exact stats, animation, and in-game menu styling
-function CharacterSelectScreen({ onSelect }) {
+function CharacterSelectScreen({ onSelect, error }) {
   // Exact stats/abilities from CharacterTypes.js
   const characters = [
     { name: 'Dwarf', img: './Assets/Dwarf1.png', baseStats: { health: 750, physicalBaseDamage: 60, defense: 8 }, abilities: ['Bash'] },
@@ -248,7 +248,7 @@ function CharacterSelectScreen({ onSelect }) {
   const [showStats, setShowStats] = React.useState(false);
   const [nameEntry, setNameEntry] = React.useState(false);
   const [name, setName] = React.useState('');
-  const [error, setError] = React.useState('');
+  const [localError, setLocalError] = React.useState('');
   const [spriteKey, setSpriteKey] = React.useState(0); // force re-render for animation
   const [statVisibilities, setStatVisibilities] = React.useState([false, false, false, false]);
   const bannedWords = [
@@ -313,15 +313,15 @@ function CharacterSelectScreen({ onSelect }) {
     value = value.replace(/\b\w/g, l => l.toUpperCase());
     setName(value);
     if (/\d/.test(e.target.value)) {
-      setError('No numbers allowed in name.');
+      setLocalError('No numbers allowed in name.');
     } else if (e.target.value.length > 15) {
-      setError('Name must be 15 characters or less.');
+      setLocalError('Name must be 15 characters or less.');
     } else if (/[^a-zA-Z\s']/.test(e.target.value)) {
-      setError('Only letters, spaces, and apostrophes allowed.');
+      setLocalError('Only letters, spaces, and apostrophes allowed.');
     } else if (isBannedWord(value)) {
-      setError('Inappropriate name.');
+      setLocalError('Inappropriate name.');
     } else {
-      setError('');
+      setLocalError('');
     }
   };
   return (
@@ -461,26 +461,26 @@ function CharacterSelectScreen({ onSelect }) {
               onSubmit={e => {
                 e.preventDefault();
                 if (!name.trim()) {
-                  setError('Please enter a name.');
+                  setLocalError('Please enter a name.');
                   return;
                 }
                 if (/\d/.test(name)) {
-                  setError('No numbers allowed in name.');
+                  setLocalError('No numbers allowed in name.');
                   return;
                 }
                 if (name.length > 15) {
-                  setError('Name must be 15 characters or less.');
+                  setLocalError('Name must be 15 characters or less.');
                   return;
                 }
                 if (/[^a-zA-Z\s']/.test(name)) {
-                  setError('Only letters, spaces, and apostrophes allowed.');
+                  setLocalError('Only letters, spaces, and apostrophes allowed.');
                   return;
                 }
                 if (isBannedWord(name)) {
-                  setError('Inappropriate name.');
+                  setLocalError('Inappropriate name.');
                   return;
                 }
-                setError('');
+                setLocalError('');
                 onSelect({ ...char, name: name.trim(), level: 1, type: char.name });
               }}
               style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 11 }}
@@ -513,7 +513,8 @@ function CharacterSelectScreen({ onSelect }) {
               </button>
             </form>
           )}
-          {error && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 24 }}>{error}</div>}
+          {localError && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 24 }}>{localError}</div>}
+          {!localError && error && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 24 }}>{error}</div>}
         </div>
       )}
     </ResponsiveGameContainer>
@@ -521,7 +522,7 @@ function CharacterSelectScreen({ onSelect }) {
 }
 
 // 4. CharacterServerSelectScreen with exact in-game UI layout and logic
-function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCharacter, selectedCharacter, servers, onHostServer, selectedServer, onSelectServer, lockedCharacter, setLockedCharacter }) {
+function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCharacter, selectedCharacter, servers, onHostServer, selectedServer, onSelectServer, lockedCharacter, setLockedCharacter, deletePrompt, setDeletePrompt, onDeleteCharacter }) {
   const [charBtnHover, setCharBtnHover] = React.useState(false);
   const [createBtnHover, setCreateBtnHover] = React.useState(false);
   const [joinBtnHover, setJoinBtnHover] = React.useState(false);
@@ -582,7 +583,7 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginLeft: 16, justifyContent: 'center', height: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginLeft: 16, justifyContent: 'center', height: '100%', position: 'relative' }}>
             <button
               disabled={lockedCharacter === selectedCharacter || selectedCharacter === null || !characters[selectedCharacter] || characters[selectedCharacter].comingSoon}
               style={{
@@ -609,6 +610,51 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
             >
               Create a Character
             </button>
+            <button
+              onClick={() => setDeletePrompt(true)}
+              disabled={selectedCharacter === null || !characters[selectedCharacter] || characters[selectedCharacter].comingSoon}
+              style={{
+                ...combatButtonStyle,
+                ...(selectedCharacter === null || !characters[selectedCharacter] || characters[selectedCharacter].comingSoon ? combatButtonDisabled : { background: '#d32f2f', color: '#fff', border: '2px solid #d32f2f' }),
+                borderRadius: 2, width: 260, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', margin: 0
+              }}
+            >
+              Delete Character
+            </button>
+            {/* Absolutely positioned confirmation prompt */}
+            {deletePrompt && (
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                right: 0,
+                margin: '0 auto',
+                top: '100%',
+                marginTop: 0,
+                width: 260,
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 100,
+              }}>
+                <div style={{ color: '#fff', fontWeight: 700, marginBottom: 8 }}>Are you sure?</div>
+                <div style={{ display: 'flex', flexDirection: 'row', gap: 16, justifyContent: 'center' }}>
+                  <button
+                    onClick={onDeleteCharacter}
+                    style={{ ...combatButtonStyle, background: '#d32f2f', color: '#fff', border: '2px solid #d32f2f', borderRadius: 2, width: 80, height: 36, fontSize: 15, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >
+                    <span style={{ width: '100%', textAlign: 'center', lineHeight: '36px', display: 'block' }}>Yes</span>
+                  </button>
+                  <button
+                    onClick={() => setDeletePrompt(false)}
+                    style={{ ...combatButtonStyle, background: '#333', color: '#fff', border: '2px solid #fff', borderRadius: 2, width: 80, height: 36, fontSize: 15, margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                  >
+                    <span style={{ width: '100%', textAlign: 'center', lineHeight: '36px', display: 'block' }}>No</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         {/* Server Section */}
@@ -839,20 +885,93 @@ function App() {
   const [selectedServer, setSelectedServer] = React.useState(null);
   const [lockedCharacter, setLockedCharacter] = React.useState(null);
   const [fadeInLogin, setFadeInLogin] = React.useState(false);
+  const [charCreateError, setCharCreateError] = React.useState('');
+  const [deletePrompt, setDeletePrompt] = React.useState(false);
 
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
-  const handleCharacterCreated = (charData) => {
+  const handleCharacterCreated = async (charData) => {
+    setCharCreateError('');
+    if (!user || !user.id) {
+      setCharCreateError('User not logged in.');
+      return;
+    }
+    // Insert character into Supabase
+    const { data, error } = await supabase
+      .from('characters')
+      .insert([
+        {
+          user_id: user.id,
+          name: charData.name,
+          type: charData.type,
+          level: charData.level || 1,
+          vit: 0,
+          mnd: 0,
+          str: 0,
+          int: 0,
+          dex: 0,
+          spd: 0,
+        }
+      ])
+      .select();
+    if (error) {
+      setCharCreateError('Failed to create character: ' + error.message);
+      return;
+    }
+    const newChar = data && data[0] ? { ...charData, id: data[0].id } : charData;
     const idx = characters.findIndex(c => !c);
     if (idx !== -1) {
       const newChars = [...characters];
-      newChars[idx] = charData;
+      newChars[idx] = newChar;
       setCharacters(newChars);
       setSelectedCharacter(idx);
       setScreen('characterServerSelect');
     }
   };
   const handleHostServer = () => setScreen('loading');
+
+  // Load characters from Supabase after login
+  React.useEffect(() => {
+    async function fetchCharacters() {
+      if (user && user.id) {
+        const { data, error } = await supabase
+          .from('characters')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('id', { ascending: true });
+        if (!error && data) {
+          // Fill up to 5 slots
+          const chars = Array(5).fill(null);
+          data.slice(0, 5).forEach((c, i) => { chars[i] = c; });
+          setCharacters(chars);
+        }
+      }
+    }
+    fetchCharacters();
+  }, [user]);
+
+  // Character deletion logic
+  const handleDeleteCharacter = async () => {
+    if (selectedCharacter === null || !characters[selectedCharacter]) return;
+    const charToDelete = characters[selectedCharacter];
+    if (!charToDelete.id) return;
+    // Delete from Supabase
+    const { error } = await supabase
+      .from('characters')
+      .delete()
+      .eq('id', charToDelete.id);
+    if (!error) {
+      const newChars = [...characters];
+      newChars[selectedCharacter] = null;
+      setCharacters(newChars);
+      setSelectedCharacter(null);
+      setLockedCharacter(null);
+      setDeletePrompt(false);
+    } else {
+      // Optionally show error
+      alert('Failed to delete character: ' + error.message);
+    }
+  };
 
   // Start Phaser only when entering the 'game' screen
   React.useEffect(() => {
@@ -892,12 +1011,15 @@ function App() {
       onSelectServer={setSelectedServer}
       lockedCharacter={lockedCharacter}
       setLockedCharacter={setLockedCharacter}
+      deletePrompt={deletePrompt}
+      setDeletePrompt={setDeletePrompt}
+      onDeleteCharacter={handleDeleteCharacter}
     />;
   }
   if (screen === 'characterCreate') {
     return <CharacterSelectScreen onSelect={charData => {
       handleCharacterCreated({ ...charData });
-    }} />;
+    }} error={charCreateError} />;
   }
   if (screen === 'game') {
     return (
