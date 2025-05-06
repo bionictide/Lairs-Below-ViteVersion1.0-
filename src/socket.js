@@ -13,7 +13,7 @@ export function connectSocket(token) {
     socket = null;
   }
   // Connect to the live server with JWT auth
-  socket = window.io('https://lairs-below-viteversion1-0-server2.onrender.com', {
+  socket = window.io('http://64.227.97.242:3001', {
     auth: { token }
   });
   return socket;
