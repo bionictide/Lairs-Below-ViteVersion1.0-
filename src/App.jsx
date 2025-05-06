@@ -6,6 +6,7 @@ import {
   getPhysicalAttackFromSTR,
   getDefenseFromVIT
 } from './StatDefinitions.js';
+import { connectSocket } from './socket.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -168,6 +169,11 @@ function LoginScreen({ onLogin }) {
         if (loginError) {
           setError(loginError.message);
         } else {
+          // Connect to Socket.io server with JWT
+          const token = data.session?.access_token;
+          if (token) {
+            window.socket = connectSocket(token);
+          }
           onLogin(data.user);
         }
       }
