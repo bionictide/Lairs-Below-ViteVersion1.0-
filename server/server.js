@@ -2,6 +2,8 @@
 // Uses: Node.js, Socket.io, ES modules
 // Run with: node server.js
 
+console.log('=== Lairs Below server.js STARTED ===');
+
 import { Server } from 'socket.io';
 import http from 'http';
 import dotenv from 'dotenv';
@@ -41,17 +43,26 @@ const io = new Server(server, {
 // Middleware: Require Supabase JWT on connect
 io.use(async (socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
-  if (!token) return next(new Error('No token provided'));
+  console.log('[AUTH] Incoming connection. Token:', token ? '[REDACTED]' : 'None');
+  if (!token) {
+    console.log('[AUTH] No token provided. Rejecting connection.');
+    return next(new Error('No token provided'));
+  }
   try {
     // Validate JWT with Supabase
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (!res.ok) return next(new Error('Invalid token'));
+    if (!res.ok) {
+      console.log('[AUTH] Invalid token. Rejecting connection.');
+      return next(new Error('Invalid token'));
+    }
     const user = await res.json();
     socket.user = user;
+    console.log('[AUTH] Authenticated user:', user.id || '[no id]');
     return next();
   } catch (err) {
+    console.log('[AUTH] Auth failed with error:', err.message);
     return next(new Error('Auth failed'));
   }
 });
@@ -63,7 +74,7 @@ const bags = new Map();    // bagId -> { roomId, items }
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('[SOCKET] Client connected:', socket.id, 'User:', socket.user?.id || '[no user]');
 
   // PLAYER JOIN
   socket.on(EVENTS.PLAYER_JOIN, ({ playerId, character }) => {
