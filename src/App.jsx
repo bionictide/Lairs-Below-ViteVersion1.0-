@@ -930,6 +930,7 @@ function App() {
           dex: stats.dex,
           mnd: stats.mnd,
           spd: stats.spd,
+          inventory: [] // Add inventory as empty array on creation
         }
       ])
       .select();
@@ -937,13 +938,16 @@ function App() {
       setCharCreateError('Failed to create character: ' + error.message);
       return;
     }
-    const newChar = data && data[0] ? { ...charData, id: data[0].id, ...stats } : { ...charData, ...stats };
+    const newChar = data && data[0] ? { ...charData, id: data[0].id, ...stats, inventory: [] } : { ...charData, ...stats, inventory: [] };
     const idx = characters.findIndex(c => !c);
     if (idx !== -1) {
       const newChars = [...characters];
       newChars[idx] = newChar;
       setCharacters(newChars);
       setSelectedCharacter(idx);
+      // --- Expose supabase and current character ID for BagManager ---
+      window.supabase = supabase;
+      window.currentCharacterId = newChar.id;
       setScreen('characterServerSelect');
     }
   };
@@ -1043,6 +1047,11 @@ function App() {
     return <LoadingScreen onLoaded={() => setScreen('game')} />;
   }
   if (screen === 'characterServerSelect') {
+    // --- Expose supabase and current character ID for BagManager when character is selected ---
+    if (selectedCharacter !== null && characters[selectedCharacter] && characters[selectedCharacter].id) {
+      window.supabase = supabase;
+      window.currentCharacterId = characters[selectedCharacter].id;
+    }
     return <CharacterServerSelectScreen
       characters={characters}
       onCreateCharacter={handleCreateCharacter}

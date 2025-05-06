@@ -349,6 +349,10 @@ export var BagManager = /*#__PURE__*/ function() {
                     }
                     // Update player stats after adding an item
                     this.playerStats.updateStatsFromInventory(this.inventory);
+                    // --- Sync inventory to Supabase ---
+                    if (window.supabase && window.currentCharacterId) {
+                        window.supabase.from('characters').update({ inventory: this.inventory }).eq('id', window.currentCharacterId);
+                    }
                     return true; // Indicate success
                 } else {
                     console.warn("[BagManager] No space available for ".concat(newItemInstance.name));
@@ -373,6 +377,10 @@ export var BagManager = /*#__PURE__*/ function() {
                     }
                     // Update player stats after removing an item
                     this.playerStats.updateStatsFromInventory(this.inventory);
+                    // --- Sync inventory to Supabase ---
+                    if (window.supabase && window.currentCharacterId) {
+                        window.supabase.from('characters').update({ inventory: this.inventory }).eq('id', window.currentCharacterId);
+                    }
                     return removedItem;
                 } else {
                     console.warn("[BagManager] Attempted to remove item with unknown ID: ".concat(instanceId));
@@ -1026,6 +1034,10 @@ export var BagManager = /*#__PURE__*/ function() {
                 }
                 // Update player stats after clearing inventory
                 this.playerStats.updateStatsFromInventory([]); // Pass empty array
+                // --- Sync inventory to Supabase ---
+                if (window.supabase && window.currentCharacterId) {
+                    window.supabase.from('characters').update({ inventory: [] }).eq('id', window.currentCharacterId);
+                }
                 console.log("[BagManager] Inventory cleared. ".concat(clearedItems.length, " items were removed."));
                 return clearedItems; // Return the items that were in the inventory
             }
