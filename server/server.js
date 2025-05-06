@@ -51,7 +51,10 @@ io.use(async (socket, next) => {
   try {
     // Validate JWT with Supabase
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_KEY
+      }
     });
     console.log('[AUTH] Supabase response status:', res.status);
     const body = await res.text();
