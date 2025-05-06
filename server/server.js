@@ -53,11 +53,14 @@ io.use(async (socket, next) => {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (!res.ok) {
+    console.log('[AUTH] Supabase response status:', res.status);
+    const body = await res.text();
+    console.log('[AUTH] Supabase response body:', body);
+    if (res.status !== 200) {
       console.log('[AUTH] Invalid token. Rejecting connection.');
       return next(new Error('Invalid token'));
     }
-    const user = await res.json();
+    const user = JSON.parse(body);
     socket.user = user;
     console.log('[AUTH] Authenticated user:', user.id || '[no id]');
     return next();
