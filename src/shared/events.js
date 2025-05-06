@@ -25,4 +25,6 @@ export const EVENTS = {
   ERROR: 'error',
   ACTION_RESULT: 'action_result',
   PLAYER_STATE_UPDATE: 'player_state_update',
+  PLAYER_JOIN_NOTIFICATION: 'player_join_notification',
+  PLAYER_LEAVE_NOTIFICATION: 'player_leave_notification',
 }; 

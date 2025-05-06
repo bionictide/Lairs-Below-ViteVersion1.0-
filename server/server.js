@@ -68,12 +68,18 @@ io.on('connection', (socket) => {
   // PLAYER JOIN
   socket.on(EVENTS.PLAYER_JOIN, ({ playerId, character }) => {
     players.set(playerId, { socket, character, roomId: null, inventory: character.inventory || [] });
+    // Notify others (except the joining player)
+    socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
     // TODO: Sync with Supabase if needed
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.PLAYER_JOIN, success: true, message: 'Joined', data: { playerId } });
   });
 
   // PLAYER LEAVE
   socket.on(EVENTS.PLAYER_LEAVE, ({ playerId }) => {
+    const player = players.get(playerId);
+    if (player && player.character && player.character.name) {
+      socket.broadcast.emit(EVENTS.PLAYER_LEAVE_NOTIFICATION, { name: player.character.name });
+    }
     players.delete(playerId);
     // TODO: Sync with Supabase
     socket.broadcast.emit(EVENTS.PLAYER_LEAVE, { playerId });
@@ -166,6 +172,6 @@ io.on('connection', (socket) => {
   // --- Add more event handlers as needed ---
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);
 }); 

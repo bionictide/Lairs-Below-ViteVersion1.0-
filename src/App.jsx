@@ -7,6 +7,7 @@ import {
   getDefenseFromVIT
 } from './StatDefinitions.js';
 import { connectSocket } from './socket.js';
+import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -173,6 +174,15 @@ function LoginScreen({ onLogin }) {
           const token = data.session?.access_token;
           if (token) {
             window.socket = connectSocket(token);
+            // Listen for join/leave notifications
+            window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
+              setNotification(`${name} is now roaming the dungeon.`);
+              setTimeout(() => setNotification(null), 4000);
+            });
+            window.socket.on(EVENTS.PLAYER_LEAVE_NOTIFICATION, ({ name }) => {
+              setNotification(`${name} has left the dungeon.`);
+              setTimeout(() => setNotification(null), 4000);
+            });
           }
           onLogin(data.user);
         }
@@ -914,6 +924,7 @@ function App() {
   const [fadeInLogin, setFadeInLogin] = React.useState(false);
   const [charCreateError, setCharCreateError] = React.useState('');
   const [deletePrompt, setDeletePrompt] = React.useState(false);
+  const [notification, setNotification] = React.useState(null);
 
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
@@ -1089,7 +1100,15 @@ function App() {
       <div id="renderDiv" style={{ width: '100vw', height: '100vh', position: 'fixed', left: 0, top: 0, background: '#000' }} />
     );
   }
-  return null;
+  return (
+    <>
+      {notification && (
+        <div style={{ position: 'fixed', top: 24, right: 24, background: 'rgba(34,34,34,0.95)', color: '#fff', padding: '16px 32px', borderRadius: 12, fontWeight: 900, fontSize: 20, zIndex: 20000, boxShadow: '0 2px 16px #000a' }}>
+          {notification}
+        </div>
+      )}
+    </>
+  );
 }
 
 // FadeInOverlay: fades from black to transparent, then unmounts
