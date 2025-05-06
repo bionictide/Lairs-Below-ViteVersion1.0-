@@ -234,6 +234,11 @@ function LoginScreen({ onLogin }) {
           {isSignup ? 'Already have an account? Login' : 'Create an account'}
         </button>
       </form>
+      <div style={{ position: 'fixed', bottom: 8, width: '100%', textAlign: 'center', fontSize: '0.9em', color: '#aaa', zIndex: 1000 }}>
+        <a href="https://www.bionictide.com" target="_blank" rel="noopener noreferrer" style={{ color: '#6cf', marginRight: 8, textDecoration: 'underline' }}>www.BionicTide.com</a>
+        <span style={{ color: '#888', margin: '0 8px' }}>|</span>
+        <a href="https://www.nerdninjastudios.com" target="_blank" rel="noopener noreferrer" style={{ color: '#6cf', textDecoration: 'underline' }}>Discord</a>
+      </div>
     </ResponsiveGameContainer>
   );
 }
