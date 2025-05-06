@@ -43,7 +43,7 @@ const io = new Server(server, {
 // Middleware: Require Supabase JWT on connect
 io.use(async (socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
-  console.log('[AUTH] Incoming connection. Token:', token ? '[REDACTED]' : 'None');
+  console.log('[AUTH] Incoming connection.');
   if (!token) {
     console.log('[AUTH] No token provided. Rejecting connection.');
     return next(new Error('No token provided'));
@@ -56,14 +56,11 @@ io.use(async (socket, next) => {
         apikey: SUPABASE_SERVICE_KEY
       }
     });
-    console.log('[AUTH] Supabase response status:', res.status);
-    const body = await res.text();
-    console.log('[AUTH] Supabase response body:', body);
     if (res.status !== 200) {
       console.log('[AUTH] Invalid token. Rejecting connection.');
       return next(new Error('Invalid token'));
     }
-    const user = JSON.parse(body);
+    const user = await res.json();
     socket.user = user;
     console.log('[AUTH] Authenticated user:', user.id || '[no id]');
     return next();
