@@ -277,11 +277,12 @@ function CharacterSelectScreen({ onSelect, error }) {
   // Add placeholders for coming soon
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
-  const [highlighted, setHighlighted] = React.useState(0);
+  const [selected, setSelected] = React.useState(0); // which character is selected by click
+  const [nameEntry, setNameEntry] = React.useState(false);
+  const [lockedType, setLockedType] = React.useState(null); // which character is locked for name entry
   const [slideIn, setSlideIn] = React.useState(false);
   const [reveal, setReveal] = React.useState(false);
   const [showStats, setShowStats] = React.useState(false);
-  const [nameEntry, setNameEntry] = React.useState(false);
   const [name, setName] = React.useState('');
   const [localError, setLocalError] = React.useState('');
   const [spriteKey, setSpriteKey] = React.useState(0); // force re-render for animation
@@ -318,7 +319,7 @@ function CharacterSelectScreen({ onSelect, error }) {
     setShowStats(false);
     setSpriteKey(k => k + 1); // force re-render for animation
     setStatVisibilities([false, false, false, false]);
-    if (!characters[highlighted].comingSoon) {
+    if (!characters[selected].comingSoon) {
       const slideTimeout = setTimeout(() => setSlideIn(true), 30);
       const revealTimeout = setTimeout(() => setReveal(true), 700);
       const statsTimeout = setTimeout(() => setShowStats(true), 1400);
@@ -339,8 +340,8 @@ function CharacterSelectScreen({ onSelect, error }) {
       setShowStats(false);
       setStatVisibilities([false, false, false, false]);
     }
-  }, [highlighted]);
-  const char = characters[highlighted];
+  }, [selected]);
+  const char = characters[selected];
   const handleNameChange = (e) => {
     let value = e.target.value.replace(/[^a-zA-Z\s']/g, ''); // Only allow letters, spaces, apostrophes
     if (value.length > 15) value = value.slice(0, 15);
@@ -367,28 +368,34 @@ function CharacterSelectScreen({ onSelect, error }) {
         {characters.map((c, i) => (
           <div
             key={c.name + i}
-            onMouseEnter={() => !c.comingSoon && setHighlighted(i)}
+            onClick={() => {
+              setSelected(i);
+              setNameEntry(false);
+              setLockedType(null);
+            }}
             tabIndex={0}
             style={{
-              color: c.comingSoon ? '#888' : (highlighted === i ? '#fff' : '#fff'),
-              fontWeight: highlighted === i ? 900 : 400,
+              color: c.comingSoon ? '#888' : '#fff',
+              fontWeight: selected === i ? 900 : 400,
               fontSize: 24,
               letterSpacing: 2,
               cursor: c.comingSoon ? 'not-allowed' : 'pointer',
-              textShadow: highlighted === i ? '0 2px 16px #222' : 'none',
+              textShadow: selected === i ? '0 2px 16px #222' : 'none',
               opacity: c.comingSoon ? 0.5 : 1,
               transition: 'all 0.2s',
               outline: 'none',
               userSelect: 'none',
-              background: highlighted === i ? '#333' : 'none',
+              background: selected === i ? '#333' : 'none',
               borderBottom: '1px solid #aaa',
               padding: '8px 0',
               width: 220,
               textAlign: 'center',
               marginBottom: 0,
+              position: 'relative',
             }}
           >
             {c.comingSoon ? 'Coming Soon!' : c.name}
+            {lockedType === i && <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#fff', fontWeight: 900, fontSize: 24, pointerEvents: 'none' }}>&#10003;</span>}
           </div>
         ))}
       </div>
@@ -470,17 +477,56 @@ function CharacterSelectScreen({ onSelect, error }) {
         </div>
       )}
       {/* Select button and name entry, always in front */}
-      {!char.comingSoon && (
+      {!char.comingSoon && !nameEntry && (
         <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 32, zIndex: 10 }}>
-          {!nameEntry ? (
+          <button
+            onClick={() => { setNameEntry(true); setLockedType(selected); }}
+            style={{
+              ...combatButtonStyle,
+              fontSize: 16,
+              zIndex: 11,
+              borderRadius: 2,
+              width: 200,
+              height: 40,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 0,
+              textAlign: 'center',
+              background: '#333',
+              color: '#fff',
+              border: '2px solid #fff',
+              cursor: 'pointer',
+              opacity: 1,
+            }}
+          >
+            <span style={{ width: '100%', textAlign: 'center', display: 'block' }}>Select</span>
+          </button>
+        </div>
+      )}
+      {nameEntry && lockedType !== null && (
+        <div style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 32, zIndex: 10 }}>
+          {/* Input field container (unchanged) */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', zIndex: 11 }}>
+            <input
+              type="text"
+              value={name}
+              onChange={handleNameChange}
+              placeholder="Enter name..."
+              style={{ padding: 14, borderRadius: 2, border: '2px solid #fff', fontSize: 16, background: '#222', color: '#fff', width: 220 }}
+              maxLength={15}
+            />
+          </div>
+          {/* OK button + error container, identical to input container, to the right */}
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', zIndex: 11, marginLeft: 12 }}>
             <button
-              onClick={() => setNameEntry(true)}
+              type="submit"
               style={{
                 ...combatButtonStyle,
-                fontSize: 16,
+                background: '#333',
                 zIndex: 11,
                 borderRadius: 2,
-                width: 200,
+                width: 120,
                 height: 40,
                 display: 'flex',
                 alignItems: 'center',
@@ -488,14 +534,7 @@ function CharacterSelectScreen({ onSelect, error }) {
                 padding: 0,
                 textAlign: 'center',
               }}
-              onMouseEnter={e => e.currentTarget.style.background = '#555'}
-              onMouseLeave={e => e.currentTarget.style.background = '#333'}
-            >
-              <span style={{ width: '100%', textAlign: 'center', display: 'block' }}>Select</span>
-            </button>
-          ) : (
-            <form
-              onSubmit={e => {
+              onClick={e => {
                 e.preventDefault();
                 if (!name.trim()) {
                   setLocalError('Please enter a name.');
@@ -518,40 +557,14 @@ function CharacterSelectScreen({ onSelect, error }) {
                   return;
                 }
                 setLocalError('');
-                onSelect({ ...char, name: name.trim(), level: 1, type: char.name });
+                onSelect({ ...characters[lockedType], name: name.trim(), level: 1, type: characters[lockedType].name });
               }}
-              style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 12, zIndex: 11 }}
             >
-              <input
-                type="text"
-                value={name}
-                onChange={handleNameChange}
-                placeholder="Enter name..."
-                style={{ padding: 14, borderRadius: 2, border: '2px solid #fff', fontSize: 16, background: '#222', color: '#fff', width: 220 }}
-                maxLength={15}
-              />
-              <button
-                type="submit"
-                style={{
-                  ...combatButtonStyle,
-                  background: '#2196f3',
-                  zIndex: 11,
-                  borderRadius: 2,
-                  width: 120,
-                  height: 40,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: 0,
-                  textAlign: 'center',
-                }}
-              >
-                <span style={{ width: '100%', textAlign: 'center', display: 'block' }}>OK</span>
-              </button>
-            </form>
-          )}
-          {localError && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 24 }}>{localError}</div>}
-          {!localError && error && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 24 }}>{error}</div>}
+              <span style={{ width: '100%', textAlign: 'center', display: 'block' }}>OK</span>
+            </button>
+            {localError && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 16 }}>{localError}</div>}
+            {!localError && error && <div style={{ color: 'salmon', fontWeight: 700, marginLeft: 16 }}>{error}</div>}
+          </div>
         </div>
       )}
     </ResponsiveGameContainer>
