@@ -1089,8 +1089,48 @@ function App() {
   }, [screen, characters, selectedCharacter]);
 
   // Add onJoinServer handler
-  const handleJoinServer = () => {
-    // Implementation of handleJoinServer
+  const handleJoinServer = async () => {
+    // Only proceed if character and server are locked in
+    if (
+      lockedCharacter === null ||
+      lockedServer === null ||
+      !characters[lockedCharacter] ||
+      !characters[lockedCharacter].id
+    ) {
+      setConnectionError(true);
+      return;
+    }
+    try {
+      // Get Supabase session (JWT)
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session || !data.session.access_token) {
+        setConnectionError(true);
+        return;
+      }
+      const token = data.session.access_token;
+      // Connect to Socket.io
+      window.socket = connectSocket(token);
+      // Listen for join/leave notifications (optional, as in LoginScreen)
+      window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
+        setNotification(`${name} is now roaming the dungeon.`);
+        setTimeout(() => setNotification(null), 4000);
+      });
+      window.socket.on(EVENTS.PLAYER_LEAVE_NOTIFICATION, ({ name }) => {
+        setNotification(`${name} has left the dungeon.`);
+        setTimeout(() => setNotification(null), 4000);
+      });
+      // Emit PLAYER_JOIN with character info
+      window.socket.emit(EVENTS.PLAYER_JOIN, {
+        character: characters[lockedCharacter],
+        server: servers[lockedServer]?.name || ''
+      });
+      // Expose current character globally for game
+      window.currentCharacter = characters[lockedCharacter];
+      // Proceed to loading screen
+      setScreen('loading');
+    } catch (e) {
+      setConnectionError(true);
+    }
   };
 
   if (screen === 'intro') {
