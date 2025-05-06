@@ -172,6 +172,14 @@ io.on('connection', (socket) => {
   // --- Add more event handlers as needed ---
 });
 
+// Respond to HTTP GET / requests for Render.com health check and browser visits
+server.on('request', (req, res) => {
+  if (req.url === '/') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Lairs Below Socket.IO server is running!');
+  }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);
 }); 
