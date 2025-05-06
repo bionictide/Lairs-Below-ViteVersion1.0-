@@ -559,7 +559,7 @@ function CharacterSelectScreen({ onSelect, error }) {
 }
 
 // 4. CharacterServerSelectScreen with exact in-game UI layout and logic
-function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCharacter, selectedCharacter, servers, onHostServer, selectedServer, onSelectServer, lockedCharacter, setLockedCharacter, deletePrompt, setDeletePrompt, onDeleteCharacter }) {
+function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCharacter, selectedCharacter, servers, selectedServer, onSelectServer, lockedCharacter, setLockedCharacter, lockedServer, setLockedServer, deletePrompt, setDeletePrompt, onDeleteCharacter, connectionError, setConnectionError, onJoinServer }) {
   const [charBtnHover, setCharBtnHover] = React.useState(false);
   const [createBtnHover, setCreateBtnHover] = React.useState(false);
   const [joinBtnHover, setJoinBtnHover] = React.useState(false);
@@ -700,38 +700,36 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
             <div style={{ color: '#fff', fontSize: 20, fontWeight: 900, marginBottom: 4, textAlign: 'left', letterSpacing: 1 }}>Select a Server:</div>
             <div style={{ ...combatMenuStyle, minHeight: 120, minWidth: 340, maxWidth: 340, maxHeight: 340, overflowY: 'auto', marginBottom: 0, padding: 0, borderRadius: 2, background: 'rgba(34,34,34,0.95)', border: '2px solid #fff' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {Array.from({ length: 5 }).map((_, i) => {
-                  const s = servers[i];
+                {servers.map((s, i) => {
                   const isSelected = selectedServer === i;
+                  const isLocked = lockedServer === i;
                   return (
                     <div
                       key={i}
-                      onClick={() => s && onSelectServer(i)}
+                      onClick={() => onSelectServer(i)}
                       style={{
                         background: isSelected ? '#333' : 'none',
                         borderBottom: '1px solid #aaa',
-                        color: s ? '#fff' : '#888',
+                        color: '#fff',
                         fontWeight: isSelected ? 900 : 400,
                         fontSize: 20,
-                        cursor: s ? 'pointer' : 'default',
-                        opacity: s ? 1 : 0.6,
+                        cursor: 'pointer',
+                        opacity: 1,
                         display: 'flex',
-            alignItems: 'center',
+                        alignItems: 'center',
                         justifyContent: 'flex-start',
                         height: 48,
                         userSelect: 'none',
                         padding: '0 16px',
                         textAlign: 'left',
-            overflow: 'hidden',
+                        overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         textOverflow: 'ellipsis',
+                        position: 'relative',
                       }}
                     >
-                      {s ? (
-                        <span style={{ textAlign: 'left', width: '100%' }}>{s.name}</span>
-                      ) : (
-                        <span style={{ color: '#888' }}>Click "Host" to create a server.</span>
-                      )}
+                      <span style={{ textAlign: 'left', width: '100%' }}>{s.name}</span>
+                      {isLocked && <span style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', color: '#4caf50', fontWeight: 900, fontSize: 24, pointerEvents: 'none' }}>&#10003;</span>}
                     </div>
                   );
                 })}
@@ -740,29 +738,45 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginLeft: 16, justifyContent: 'center', height: '100%' }}>
             <button
-              disabled
-              style={{ ...combatButtonStyle, ...combatButtonDisabled, borderRadius: 2, width: 260, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', margin: 0 }}
-              onMouseEnter={() => setJoinBtnHover(true)}
-              onMouseLeave={() => setJoinBtnHover(false)}
-            >
-              Join Server
-            </button>
-            <button
-              onClick={() => lockedCharacter !== null && onHostServer()}
-              disabled={lockedCharacter === null || !characters[lockedCharacter] || characters[lockedCharacter].comingSoon}
+              disabled={lockedServer === selectedServer || selectedServer === null}
               style={{
                 ...combatButtonStyle,
-                ...(lockedCharacter === null || !characters[lockedCharacter] || characters[lockedCharacter].comingSoon ? combatButtonDisabled : { background: '#2196f3', color: '#fff', border: '2px solid #2196f3' }),
+                ...(lockedServer === selectedServer || selectedServer === null ? combatButtonDisabled : { background: '#2196f3', color: '#fff', border: '2px solid #2196f3' }),
                 borderRadius: 2, width: 260, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', margin: 0
               }}
-              onMouseEnter={() => setHostBtnHover(true)}
-              onMouseLeave={() => setHostBtnHover(false)}
+              onClick={() => setLockedServer(selectedServer)}
             >
-              Host Server
+              Select Server
+            </button>
+            <button
+              disabled={lockedCharacter === null || lockedServer === null}
+              style={{
+                ...combatButtonStyle,
+                ...(lockedCharacter === null || lockedServer === null ? combatButtonDisabled : { background: '#2196f3', color: '#fff', border: '2px solid #2196f3' }),
+                borderRadius: 2, width: 260, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', margin: 0
+              }}
+              onClick={onJoinServer}
+            >
+              Join Server
             </button>
           </div>
         </div>
       </div>
+      {connectionError && (
+        <div style={{
+          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto',
+        }}>
+          <div style={{ background: '#222', border: '2px solid #fff', borderRadius: 4, padding: 32, minWidth: 320, textAlign: 'center', boxShadow: '0 4px 32px #000', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ color: '#fff', fontWeight: 700, fontSize: 20, marginBottom: 24 }}>Unable to connect</div>
+            <button
+              style={{ background: '#2196f3', color: '#fff', border: '2px solid #2196f3', borderRadius: 2, width: 120, height: 40, fontSize: 16, fontWeight: 700, cursor: 'pointer', margin: '0 auto' }}
+              onClick={() => setConnectionError(false)}
+            >
+              Okay
+            </button>
+          </div>
+        </div>
+      )}
     </ResponsiveGameContainer>
   );
 }
@@ -918,13 +932,21 @@ function App() {
   const [user, setUser] = React.useState(null);
   const [characters, setCharacters] = React.useState(Array(5).fill(null));
   const [selectedCharacter, setSelectedCharacter] = React.useState(null);
-  const [servers, setServers] = React.useState(Array(5).fill(null));
+  const [servers] = React.useState([
+    { name: 'Asura' },
+    { name: 'Great Lakes' },
+    { name: 'Lake Superior' },
+    { name: 'San Francisco' },
+    { name: 'Oceanic' },
+  ]);
   const [selectedServer, setSelectedServer] = React.useState(null);
   const [lockedCharacter, setLockedCharacter] = React.useState(null);
+  const [lockedServer, setLockedServer] = React.useState(null);
   const [fadeInLogin, setFadeInLogin] = React.useState(false);
   const [charCreateError, setCharCreateError] = React.useState('');
   const [deletePrompt, setDeletePrompt] = React.useState(false);
   const [notification, setNotification] = React.useState(null);
+  const [connectionError, setConnectionError] = React.useState(false);
 
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
@@ -1053,6 +1075,11 @@ function App() {
     }
   }, [screen, characters, selectedCharacter]);
 
+  // Add onJoinServer handler
+  const handleJoinServer = () => {
+    // Implementation of handleJoinServer
+  };
+
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
       setScreen('login');
@@ -1085,9 +1112,14 @@ function App() {
       onSelectServer={setSelectedServer}
       lockedCharacter={lockedCharacter}
       setLockedCharacter={setLockedCharacter}
+      lockedServer={lockedServer}
+      setLockedServer={setLockedServer}
       deletePrompt={deletePrompt}
       setDeletePrompt={setDeletePrompt}
       onDeleteCharacter={handleDeleteCharacter}
+      connectionError={connectionError}
+      setConnectionError={setConnectionError}
+      onJoinServer={handleJoinServer}
     />;
   }
   if (screen === 'characterCreate') {
