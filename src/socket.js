@@ -12,6 +12,7 @@ export function connectSocket(token) {
     socket.disconnect();
     socket = null;
   }
+  console.log('Connecting to server with token:', token);
   // Connect to the live server with JWT auth
   socket = window.io('http://64.227.97.242:3001', {
     auth: { token }
