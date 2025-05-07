@@ -20,4 +20,7 @@ This folder contains all documentation, event specifications, schema definitions
 
 ---
 
-**Keep this folder up to date!** 
+**Keep this folder up to date!**
+
+- Dungeon generation and all related logic (loot, puzzles, encounters, etc.) are being refactored to use a deterministic, seedable RNG and shared module (`src/shared/DungeonCore.js`, `src/shared/RNG.js`).
+- This ensures identical output on both client and server, and all randomization is now cross-platform and testable. 
