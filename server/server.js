@@ -76,13 +76,16 @@ const players = new Map(); // playerId -> { socket, character, roomId, inventory
 const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
 const bags = new Map();    // bagId -> { roomId, items }
 
-// --- Dungeon World (Persistent) ---
+// --- Dungeon World (Persistent, Server-Authoritative) ---
+// All dungeon generation and mutation logic is imported from DungeonCore.js and must be performed here.
+// No client should ever mutate dungeon state. All mutations must be requested via events and validated/applied here.
 const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
 const dungeon = generateDungeon(DUNGEON_SEED, { playerCount: 1 });
 console.log('[DUNGEON] Dungeon generated at startup:', {
   rooms: dungeon.rooms.length,
   grid: dungeon.grid.length
 });
+// TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
