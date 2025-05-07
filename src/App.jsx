@@ -1125,6 +1125,10 @@ function App() {
           window.currentCharacter = char;
           // Store the dungeon layout from the server
           setDungeon(data.dungeon);
+          // Log the first 5 dungeon room IDs for debugging
+          if (data.dungeon && data.dungeon.rooms) {
+            console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
+          }
           // Optionally store spawnRoomId, etc. from data
           setScreen('loading');
         },

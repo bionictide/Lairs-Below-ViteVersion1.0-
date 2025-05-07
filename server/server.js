@@ -135,6 +135,7 @@ io.on('connection', (socket) => {
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
       // Send current world state and spawn info to client
+      console.log('Sending dungeon to client:', dungeon.rooms.map(r => r.id).slice(0, 5));
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
         success: true,
