@@ -77,7 +77,10 @@ export var gameConfig = {
 export var initGame = function(parent, dungeon) {
     var config = _object_spread_props(_object_spread({}, gameConfig), {
         parent: parent,
-        scene: [Object.assign(Object.create(DungeonScene), { data: { serverDungeon: dungeon } })]
+        scene: [DungeonScene]
     });
-    return new Phaser.Game(config);
+    var game = new Phaser.Game(config);
+    // Start the scene with the server dungeon as data
+    game.scene.start('default', { serverDungeon: dungeon });
+    return game;
 };
