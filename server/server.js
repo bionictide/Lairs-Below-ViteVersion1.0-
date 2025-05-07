@@ -89,12 +89,69 @@ io.on('connection', (socket) => {
   console.log('[SOCKET] Client connected:', socket.id, 'User:', socket.user?.id || '[no user]');
 
   // PLAYER JOIN
-  socket.on(EVENTS.PLAYER_JOIN, ({ playerId, character }) => {
-    players.set(playerId, { socket, character, roomId: null, inventory: character.inventory || [] });
-    // Notify others (except the joining player)
-    socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
-    // TODO: Sync with Supabase if needed
-    socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.PLAYER_JOIN, success: true, message: 'Joined', data: { playerId } });
+  socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
+    // Fetch and validate player data from Supabase
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          Accept: 'application/json',
+        },
+      });
+      if (res.status !== 200) {
+        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
+        return;
+      }
+      const data = await res.json();
+      if (!data || !data[0]) {
+        socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
+        return;
+      }
+      const character = data[0];
+      // Validate required fields
+      const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
+      for (const field of requiredFields) {
+        if (!(field in character)) {
+          socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA' });
+          return;
+        }
+      }
+      // Inject player as new entity into dungeon
+      players.set(playerId, {
+        socket,
+        character,
+        roomId: null,
+        inventory: character.inventory || [],
+        lastKnownRoom: null,
+        alive: true,
+      });
+      // Assign spawn location (random room for now)
+      const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
+      players.get(playerId).roomId = spawnRoom.id;
+      players.get(playerId).lastKnownRoom = spawnRoom.id;
+      // Add player to room
+      if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
+      rooms.get(spawnRoom.id).players.add(playerId);
+      socket.join(spawnRoom.id);
+      // Send current world state and spawn info to client
+      socket.emit(EVENTS.ACTION_RESULT, {
+        action: EVENTS.PLAYER_JOIN,
+        success: true,
+        message: 'Joined',
+        data: {
+          playerId,
+          character,
+          spawnRoomId: spawnRoom.id,
+          dungeon: { rooms: dungeon.rooms.length },
+        },
+      });
+      // Notify others
+      socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
+    } catch (err) {
+      socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
+      return;
+    }
   });
 
   // PLAYER LEAVE
@@ -103,12 +160,18 @@ io.on('connection', (socket) => {
     if (player && player.character && player.character.name) {
       socket.broadcast.emit(EVENTS.PLAYER_LEAVE_NOTIFICATION, { name: player.character.name });
     }
+    // Drop loot bag in current room if player is alive
+    if (player && player.alive && player.roomId) {
+      const bagId = `bag-${playerId}-${Date.now()}`;
+      bags.set(bagId, { roomId: player.roomId, items: player.inventory });
+      // Notify clients of loot bag drop
+      io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
+    }
     players.delete(playerId);
-    // TODO: Sync with Supabase
     socket.broadcast.emit(EVENTS.PLAYER_LEAVE, { playerId });
   });
 
-  // ROOM ENTER
+  // ROOM ENTER (late join/reconnect support)
   socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId }) => {
     const player = players.get(playerId);
     if (!player) return;
@@ -120,11 +183,12 @@ io.on('connection', (socket) => {
     if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
     rooms.get(roomId).players.add(playerId);
     player.roomId = roomId;
+    player.lastKnownRoom = roomId;
     // Broadcast room update
     io.to(roomId).emit(EVENTS.ROOM_UPDATE, {
       roomId,
       players: Array.from(rooms.get(roomId).players),
-      entities: rooms.get(roomId).entities
+      entities: rooms.get(roomId).entities,
     });
     socket.join(roomId);
   });
@@ -179,13 +243,16 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
   });
 
-  // DISCONNECT
+  // DISCONNECT (remove player entity, drop loot if alive)
   socket.on('disconnect', () => {
-    // Find and remove player
     for (const [playerId, player] of players.entries()) {
       if (player.socket === socket) {
+        if (player.alive && player.roomId) {
+          const bagId = `bag-${playerId}-${Date.now()}`;
+          bags.set(bagId, { roomId: player.roomId, items: player.inventory });
+          io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
+        }
         players.delete(playerId);
-        // TODO: Sync with Supabase
         break;
       }
     }

@@ -6,7 +6,7 @@ import {
   getPhysicalAttackFromSTR,
   getDefenseFromVIT
 } from './StatDefinitions.js';
-import { connectSocket } from './socket.js';
+import { connectSocket, joinPlayer, enterRoom } from './socket.js';
 import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
@@ -173,16 +173,7 @@ function LoginScreen({ onLogin }) {
           // Connect to Socket.io server with JWT
           const token = data.session?.access_token;
           if (token) {
-            window.socket = connectSocket(token);
-            // Listen for join/leave notifications
-            window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
-              setNotification(`${name} is now roaming the dungeon.`);
-              setTimeout(() => setNotification(null), 4000);
-            });
-            window.socket.on(EVENTS.PLAYER_LEAVE_NOTIFICATION, ({ name }) => {
-              setNotification(`${name} has left the dungeon.`);
-              setTimeout(() => setNotification(null), 4000);
-            });
+            handleLogin({ token, playerId: data.user.id, user_id: data.user.id });
           }
           onLogin(data.user);
         }
@@ -1119,15 +1110,20 @@ function App() {
         setNotification(`${name} has left the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
       });
-      // Emit PLAYER_JOIN with character info
-      window.socket.emit(EVENTS.PLAYER_JOIN, {
-        character: characters[lockedCharacter],
-        server: servers[lockedServer]?.name || ''
-      });
-      // Expose current character globally for game
-      window.currentCharacter = characters[lockedCharacter];
-      // Proceed to loading screen
-      setScreen('loading');
+      // Use joinPlayer for the new join flow
+      const char = characters[lockedCharacter];
+      joinPlayer(
+        { playerId: char.id, user_id: char.user_id },
+        (data) => {
+          // onSuccess: expose current character globally for game
+          window.currentCharacter = char;
+          // Optionally store spawnRoomId, etc. from data
+          setScreen('loading');
+        },
+        (errorMsg) => {
+          setConnectionError(true);
+        }
+      );
     } catch (e) {
       setConnectionError(true);
     }
