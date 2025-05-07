@@ -1053,7 +1053,12 @@ function App() {
   // Start Phaser only when entering the 'game' screen
   React.useEffect(() => {
     if (screen === 'game') {
+      if (!dungeon) {
+        console.error('[ERROR] Attempted to start game but dungeon is null or undefined:', dungeon);
+        return;
+      }
       if (!window._phaserGame) {
+        console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
           window._phaserGame = initGame(document.getElementById('renderDiv'), dungeon);
           // --- Inject stat block into DungeonScene ---
