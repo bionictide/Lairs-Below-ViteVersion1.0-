@@ -75,6 +75,7 @@ io.use(async (socket, next) => {
 const players = new Map(); // playerId -> { socket, character, roomId, inventory, ... }
 const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
 const bags = new Map();    // bagId -> { roomId, items }
+const visitedRooms = new Map(); // playerId -> Set of visited roomIds
 
 // --- Dungeon World (Persistent, Server-Authoritative) ---
 // All dungeon generation and mutation logic is imported from DungeonCore.js and must be performed here.
@@ -196,11 +197,15 @@ io.on('connection', (socket) => {
     rooms.get(roomId).players.add(playerId);
     player.roomId = roomId;
     player.lastKnownRoom = roomId;
-    // Broadcast room update
-    io.to(roomId).emit(EVENTS.ROOM_UPDATE, {
+    // Track visited rooms per player
+    if (!visitedRooms.has(playerId)) visitedRooms.set(playerId, new Set());
+    visitedRooms.get(playerId).add(roomId);
+    // Broadcast room update (only to this player for visited)
+    socket.emit(EVENTS.ROOM_UPDATE, {
       roomId,
       players: Array.from(rooms.get(roomId).players),
       entities: rooms.get(roomId).entities,
+      visited: Array.from(visitedRooms.get(playerId)),
     });
     socket.join(roomId);
   });
