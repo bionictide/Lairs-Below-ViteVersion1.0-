@@ -173,6 +173,14 @@ io.on('connection', (socket) => {
     }
     players.delete(playerId);
     socket.broadcast.emit(EVENTS.PLAYER_LEAVE, { playerId });
+    // 0-player dungeon reset logic
+    if (players.size === 0) {
+      // Regenerate dungeon and clear rooms/bags
+      Object.assign(dungeon, generateDungeon(DUNGEON_SEED, { playerCount: 1 }));
+      rooms.clear();
+      bags.clear();
+      console.log('[DUNGEON] All players left. Dungeon reset for next match.');
+    }
   });
 
   // ROOM ENTER (late join/reconnect support)
@@ -257,6 +265,13 @@ io.on('connection', (socket) => {
           io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
         }
         players.delete(playerId);
+        // 0-player dungeon reset logic
+        if (players.size === 0) {
+          Object.assign(dungeon, generateDungeon(DUNGEON_SEED, { playerCount: 1 }));
+          rooms.clear();
+          bags.clear();
+          console.log('[DUNGEON] All players disconnected. Dungeon reset for next match.');
+        }
         break;
       }
     }

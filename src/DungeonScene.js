@@ -300,11 +300,17 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
             key: "create",
             value: function create() {
                 var _this = this;
-                // Use the injected serverDungeon if present, else generate locally
+                // Debug: Log the state of serverDungeon and dungeon before use
+                console.log('[DEBUG] DungeonScene.create() - serverDungeon:', this.serverDungeon);
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
                 } else {
-                    // this.dungeon = this.dungeonService.generateDungeon(this.playerCount); // [SERVER-AUTH] Disabled local generation
+                    console.error('[ERROR] No serverDungeon provided to DungeonScene!');
+                    return; // Prevent further execution
+                }
+                if (!this.dungeon || !this.dungeon.rooms || !Array.isArray(this.dungeon.rooms)) {
+                    console.error('[ERROR] Invalid dungeon object in DungeonScene:', this.dungeon);
+                    return; // Prevent further execution
                 }
                 this.placePlayerRandomly();
                 this.debugHelper = new DebugHelper(this);
