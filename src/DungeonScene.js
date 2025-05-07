@@ -174,12 +174,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
     _inherits(DungeonScene, _Phaser_Scene);
     function DungeonScene() {
         _class_call_check(this, DungeonScene);
-        var _this;
-        _this = _call_super(this, DungeonScene, [
-            {
-                key: './DungeonScene.js'
-            }
-        ]);
+        var _this = _call_super(this, DungeonScene, ['default']);
         _this.playerPosition = {
             roomId: null,
             facing: 'north',
