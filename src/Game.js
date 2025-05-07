@@ -74,9 +74,12 @@ export var gameConfig = {
         autoCenter: Phaser.Scale.CENTER_BOTH
     }
 };
-export var initGame = function(parent) {
+export var initGame = function(parent, dungeon) {
     var config = _object_spread_props(_object_spread({}, gameConfig), {
         parent: parent
     });
-    return new Phaser.Game(config);
+    var game = new Phaser.Game(config);
+    // Inject the server-provided dungeon into the DungeonScene after creation
+    game.scene.getAt(0).serverDungeon = dungeon;
+    return game;
 };

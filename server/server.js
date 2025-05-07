@@ -143,7 +143,7 @@ io.on('connection', (socket) => {
           playerId,
           character,
           spawnRoomId: spawnRoom.id,
-          dungeon: { rooms: dungeon.rooms.length },
+          dungeon,
         },
       });
       // Notify others

@@ -292,7 +292,12 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
             key: "create",
             value: function create() {
                 var _this = this;
-                this.dungeon = this.dungeonService.generateDungeon(this.playerCount);
+                // Use the injected serverDungeon if present, else generate locally
+                if (this.serverDungeon) {
+                    this.dungeon = this.serverDungeon;
+                } else {
+                    this.dungeon = this.dungeonService.generateDungeon(this.playerCount);
+                }
                 this.placePlayerRandomly();
                 this.debugHelper = new DebugHelper(this);
 

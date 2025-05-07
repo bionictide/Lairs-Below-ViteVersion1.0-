@@ -172,14 +172,18 @@ function LoginScreen({ onLogin }) {
         } else {
           // Connect to Socket.io server with JWT
           const token = data.session?.access_token;
+          console.log('Supabase login data:', data);
           if (token) {
-            handleLogin({ token, playerId: data.user.id, user_id: data.user.id });
+            // Pass the token and user info to the parent App
+            onLogin({ token, playerId: data.user.id, user_id: data.user.id, user: data.user });
+          } else {
+            onLogin(data.user);
           }
-          onLogin(data.user);
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred.');
+      setError('An unexpected error occurred: ' + (err?.message || JSON.stringify(err)));
+      console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
@@ -568,6 +572,7 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
   const [createBtnHover, setCreateBtnHover] = React.useState(false);
   const [joinBtnHover, setJoinBtnHover] = React.useState(false);
   const [hostBtnHover, setHostBtnHover] = React.useState(false);
+  const [dungeon, setDungeon] = React.useState(null);
   // Button logic: Select Character locks in, Host starts game
   return (
     <ResponsiveGameContainer>
@@ -951,6 +956,7 @@ function App() {
   const [deletePrompt, setDeletePrompt] = React.useState(false);
   const [notification, setNotification] = React.useState(null);
   const [connectionError, setConnectionError] = React.useState(false);
+  const [dungeon, setDungeon] = React.useState(null);
 
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
@@ -1049,7 +1055,7 @@ function App() {
     if (screen === 'game') {
       if (!window._phaserGame) {
         import('./Game.js').then(({ initGame }) => {
-          window._phaserGame = initGame(document.getElementById('renderDiv'));
+          window._phaserGame = initGame(document.getElementById('renderDiv'), dungeon);
           // --- Inject stat block into DungeonScene ---
           // Wait for Phaser to create the scene, then set statBlock before create() runs
           const tryInjectStatBlock = () => {
@@ -1077,7 +1083,7 @@ function App() {
         });
       }
     }
-  }, [screen, characters, selectedCharacter]);
+  }, [screen, characters, selectedCharacter, dungeon]);
 
   // Add onJoinServer handler
   const handleJoinServer = async () => {
@@ -1117,6 +1123,8 @@ function App() {
         (data) => {
           // onSuccess: expose current character globally for game
           window.currentCharacter = char;
+          // Store the dungeon layout from the server
+          setDungeon(data.dungeon);
           // Optionally store spawnRoomId, etc. from data
           setScreen('loading');
         },
@@ -1137,7 +1145,11 @@ function App() {
   }
   if (screen === 'login') {
     return <>
-      <LoginScreen onLogin={user => { setUser(user); setScreen('characterServerSelect'); }} />
+      <LoginScreen onLogin={loginData => {
+        // loginData: { token, playerId, user_id, user }
+        setUser(loginData.user);
+        setScreen('characterServerSelect');
+      }} />
       {fadeInLogin && <FadeInOverlay onDone={() => setFadeInLogin(false)} />}
     </>;
   }
