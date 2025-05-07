@@ -299,6 +299,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 console.log('[DEBUG] DungeonScene.create() - serverDungeon:', this.serverDungeon);
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
+                    // Sync DungeonService with server dungeon data
+                    this.dungeonService.roomList = this.dungeon.rooms;
+                    this.dungeonService.dungeonGrid = this.dungeon.grid;
                 } else {
                     console.error('[ERROR] No serverDungeon provided to DungeonScene!');
                     return; // Prevent further execution
