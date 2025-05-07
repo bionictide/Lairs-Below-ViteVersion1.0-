@@ -304,7 +304,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
                 } else {
-                    this.dungeon = this.dungeonService.generateDungeon(this.playerCount);
+                    // this.dungeon = this.dungeonService.generateDungeon(this.playerCount); // [SERVER-AUTH] Disabled local generation
                 }
                 this.placePlayerRandomly();
                 this.debugHelper = new DebugHelper(this);
