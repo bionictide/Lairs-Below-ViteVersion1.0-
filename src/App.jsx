@@ -1130,7 +1130,6 @@ function App() {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
           }
           // Optionally store spawnRoomId, etc. from data
-          setScreen('loading');
         },
         (errorMsg) => {
           setConnectionError(true);
@@ -1140,6 +1139,13 @@ function App() {
       setConnectionError(true);
     }
   };
+
+  // Add a useEffect to transition to loading/game only after dungeon is set
+  React.useEffect(() => {
+    if (screen === 'characterServerSelect' && dungeon) {
+      setScreen('loading');
+    }
+  }, [screen, dungeon]);
 
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
