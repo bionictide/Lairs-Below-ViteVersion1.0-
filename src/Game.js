@@ -76,10 +76,8 @@ export var gameConfig = {
 };
 export var initGame = function(parent, dungeon) {
     var config = _object_spread_props(_object_spread({}, gameConfig), {
-        parent: parent
+        parent: parent,
+        scene: [Object.assign(Object.create(DungeonScene), { data: { serverDungeon: dungeon } })]
     });
-    var game = new Phaser.Game(config);
-    // Inject the server-provided dungeon into the DungeonScene after creation
-    game.scene.getAt(0).serverDungeon = dungeon;
-    return game;
+    return new Phaser.Game(config);
 };
