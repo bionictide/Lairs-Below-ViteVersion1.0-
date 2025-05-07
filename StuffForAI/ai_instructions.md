@@ -109,4 +109,16 @@
 - Random spawn on death/rejoin.
 - No new joiners to a dungeon in "ending" state (for future win conditions).
 
+---
+
+## 2024-06 Audit: Dungeon Mutators, Managers, and Multiplayer Event Payloads
+
+- All core dungeon logic (generation, room state, encounters, loot, inventory, puzzles, etc.) is now server-authoritative. Only non-damaging, non-authoritative logic (visuals, asset mappings) may be shared.
+- **Item, spell, and stat definitions must be server-authoritative.** Do not share these with the client in a way that allows tampering; all calculations for attack, defense, spell effects, and stat bonuses must be validated and enforced on the server.
+- DungeonService, EncounterManager, BagManager, and all mutators that affect persistent or multiplayer state are server-only. RoomManager and similar visual helpers may be shared.
+- All real-time state changes (player join/leave, movement, encounters, inventory, loot, etc.) are handled via Socket.io events, with payloads fully documented in `events.md`.
+- Supabase is used only for persistent player/account data, not for real-time dungeon state.
+- The `/StuffForAI` folder is fully up to date with event payloads, architectural notes, and workflow checklists. All multiplayer and event-driven logic is documented and matches the codebase.
+- This approach ensures nothing is lost, all logic is preserved, and the refactor is both safe and future-proof. The architecture is robust against cheating and ready for future multiplayer features.
+
 --- 
