@@ -9,6 +9,7 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
+import { generateDungeon } from '../src/shared/DungeonCore.js';
 
 dotenv.config();
 
@@ -74,6 +75,14 @@ io.use(async (socket, next) => {
 const players = new Map(); // playerId -> { socket, character, roomId, inventory, ... }
 const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
 const bags = new Map();    // bagId -> { roomId, items }
+
+// --- Dungeon World (Persistent) ---
+const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
+const dungeon = generateDungeon(DUNGEON_SEED, { playerCount: 1 });
+console.log('[DUNGEON] Dungeon generated at startup:', {
+  rooms: dungeon.rooms.length,
+  grid: dungeon.grid.length
+});
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
