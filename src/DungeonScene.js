@@ -214,6 +214,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "init",
             value: function init(data) {
+                if (data && data.character) {
+                    this.character = data.character;
+                }
                 if (data && data.serverDungeon) {
                     this.serverDungeon = data.serverDungeon;
                 }
@@ -304,6 +307,10 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 if (!this.dungeon || !this.dungeon.rooms || !Array.isArray(this.dungeon.rooms)) {
                     console.error('[ERROR] Invalid dungeon object in DungeonScene:', this.dungeon);
                     return; // Prevent further execution
+                }
+                if (!this.character || !this.character.stats) {
+                    console.error('[ERROR] Character or character.stats is undefined in DungeonScene.create');
+                    return;
                 }
                 this.placePlayerRandomly();
                 this.debugHelper = new DebugHelper(this);
