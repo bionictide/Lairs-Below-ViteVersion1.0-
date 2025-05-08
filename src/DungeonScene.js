@@ -293,8 +293,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
             key: "create",
             value: function create() {
                 var _this = this;
-                // Debug: Log the state of serverDungeon and dungeon before use
-                console.log('[DEBUG] DungeonScene.create() - serverDungeon:', this.serverDungeon);
+                console.log('[DEBUG] DungeonScene.create() called', { character: this.character, serverDungeon: this.serverDungeon });
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
                     // Sync DungeonService with server dungeon data
@@ -302,17 +301,21 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     this.dungeonService.dungeonGrid = this.dungeon.grid;
                 } else {
                     console.error('[ERROR] No serverDungeon provided to DungeonScene!');
-                    return; // Prevent further execution
-                }
-                if (!this.dungeon || !this.dungeon.rooms || !Array.isArray(this.dungeon.rooms)) {
-                    console.error('[ERROR] Invalid dungeon object in DungeonScene:', this.dungeon);
-                    return; // Prevent further execution
-                }
-                if (!this.character || !this.character.stats) {
-                    console.error('[ERROR] Character or character.stats is undefined in DungeonScene.create');
                     return;
                 }
+                console.log('[DEBUG] Passed serverDungeon check');
+                if (!this.dungeon || !this.dungeon.rooms || !Array.isArray(this.dungeon.rooms)) {
+                    console.error('[ERROR] Invalid dungeon object in DungeonScene:', this.dungeon);
+                    return;
+                }
+                console.log('[DEBUG] Passed dungeon validity check');
+                if (!this.character || !this.character.stats) {
+                    console.error('[ERROR] Character or character.stats is undefined in DungeonScene.create', this.character);
+                    return;
+                }
+                console.log('[DEBUG] Passed character check');
                 this.placePlayerRandomly();
+                console.log('[DEBUG] Player placed in room:', this.playerPosition.roomId);
                 this.debugHelper = new DebugHelper(this);
 
                 // --- Player ID Generation ---
@@ -950,6 +953,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     this.treasureSprite.destroy();
                     this.treasureSprite = null;
                 }
+                console.log('[DEBUG] Room rendered');
             }
         },
         {
