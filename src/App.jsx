@@ -1057,14 +1057,21 @@ function App() {
       characters[selectedCharacter].stats // Only start when stats are present
     ) {
       if (!window._phaserGame) {
-        console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
-        import('./Game.js').then(({ initGame }) => {
-          window._phaserGame = initGame(
-            document.getElementById('renderDiv'),
-            dungeon,
-            characters[selectedCharacter]
-          );
-        });
+        console.log('[DEBUG][App.jsx] About to import Game.js');
+        import('./Game.js')
+          .then(({ initGame }) => {
+            console.log('[DEBUG][App.jsx] Game.js imported');
+            console.log('[DEBUG][App.jsx] About to call initGame');
+            window._phaserGame = initGame(
+              document.getElementById('renderDiv'),
+              dungeon,
+              characters[selectedCharacter]
+            );
+            console.log('[DEBUG][App.jsx] initGame called');
+          })
+          .catch((err) => {
+            console.error('[DEBUG][App.jsx] Error importing or running Game.js:', err);
+          });
       }
     }
   }, [screen, characters, selectedCharacter, dungeon]);
