@@ -80,7 +80,8 @@ export var initGame = function(parent, dungeon, character) {
         scene: [DungeonScene]
     });
     var game = new Phaser.Game(config);
-    // Start the scene with the server dungeon and character as data
+    console.log('[DEBUG] Phaser.Game created', game);
+    console.log('[DEBUG] About to start DungeonScene with data:', { serverDungeon: dungeon, character });
     game.scene.start('default', { serverDungeon: dungeon, character });
     return game;
 };
