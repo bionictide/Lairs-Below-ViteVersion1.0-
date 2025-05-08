@@ -1,4 +1,3 @@
-//checkpoint
 // Only Phaser/game logic here, no React, no JSX
 import React from 'react';
 import { createRoot } from 'react-dom/client';
