@@ -1048,15 +1048,21 @@ function App() {
 
   // Start Phaser only when entering the 'game' screen
   React.useEffect(() => {
-    if (screen === 'game') {
-      if (!dungeon) {
-        console.error('[ERROR] Attempted to start game but dungeon is null or undefined:', dungeon);
-        return;
-      }
+    if (
+      screen === 'game' &&
+      dungeon &&
+      selectedCharacter !== null &&
+      characters[selectedCharacter] &&
+      characters[selectedCharacter].stats // Only start when stats are present
+    ) {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          window._phaserGame = initGame(document.getElementById('renderDiv'), dungeon, characters[selectedCharacter]);
+          window._phaserGame = initGame(
+            document.getElementById('renderDiv'),
+            dungeon,
+            characters[selectedCharacter]
+          );
         });
       }
     }
