@@ -1,3 +1,4 @@
+console.log('[DEBUG] DungeonScene.js loaded');
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -229,6 +230,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "preload",
             value: function preload() {
+                console.log('[DEBUG] DungeonScene.preload() called');
                 var _this = this;
                 Object.entries(this.roomManager.roomAssets).forEach(function(param) {
                     var _param = _sliced_to_array(param, 2), key = _param[0], url = _param[1];
@@ -296,7 +298,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "create",
             value: function create() {
-                var _this = this;
                 console.log('[DEBUG] DungeonScene.create() called', { character: this.character, serverDungeon: this.serverDungeon });
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
@@ -855,6 +856,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "update",
             value: function update(time, delta) {
+                console.log('[DEBUG] DungeonScene.update() called', { time, delta });
                 // Update Action Menu Timer Bar
                 if (this.actionMenuTimer && this.actionMenuTimerBar && this.actionMenu) {
                     var elapsed = this.actionMenuTimer.getElapsed();
@@ -893,6 +895,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "placePlayerRandomly",
             value: function placePlayerRandomly() {
+                console.log('[DEBUG] DungeonScene.placePlayerRandomly() called');
                 var validRooms = this.dungeon.rooms.filter(function(r) {
                     return r.doors.length >= 1 && !r.isDeadEnd;
                 });
@@ -905,6 +908,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "displayCurrentRoom",
             value: function displayCurrentRoom() {
+                console.log('[DEBUG] DungeonScene.displayCurrentRoom() called');
                 if (this.currentRoomSprite) this.currentRoomSprite.destroy();
                 if (this.actionMenu) this.actionMenu.destroy();
                 if (this.dialogBox) this.dialogBox.destroy();
