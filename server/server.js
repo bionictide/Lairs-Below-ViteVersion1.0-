@@ -172,6 +172,20 @@ io.on('connection', (socket) => {
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
+      // Compute player stats
+      const playerStats = new PlayerStats(playerId, character);
+      const stats = {
+        vit: character.vit,
+        str: character.str,
+        int: character.int,
+        dex: character.dex,
+        mnd: character.mnd,
+        spd: character.spd,
+        health: playerStats.getMaxHealth ? playerStats.getMaxHealth() : playerStats._maxHealth,
+        attack: playerStats.getPhysicalDamage ? playerStats.getPhysicalDamage() : playerStats.physicalBaseDamage,
+        defense: playerStats.getDefenseRating ? playerStats.getDefenseRating() : playerStats._defenseRating
+      };
+      character.stats = stats;
       // Send current world state and spawn info to client
       console.log('Sending dungeon to client:', dungeon.rooms.map(r => r.id).slice(0, 5));
       socket.emit(EVENTS.ACTION_RESULT, {

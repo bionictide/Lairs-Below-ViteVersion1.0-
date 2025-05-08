@@ -1,11 +1,6 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getCharacterDefinition } from './CharacterTypes.js';
-import {
-  getHealthFromVIT,
-  getPhysicalAttackFromSTR,
-  getDefenseFromVIT
-} from './StatDefinitions.js';
 import { connectSocket, joinPlayer, enterRoom } from './socket.js';
 import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
@@ -448,19 +443,19 @@ function CharacterSelectScreen({ onSelect, error }) {
             transform: statVisibilities[0] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[0] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Health: {getHealthFromVIT(char.stats?.vit || 0)}</div>
+          }}>Health: {char.stats?.health ?? 'N/A'}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[1] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[1] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Attack: {getPhysicalAttackFromSTR(char.stats?.str || 0)}</div>
+          }}>Attack: {char.stats?.attack ?? 'N/A'}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[2] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[2] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Defense: {getDefenseFromVIT(char.stats?.vit || 0)}</div>
+          }}>Defense: {char.stats?.defense ?? 'N/A'}</div>
           <div style={{
             marginTop: 8,
             transform: statVisibilities[3] ? 'translateX(0)' : 'translateX(-600px)',
