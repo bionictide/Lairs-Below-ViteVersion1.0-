@@ -1098,15 +1098,15 @@ function App() {
       joinPlayer(
         { playerId: char.id, user_id: char.user_id },
         (data) => {
-          // onSuccess: expose current character globally for game
-          window.currentCharacter = char;
-          // Store the dungeon layout from the server
+          // Store the enriched character from the server
+          window.currentCharacter = data.character;
           setDungeon(data.dungeon);
-          // Log the first 5 dungeon room IDs for debugging
-          if (data.dungeon && data.dungeon.rooms) {
-            console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
-          }
-          // Optionally store spawnRoomId, etc. from data
+          setCharacters(prev => {
+            const newChars = [...prev];
+            newChars[lockedCharacter] = data.character;
+            return newChars;
+          });
+          setSelectedCharacter(lockedCharacter);
         },
         (errorMsg) => {
           setConnectionError(true);
