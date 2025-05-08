@@ -237,7 +237,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                         var angryKey = `${prefix}2`;
                         // Use local asset paths
                         this.load.image(idleKey, `./Assets/${idleKey}.png`);
-                        this.load.image(angryKey, `./Assets/elvaan${angryKey}.png`);
+                        this.load.image(angryKey, `./Assets/${angryKey}.png`);
                     }
                 }
                 // Preload non-enemy specific assets
@@ -316,7 +316,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.itemManager = new ItemManager(this);
                 // Use injected statBlock if available, else fallback
                 var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
-                this.playerStats = new PlayerStats(this, this.playerId, statBlock);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
 
@@ -346,7 +345,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.encounterTimer = this.encounterInterval;
                 this.bagManager.createToggleButton();
                 // Create the player's health bar using initial values from PlayerStats AND the new playerId
-                this.playerHealthBar = new HealthBar(this, 20, 20, this.playerStats.getCurrentHealth(), this.playerStats.getMaxHealth(), this.playerId);
+                this.playerHealthBar = new HealthBar(this, 20, 20, this.character.stats.health, this.character.stats.health, this.playerId);
                 // Listen for health changes from PlayerStats to update the HealthBar display
                 this.playerStats.events.on('healthChanged', function(current, max) {
                     if (_this.playerHealthBar) {
@@ -730,7 +729,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     }
                     _this.isInEncounter = false; // Reset state on encounter end
                     _this.bagManager.setBagButtonVisibility(true); // Show bag button when encounter ends
-                    _this.setupNavigationButtons(); // Restore nav buttons
+                    this.setupNavigationButtons(); // Restore nav buttons
                     if (_this.enemySprite) {
                         var _find;
                         // --- Remove sprite reference on destruction ---
