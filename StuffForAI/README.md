@@ -52,11 +52,20 @@ This section summarizes key clarifications and lessons from the latest Q&A sessi
 - **General Rule:**
   - Never guess or assume anything about the code, game, or plans. If unsure, always ask the user for clarification. Update this folder with any new lessons or clarifications immediately.
 
+- **Dungeon Logic (DungeonCore):**
+  - `DungeonCore` (`src/shared/DungeonCore.js`) is the **single source of truth** for all dungeon generation, persistence, and mutation logic on the server.
+  - No other dungeon manager, wrapper, or service (e.g., `DungeonService.js`) should be created or used for server-side dungeon logic. All helpers or mutations must be added to `DungeonCore` if needed.
+  - If any file is deprecated or removed (such as `server/managers/DungeonService.js`), document it here to prevent confusion for future AI or developers.
+
 If you are a new AI or developer, this section—along with the rest of this folder—should bring you fully up to speed with the current state and goals of the project.
 
 ---
 
 **Keep this folder up to date!**
+
+- Always update this folder first for any multiplayer, event, or database logic changes.
+- Document all architectural decisions, deprecated files, and the current source of truth for each system.
+- This prevents confusion, duplication, and logic overlap for future AI or developers.
 
 - Dungeon generation and all related logic (loot, puzzles, encounters, etc.) are being refactored to use a deterministic, seedable RNG and shared module (`src/shared/DungeonCore.js`, `src/shared/RNG.js`).
 - This ensures identical output on both client and server, and all randomization is now cross-platform and testable.

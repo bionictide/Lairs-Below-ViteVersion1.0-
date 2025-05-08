@@ -10,6 +10,24 @@ import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
 import { generateDungeon } from '../src/shared/DungeonCore.js';
+// --- Server-authoritative managers ---
+import BagManager from './managers/BagManager.js';
+import EncounterManager from './managers/EncounterManager.js';
+import DungeonService from './managers/DungeonService.js';
+import RoomManager from './managers/RoomManager.js';
+import PlayerStats from './managers/PlayerStats.js';
+import SpellManager from './managers/SpellManager.js';
+import ItemManager from './managers/ItemManager.js';
+import NPCLootManager from './managers/NPCLootManager.js';
+import TreasureManager from './managers/TreasureManager.js';
+import PuzzleManager from './managers/PuzzleManager.js';
+import ShelfManager from './managers/ShelfManager.js';
+import HintManager from './managers/HintManager.js';
+import StatDefinitions from './managers/StatDefinitions.js';
+import CharacterTypes from './managers/CharacterTypes.js';
+import DebugHelper from './managers/DebugHelper.js';
+import DungeonScene from './managers/DungeonScene.js';
+import CombatVisuals from './managers/CombatVisuals.js';
 
 dotenv.config();
 
