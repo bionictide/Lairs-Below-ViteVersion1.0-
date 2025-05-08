@@ -170,6 +170,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
     "use strict";
     _inherits(DungeonScene, _Phaser_Scene);
     function DungeonScene() {
+        console.log('[DEBUG] DungeonScene constructor called');
         _class_call_check(this, DungeonScene);
         var _this = _call_super(this, DungeonScene, ['default']);
         _this.playerPosition = {
@@ -214,6 +215,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "init",
             value: function init(data) {
+                console.log('[DEBUG] DungeonScene.init() called', data);
                 if (data && data.character) {
                     this.character = data.character;
                 }
