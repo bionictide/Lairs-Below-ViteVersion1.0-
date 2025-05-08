@@ -933,6 +933,7 @@ function LoadingScreen({ onLoaded }) {
 
 // 2. Update App to use the new sequence
 function App() {
+  console.log('[DEBUG][App.jsx] App function entered');
   const [screen, setScreen] = React.useState('intro'); // 'intro', 'login', 'loading', 'characterServerSelect', 'characterCreate', 'game'
   const [user, setUser] = React.useState(null);
   const [characters, setCharacters] = React.useState(Array(5).fill(null));
@@ -1186,8 +1187,10 @@ function App() {
       <div id="renderDiv" style={{ width: '100vw', height: '100vh', position: 'fixed', left: 0, top: 0, background: '#000' }} />
     );
   }
+  console.log('[DEBUG][App.jsx] Before render return');
   return (
     <>
+      {console.log('[DEBUG][App.jsx] In render JSX')}
       {notification && (
         <div style={{ position: 'fixed', top: 24, right: 24, background: 'rgba(34,34,34,0.95)', color: '#fff', padding: '16px 32px', borderRadius: 12, fontWeight: 900, fontSize: 20, zIndex: 20000, boxShadow: '0 2px 16px #000a' }}>
           {notification}
