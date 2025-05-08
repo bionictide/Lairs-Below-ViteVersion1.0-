@@ -1049,6 +1049,12 @@ function App() {
 
   // Start Phaser only when entering the 'game' screen
   React.useEffect(() => {
+    console.log('[DEBUG][App.jsx] Phaser useEffect triggered');
+    console.log('[DEBUG][App.jsx] screen:', screen);
+    console.log('[DEBUG][App.jsx] dungeon:', dungeon);
+    console.log('[DEBUG][App.jsx] selectedCharacter:', selectedCharacter);
+    console.log('[DEBUG][App.jsx] characters[selectedCharacter]:', characters[selectedCharacter]);
+    console.log('[DEBUG][App.jsx] characters[selectedCharacter]?.stats:', characters[selectedCharacter]?.stats);
     if (
       screen === 'game' &&
       dungeon &&
@@ -1073,6 +1079,8 @@ function App() {
             console.error('[DEBUG][App.jsx] Error importing or running Game.js:', err);
           });
       }
+    } else {
+      console.log('[DEBUG][App.jsx] Phaser useEffect: Not starting Phaser. Condition failed.');
     }
   }, [screen, characters, selectedCharacter, dungeon]);
 
