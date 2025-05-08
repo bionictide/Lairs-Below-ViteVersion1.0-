@@ -36,7 +36,8 @@
   {
     "roomId": "string",
     "players": [ /* array of playerIds */ ],
-    "entities": [ /* array of entities */ ]
+    "entities": [ /* array of entities */ ],
+    "visited": [ /* array of roomIds */ ]
   }
   ```
 
@@ -153,6 +154,24 @@
   {
     "playerId": "string",
     "state": { /* arbitrary player state, e.g., buffs, debuffs, etc. */ }
+  }
+  ```
+
+## player_join_notification
+- Direction: server → client
+- Payload:
+  ```json
+  {
+    "name": "string"
+  }
+  ```
+
+## player_leave_notification
+- Direction: server → client
+- Payload:
+  ```json
+  {
+    "name": "string"
   }
   ```
 

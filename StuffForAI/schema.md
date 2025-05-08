@@ -1,5 +1,7 @@
 # Supabase/Postgres Schema
 
+> **As of the latest audit, this schema is fully mapped to the codebase. If you add or change any schema field in the codebase, you MUST update this file immediately. This file is the single source of truth for persistent data structure.**
+
 ## Table: characters
 
 | Column      | Type    | Description                                 |
@@ -37,4 +39,5 @@
 
 ---
 
-**Update this file whenever you change the schema!** 
+**Update this file whenever you change the schema!**
+**As of the latest audit, this schema is fully mapped to the codebase.** 

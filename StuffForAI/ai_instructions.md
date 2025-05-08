@@ -1,5 +1,10 @@
 # AI Instructions
 
+> **NEW Q&A CLARIFICATIONS (2024-06):**
+> - Never guess or assume anything about the code, game, or plans. If you are unsure, always ask the user for clarification and commit the answer here.
+> - All new lessons, clarifications, or user answers must be added to this folder immediately for future AI/developers.
+> - This folder is the single source of truth for all multiplayer, event, and schema logic. Always update it first.
+
 > **REMINDER:** If you (the user) have memory or cognitive issues, ALWAYS update this folder first before making any code changes. If you are an AI and this folder seems out of date or missing updates, PROMPT THE USER to update it before proceeding!
 
 - **Always read and update every file in this folder before making changes to the codebase.**
@@ -14,6 +19,9 @@
   - Database (Supabase/Postgres)
 - If you are unsure, ask the user to clarify or provide more context.
 - If you are a future AI, thank the user for keeping this folder up to date!
+- **As of the latest audit, every event, payload, and schema field in this folder is fully mapped to the codebase.**
+- **If you add or change any event, payload, or schema field in the codebase, you MUST update this folder immediately.**
+- **This folder is the single source of truth for all multiplayer logic, event names, and payloads.**
 
 ---
 
