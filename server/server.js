@@ -152,6 +152,22 @@ io.on('connection', (socket) => {
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
+      // If inventory is empty, give 1 red potion
+      if (!character.inventory || character.inventory.length === 0) {
+        character.inventory = [{ itemKey: 'Potion1(red)', name: 'Red Potion', asset: 'Potion1(red)', width: 1, height: 1, stackable: true, usable: true, instanceId: `Potion1(red)-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` }];
+        // Save to Supabase
+        await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+          method: 'PATCH',
+          headers: {
+            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+            apikey: SUPABASE_SERVICE_KEY,
+            'Content-Type': 'application/json',
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify({ inventory: character.inventory })
+        });
+      }
+      players.get(playerId).inventory = character.inventory;
       // Add player to room
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);

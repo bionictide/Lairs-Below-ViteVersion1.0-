@@ -170,8 +170,6 @@ export var BagManager = /*#__PURE__*/ function() {
         this.PLAYER_BAG_ID = 'player_dropped_bag'; // Unique ID for the player's dropped bag
         // Removed the redundant asset loading loop here. Assets are loaded in DungeonScene.preload.
         this.initializeGridOccupancy();
-        // Start player with one potion for healing
-        this.addItem('Potion1(red)'); // Keep the potion for gameplay purposes
     }
     _create_class(BagManager, [
         {
