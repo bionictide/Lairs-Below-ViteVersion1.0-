@@ -178,11 +178,12 @@ export var DebugHelper = /*#__PURE__*/ function() {
                     'Amethyst',
                     'RawRuby'
                 ];
-                gemTypes.forEach(function(gemType) {
-                    bagManager.addItem(gemType);
+                gemTypes.forEach((gemType) => {
+                    // Instead of bagManager.addItem, emit a server event
+                    this.scene.events.emit('requestAddItem', gemType);
                 });
-                console.log('[DebugHelper] Added one of each gem type to player inventory.');
-                this.scene.events.emit('showActionPrompt', 'Debug: Added gems to inventory');
+                console.log('[DebugHelper] Requested one of each gem type to be added to player inventory (server authority).');
+                this.scene.events.emit('showActionPrompt', 'Debug: Requested gems from server');
             }
         }
     ]);

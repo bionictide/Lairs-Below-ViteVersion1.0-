@@ -294,6 +294,329 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
   });
 
+  // REQUEST ADD ITEM (for debug or admin only)
+  socket.on('requestAddItem', async (itemKey) => {
+    // Find the player by socket
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    // Add the item to inventory
+    const newItem = { itemKey, name: itemKey, asset: itemKey, width: 1, height: 1, stackable: true, usable: true, instanceId: `${itemKey}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+    player.inventory.push(newItem);
+    // Save to Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    // Send updated inventory to client
+    socket.emit('playerInventory', player.inventory);
+  });
+
+  // REQUEST REMOVE ITEM
+  socket.on('requestRemoveItem', async (instanceId) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    player.inventory = player.inventory.filter(item => item.instanceId !== instanceId);
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    socket.emit('playerInventory', player.inventory);
+  });
+
+  // REQUEST DROP ITEM
+  socket.on('requestDropItem', async (instanceId) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const itemIdx = player.inventory.findIndex(item => item.instanceId === instanceId);
+    if (itemIdx === -1) return;
+    const [droppedItem] = player.inventory.splice(itemIdx, 1);
+    // Create loot bag in current room
+    const bagId = `bag-${playerId}-${Date.now()}`;
+    bags.set(bagId, { roomId: player.roomId, items: [droppedItem] });
+    io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: [droppedItem] });
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    socket.emit('playerInventory', player.inventory);
+  });
+
+  // REQUEST CLEAR INVENTORY
+  socket.on('requestClearInventory', async () => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    player.inventory = [];
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    socket.emit('playerInventory', player.inventory);
+  });
+
+  // REQUEST ROOM ENTER
+  socket.on('requestRoomEnter', ({ currentRoomId, direction, facing }) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const room = dungeon.rooms.find(r => r.id === currentRoomId);
+    if (!room) return;
+    // Validate move
+    const visibleDoors = RoomManager.getVisibleDoors(room, facing, dungeon);
+    if (!visibleDoors.includes(direction)) return;
+    const { dx, dy, newFacing, targetId } = RoomManager.getMovementDelta(facing, direction, room, dungeon);
+    if (!targetId) return;
+    // Update player state
+    player.roomId = targetId;
+    player.lastKnownRoom = targetId;
+    player.facing = newFacing;
+    // Emit new room state to client
+    socket.emit('roomUpdate', {
+      roomId: targetId,
+      facing: newFacing,
+      room: dungeon.rooms.find(r => r.id === targetId),
+      inventory: player.inventory
+    });
+  });
+
+  // REQUEST TURN
+  socket.on('requestTurn', ({ currentRoomId, rotation, facing }) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const room = dungeon.rooms.find(r => r.id === currentRoomId);
+    if (!room) return;
+    // Calculate new facing
+    const newFacing = RoomManager.rotateFacing(facing, rotation);
+    player.facing = newFacing;
+    // Emit new room state to client
+    socket.emit('roomUpdate', {
+      roomId: currentRoomId,
+      facing: newFacing,
+      room,
+      inventory: player.inventory
+    });
+  });
+
+  // REQUEST LOOT ITEM
+  socket.on('requestLootItem', async ({ sourceEntityId, itemKey }) => {
+    // Find the player by socket
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    // Find the loot bag for the source entity
+    const bagId = `bag-${sourceEntityId}`;
+    const bag = bags.get(bagId);
+    if (!bag) {
+      socket.emit('lootResult', { success: false, message: 'Loot bag not found.' });
+      return;
+    }
+    // Check if the item exists in the bag
+    const itemIdx = bag.items.findIndex(item => item.itemKey === itemKey);
+    if (itemIdx === -1) {
+      socket.emit('lootResult', { success: false, message: 'Item not found in loot bag.' });
+      return;
+    }
+    // Remove the item from the bag
+    const [lootedItem] = bag.items.splice(itemIdx, 1);
+    // Add to player inventory
+    player.inventory.push(lootedItem);
+    // Persist inventory to Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    // Emit updated inventory and loot state
+    socket.emit('playerInventory', player.inventory);
+    socket.emit('lootResult', { success: true, item: lootedItem, remaining: bag.items });
+    // If bag is empty, remove it and notify all clients in the dungeon
+    if (bag.items.length === 0) {
+      bags.delete(bagId);
+      io.emit(EVENTS.LOOT_BAG_EMPTY, { bagId });
+    }
+  });
+
+  // REQUEST PUZZLE PICKUP
+  socket.on('requestPuzzlePickup', async ({ roomId }) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!room || room.puzzleType !== 'key') {
+      socket.emit('puzzlePickupResult', { success: false, message: 'No key puzzle in this room.' });
+      return;
+    }
+    // Remove the puzzle from the room
+    room.puzzleType = null;
+    // Add the key to the player's inventory
+    const newItem = { itemKey: 'Key1', name: 'Key', asset: 'Key1', width: 2, height: 1, stackable: false, usable: false, instanceId: `Key1-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+    player.inventory.push(newItem);
+    // Persist inventory to Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    // Emit updated inventory and room state to the player
+    socket.emit('playerInventory', player.inventory);
+    socket.emit('puzzlePickupResult', { success: true, item: newItem, roomId });
+    // Broadcast puzzle removal to all clients in the dungeon
+    io.emit(EVENTS.PUZZLE_PICKED_UP, { roomId });
+  });
+
+  // REQUEST SHELF PICKUP
+  socket.on('requestShelfPickup', async ({ roomId, itemType }) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!room) {
+      socket.emit('shelfPickupResult', { success: false, message: 'Room not found.' });
+      return;
+    }
+    let valid = false;
+    if (['Emerald', 'BlueApatite', 'Amethyst', 'RawRuby'].includes(itemType) && room.gemType) {
+      // Gem pickup
+      const gemMap = {
+        'Emerald': 'ShelfEmerald',
+        'BlueApatite': 'ShelfBlueApatite',
+        'Amethyst': 'ShelfAmethyst',
+        'RawRuby': 'ShelfRawRuby'
+      };
+      if (room.gemType === gemMap[itemType]) {
+        room.gemType = null;
+        valid = true;
+      }
+    } else if (itemType === 'Potion1(red)' && room.hasPotion) {
+      // Potion pickup
+      room.hasPotion = false;
+      valid = true;
+    }
+    if (!valid) {
+      socket.emit('shelfPickupResult', { success: false, message: 'Item not available on shelf.' });
+      return;
+    }
+    // Add the item to the player's inventory
+    const newItem = { itemKey: itemType, name: itemType, asset: itemType, width: 1, height: 1, stackable: true, usable: true, instanceId: `${itemType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+    player.inventory.push(newItem);
+    // Persist inventory to Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    // Emit updated inventory and shelf state to the player
+    socket.emit('playerInventory', player.inventory);
+    socket.emit('shelfPickupResult', { success: true, item: newItem, roomId, itemType });
+    // Broadcast shelf removal to all clients in the dungeon
+    io.emit(EVENTS.SHELF_ITEM_PICKED_UP, { roomId, itemType });
+  });
+
+  // REQUEST TREASURE PICKUP
+  socket.on('requestTreasurePickup', async ({ roomId }) => {
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!room || !room.treasureLevel) {
+      socket.emit('treasurePickupResult', { success: false, message: 'No treasure in this room.' });
+      return;
+    }
+    // Use TreasureManager to collect the treasure
+    const treasureManager = new TreasureManager();
+    const itemKey = treasureManager.collectTreasure(room);
+    if (!itemKey) {
+      socket.emit('treasurePickupResult', { success: false, message: 'Treasure not available.' });
+      return;
+    }
+    // Add the item to the player's inventory
+    const newItem = { itemKey, name: itemKey, asset: itemKey, width: 1, height: 1, stackable: true, usable: true, instanceId: `${itemKey}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` };
+    player.inventory.push(newItem);
+    // Persist inventory to Supabase
+    await fetch(`${SUPABASE_URL}/rest/v1/characters?id=eq.${playerId}`, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      },
+      body: JSON.stringify({ inventory: player.inventory })
+    });
+    // Emit updated inventory and treasure state to the player
+    socket.emit('playerInventory', player.inventory);
+    socket.emit('treasurePickupResult', { success: true, item: newItem, roomId });
+    // Broadcast treasure removal to all clients in the dungeon
+    io.emit(EVENTS.TREASURE_PICKED_UP, { roomId });
+  });
+
+  // REQUEST ATTACK
+  socket.on('requestAttack', async ({ initiatorId, targetId }) => {
+    // Validate player and entities
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    // Use EncounterManager to process the attack
+    const result = EncounterManager.handleAttack(initiatorId, targetId, playerId, dungeon, players);
+    // Broadcast the attack result to all clients in the dungeon
+    io.to(dungeon.id).emit('attackResult', result);
+  });
+
+  // REQUEST STEAL
+  socket.on('requestSteal', async ({ initiatorId, targetId }) => {
+    // Validate player and entities
+    const playerEntry = Array.from(players.entries()).find(([_, p]) => p.socket === socket);
+    if (!playerEntry) return;
+    const [playerId, player] = playerEntry;
+    // Use EncounterManager to process the steal
+    const result = EncounterManager.handleSteal(initiatorId, targetId, playerId, dungeon, players);
+    // Broadcast the steal result to all clients in the dungeon
+    io.to(dungeon.id).emit('stealResult', result);
+  });
+
   // DISCONNECT (remove player entity, drop loot if alive)
   socket.on('disconnect', () => {
     for (const [playerId, player] of players.entries()) {

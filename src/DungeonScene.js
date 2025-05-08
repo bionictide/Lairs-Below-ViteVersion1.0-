@@ -136,7 +136,6 @@ import { RoomManager } from './RoomManager.js';
 import { DebugHelper } from './DebugHelper.js';
 import { EncounterManager } from './EncounterManager.js';
 import { PuzzleManager } from './PuzzleManager.js';
-import { TreasureManager } from './TreasureManager.js';
 import { HintManager } from './HintManager.js';
 import { ShelfManager } from './ShelfManager.js';
 import { BagManager } from './BagManager.js';
@@ -147,7 +146,6 @@ import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
-import { SpellManager } from './SpellManager.js';
 // Define door configurations outside the class for clarity
 var DOOR_CONFIGS = {
     forward: {
@@ -185,7 +183,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.debugHelper = null;
         _this.encounterManager = null;
         _this.puzzleManager = null;
-        _this.treasureManager = null;
         _this.hintManager = null;
         _this.shelfManager = null; // Add ShelfManager instance
         _this.bagManager = null; // Add BagManager instance
@@ -194,7 +191,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerStats = null; // Add PlayerStats instance
         _this.itemManager = null; // Add ItemManager instance
         _this.combatVisuals = null; // Add CombatVisuals instance
-        _this.spellManager = null;
         _this.dungeon = null;
         _this.playerCount = 6;
         _this.isRearranging = false;
@@ -242,7 +238,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                         var angryKey = `${prefix}2`;
                         // Use local asset paths
                         this.load.image(idleKey, `./Assets/${idleKey}.png`);
-                        this.load.image(angryKey, `./Assets/${angryKey}.png`);
+                        this.load.image(angryKey, `./Assets/elvaan${angryKey}.png`);
                     }
                 }
                 // Preload non-enemy specific assets
@@ -329,13 +325,12 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager);
                 
                 // Then managers that depend on bagManager
-                this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
+                // this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
                 this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
                 this.puzzleManager = new PuzzleManager(this);
-                this.treasureManager = new TreasureManager(this);
                 this.hintManager = new HintManager(this);
                 this.shelfManager = new ShelfManager(this);
 
@@ -366,6 +361,45 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
                 // Listen for loot bag clicks (emitted by HealthBar)
                 this.events.on('lootBagClicked', this.handleLootBagClick, this);
+                this.events.on('treasurePickupResult', (result) => {
+                    if (result.success) {
+                        this.events.emit('showActionPrompt', `You picked up a treasure: ${result.item.name || result.item.itemKey}`);
+                        // Optionally update inventory UI here
+                    } else {
+                        this.events.emit('showActionPrompt', result.message || 'Treasure pickup failed.');
+                    }
+                });
+                this.events.on(EVENTS.TREASURE_PICKED_UP, ({ roomId }) => {
+                    // Remove treasure sprite if in this room
+                    if (this.playerPosition.roomId === roomId && this.treasureSprite) {
+                        this.treasureSprite.destroy();
+                        this.treasureSprite = null;
+                    }
+                    // Also update local room state if needed
+                    const room = this.dungeonService.getRoomById(roomId);
+                    if (room) room.treasureLevel = null;
+                });
+                this.socket.on('attackResult', (result) => {
+                    // Show the attack result message
+                    this.events.emit('showActionPrompt', result.message);
+                    // Optionally update health bars and handle death animations
+                    // Example: if (result.died) { this.handleEntityDeath(result.targetId); }
+                });
+                this.socket.on('stealResult', (result) => {
+                    // Show the steal result message
+                    this.events.emit('showActionPrompt', result.message);
+                    // Optionally update inventory if the player is initiator or target
+                    if (result.success && result.item) {
+                        if (result.initiatorId === this.playerId) {
+                            // Add item to player's inventory UI
+                            this.playerStats.addItemToInventory(result.item);
+                        }
+                        if (result.targetId === this.playerId) {
+                            // Remove item from player's inventory UI
+                            this.playerStats.removeItemFromInventory(result.item);
+                        }
+                    }
+                });
             }
         },
         {
@@ -678,8 +712,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     _this.promptTimer = newTimerEvent;
                 });
                 this.events.on('addToInventory', function(itemKey) {
-                    // Pass the item key directly to the BagManager
-                    _this.bagManager.addItem(itemKey);
+                    // Request server to add item
+                    _this.events.emit('requestAddItem', itemKey);
                 });
                 this.events.on('fleeToPreviousRoom', function(roomId) {
                     var room = _this.dungeonService.getRoomById(roomId);
@@ -865,7 +899,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     this.removeTalkInputAndListeners();
                 }
                 this.puzzleManager.clearPuzzles();
-                this.treasureManager.clearTreasures();
+                // this.treasureManager.clearTreasures();
                 this.hintManager.clearHints();
                 this.shelfManager.clearShelves();
                 if (this.bagManager.isOpen) this.bagManager.closeBagUI(); // Close bag if open on room change
@@ -886,9 +920,31 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Setup nav buttons *after* potential encounter start
                 this.setupNavigationButtons();
                 this.puzzleManager.initializePuzzles(room); // Removed facing argument
-                this.treasureManager.initializeTreasures(room); // Removed facing argument
+                // this.treasureManager.initializeTreasures(room); // Removed facing argument
                 this.hintManager.initializeHints(room);
                 this.shelfManager.initializeShelves(room);
+                // Render treasure sprite if present and not already picked up
+                if (room.treasureLevel && !this.treasureSprite) {
+                    const treasureKey = room.treasureLevel === 'sword1' ? 'Sword1' : room.treasureLevel === 'helm1' ? 'Helm1' : room.treasureLevel === 'Potion1(red)' ? 'Potion1(red)' : null;
+                    if (treasureKey && this.textures.exists(treasureKey)) {
+                        this.treasureSprite = this.add.sprite(gameConfig.width / 2, gameConfig.height * 0.7, treasureKey)
+                            .setInteractive({ useHandCursor: true })
+                            .setDepth(40)
+                            .setScale(0.2);
+                        this.treasureSprite.on('pointerdown', () => {
+                            if (this.isInEncounter) {
+                                this.events.emit('showActionPrompt', 'Cannot loot items during combat!');
+                                return;
+                            }
+                            this.events.emit('requestTreasurePickup', { roomId: room.id });
+                        });
+                    }
+                }
+                // Remove treasure sprite if not present in room
+                if (!room.treasureLevel && this.treasureSprite) {
+                    this.treasureSprite.destroy();
+                    this.treasureSprite = null;
+                }
             }
         },
         {
@@ -988,60 +1044,23 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "handleDoorClick",
             value: function handleDoorClick(direction) {
-                var _this = this;
-                // Block if rearranging, in encounter, OR bag is open, OR loot UI is open
                 if (this.isRearranging || this.isInEncounter || this.bagManager.isOpen || this.lootUIManager.isOpen) return;
-                var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
-                var visibleDoors = this.roomManager.getVisibleDoors(room, this.playerPosition.facing, this.dungeonService);
-                if (!visibleDoors.includes(direction)) {
-                    console.log("[DEBUG] Invalid move: ".concat(direction, " not in ").concat(visibleDoors.join(',') || 'none'));
-                    return;
-                }
-                var _this_roomManager_getMovementDelta = this.roomManager.getMovementDelta(this.playerPosition.facing, direction, room, this.dungeonService), dx = _this_roomManager_getMovementDelta.dx, dy = _this_roomManager_getMovementDelta.dy, newFacing = _this_roomManager_getMovementDelta.newFacing, targetId = _this_roomManager_getMovementDelta.targetId;
-                if (targetId) {
-                    console.log("[DEBUG] Move ".concat(direction, ": target=").concat(targetId, ", facing=").concat(newFacing));
-                    this.cameras.main.fade(250, 0, 0, 0, false, function(camera, progress) {
-                        if (progress === 1) {
-                            var prevRoomId = _this.playerPosition.roomId;
-                            _this.playerPosition = {
-                                roomId: targetId,
-                                facing: newFacing,
-                                entryRoomId: prevRoomId
-                            };
-                            // Display the new room visuals first
-                            _this.displayCurrentRoom();
-                            // Then, initialize encounter if applicable
-                            var newRoom = _this.dungeonService.getRoomById(targetId);
-                            if (!_this.isInEncounter) {
-                                _this.encounterManager.initializeEncounter(newRoom, 'playerEntry');
-                            }
-                            _this.cameras.main.fadeIn(250);
-                        }
-                    });
-                }
+                // Request server to move to new room
+                this.events.emit('requestRoomEnter', {
+                    currentRoomId: this.playerPosition.roomId,
+                    direction: direction,
+                    facing: this.playerPosition.facing
+                });
             }
         },
         {
             key: "handleTurn",
             value: function handleTurn(rotation) {
-                var _this = this;
-                // Block if rearranging, in encounter, OR bag is open, OR loot UI is open
                 if (this.isRearranging || this.isInEncounter || this.bagManager.isOpen || this.lootUIManager.isOpen) return;
-                this.cameras.main.fade(250, 0, 0, 0, false, function(camera, progress) {
-                    if (progress === 1) {
-                        var oldFacing = _this.playerPosition.facing;
-                        _this.playerPosition.facing = _this.roomManager.rotateFacing(_this.playerPosition.facing, rotation);
-                        var room = _this.dungeonService.getRoomById(_this.playerPosition.roomId);
-                        var oldDoors = _this.roomManager.getVisibleDoors(room, oldFacing, _this.dungeonService);
-                        var newDoors = _this.roomManager.getVisibleDoors(room, _this.playerPosition.facing, _this.dungeonService);
-                        console.log("[DEBUG] Turn ".concat(rotation, ": facing=").concat(oldFacing, " -> ").concat(_this.playerPosition.facing, ", doors=").concat(oldDoors.join(',') || 'none', " -> ").concat(newDoors.join(',') || 'none'));
-                        // Update shelf visibility without redisplaying the entire room
-                        if (_this.shelfManager) {
-                            _this.shelfManager.updateAllShelvesVisibility(room);
-                        }
-                        _this.displayCurrentRoom();
-                        _this.cameras.main.fadeIn(250);
-                    }
+                this.events.emit('requestTurn', {
+                    currentRoomId: this.playerPosition.roomId,
+                    rotation: rotation,
+                    facing: this.playerPosition.facing
                 });
             }
         },

@@ -688,16 +688,15 @@ export var BagManager = /*#__PURE__*/ function() {
                 if (action === 'use') {
                     // Use ItemManager to handle the 'use' action
                     var useResult = this.itemManager.useItem(itemInstance, this.playerStats);
-                    // Show result message
                     this.scene.events.emit('showActionPrompt', useResult.message);
-                    // Consume item if ItemManager indicates it should be
                     if (useResult.consumed) {
-                        // this.removeItem(itemInstance.instanceId);
+                        // Request server to remove item
+                        this.scene.events.emit('requestRemoveItem', itemInstance.instanceId);
                     }
                 } else if (action === 'drop') {
-                    // Dropping just removes it, stats will update via removeItem
-                    // this.removeItem(itemInstance.instanceId);
-                    this.scene.events.emit('showActionPrompt', "Dropped ".concat(itemInstance.name));
+                    // Request server to drop item
+                    this.scene.events.emit('requestDropItem', itemInstance.instanceId);
+                    this.scene.events.emit('showActionPrompt', `Requested drop of ${itemInstance.name}`);
                 }
             // Close the menu after action - Now handled by the button's pointerdown directly
             // this.closeContextMenu(); // Removed from here
@@ -971,21 +970,9 @@ export var BagManager = /*#__PURE__*/ function() {
         {
             key: "clearInventory",
             value: function clearInventory() {
-                var clearedItems = _to_consumable_array(this.inventory); // Return a copy of what was cleared
-                this.inventory = []; // Empty the inventory array
-                this.initializeGridOccupancy(); // Reset the grid occupancy map
-                // If the bag UI is open, refresh it to show it's empty
-                if (this.isOpen) {
-                    this.openBagUI();
-                }
-                // Update player stats after clearing inventory
-                this.playerStats.updateStatsFromInventory([]); // Pass empty array
-                // --- Sync inventory to Supabase ---
-                if (window.supabase && window.currentCharacterId) {
-                    window.supabase.from('characters').update({ inventory: [] }).eq('id', window.currentCharacterId);
-                }
-                console.log("[BagManager] Inventory cleared. ".concat(clearedItems.length, " items were removed."));
-                return clearedItems; // Return the items that were in the inventory
+                // Request server to clear inventory
+                this.scene.events.emit('requestClearInventory');
+                return [];
             }
         },
         {

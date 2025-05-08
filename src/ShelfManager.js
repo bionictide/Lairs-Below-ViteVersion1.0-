@@ -88,39 +88,15 @@ export var ShelfManager = /*#__PURE__*/ function() {
                         .setScale(0.35).setData('baseTexture', room.gemType);
                         // Set up click handler for gem shelf
                         gemShelf.on('pointerdown', function() {
-                            // Prevent pickup during encounter
                             if (_this.scene.isInEncounter) {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // Get the gem name based on the shelf type
-                            var gemName, gemKey;
-                            if (room.gemType === 'ShelfEmerald') {
-                                gemName = 'Emerald';
-                                gemKey = 'Emerald';
-                            } else if (room.gemType === 'ShelfBlueApatite') {
-                                gemName = 'Blue Apatite';
-                                gemKey = 'BlueApatite';
-                            } else if (room.gemType === 'ShelfAmethyst') {
-                                gemName = 'Amethyst';
-                                gemKey = 'Amethyst';
-                            } else if (room.gemType === 'ShelfRawRuby') {
-                                gemName = 'a Raw Ruby';
-                                gemKey = 'RawRuby';
-                            }
-                            // Add gem to inventory
+                            // Emit server event to request shelf pickup (gem)
                             if (gemKey) {
-                                _this.scene.events.emit('addToInventory', gemKey);
-                                _this.scene.events.emit('showActionPrompt', "Picked up ".concat(gemName));
-                                // Update room data to remove the gem
-                                var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                                if (roomData) {
-                                    // roomData.gemType = null;
-                                }
-                                // Remove the gem shelf sprite
-                                gemShelf.destroy();
-                                delete shelfData1.gemShelf;
+                                _this.scene.events.emit('requestShelfPickup', { roomId: room.id, itemType: gemKey });
                             }
+                            // Do not mutate local state here. Wait for server response to update UI.
                         });
                         shelfData1.gemShelf = gemShelf;
                     }
@@ -138,22 +114,13 @@ export var ShelfManager = /*#__PURE__*/ function() {
                         .setScale(0.35).setData('baseTexture', 'Shelf2Potion');
                         // Set up click handler for potion shelf
                         potionShelf.on('pointerdown', function() {
-                            // Prevent pickup during encounter
                             if (_this.scene.isInEncounter) {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // Add potion to inventory
-                            _this.scene.events.emit('addToInventory', 'Potion1(red)');
-                            _this.scene.events.emit('showActionPrompt', 'Picked up a Red Potion');
-                            // Update room data to remove the potion
-                            var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                            if (roomData) {
-                                // roomData.hasPotion = false;
-                            }
-                            // Remove the potion shelf sprite
-                            potionShelf.destroy();
-                            delete shelfData1.potionShelf;
+                            // Emit server event to request shelf pickup (potion)
+                            _this.scene.events.emit('requestShelfPickup', { roomId: room.id, itemType: 'Potion1(red)' });
+                            // Do not mutate local state here. Wait for server response to update UI.
                         });
                         shelfData1.potionShelf = potionShelf;
                     }
