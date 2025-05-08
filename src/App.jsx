@@ -1047,40 +1047,50 @@ function App() {
     }
   };
 
-  // Start Phaser only when entering the 'game' screen
+  // Start Phaser and inject stats during the loading screen, not after
   React.useEffect(() => {
-    console.log('[DEBUG][App.jsx] Phaser useEffect triggered');
-    console.log('[DEBUG][App.jsx] screen:', screen);
-    console.log('[DEBUG][App.jsx] dungeon:', dungeon);
-    console.log('[DEBUG][App.jsx] selectedCharacter:', selectedCharacter);
-    console.log('[DEBUG][App.jsx] characters[selectedCharacter]:', characters[selectedCharacter]);
-    console.log('[DEBUG][App.jsx] characters[selectedCharacter]?.stats:', characters[selectedCharacter]?.stats);
     if (
-      screen === 'game' &&
+      screen === 'loading' &&
       dungeon &&
       selectedCharacter !== null &&
-      characters[selectedCharacter] &&
-      characters[selectedCharacter].stats // Only start when stats are present
+      characters[selectedCharacter]
     ) {
+      // Inject stats property if missing or incomplete
+      let char = characters[selectedCharacter];
+      let stats = char.stats;
+      if (!stats || !stats.vit) {
+        const def = getCharacterDefinition(char.type?.toLowerCase());
+        stats = def?.stats || {
+          vit: char.vit,
+          str: char.str,
+          int: char.int,
+          dex: char.dex,
+          mnd: char.mnd,
+          spd: char.spd
+        };
+        char = { ...char, stats };
+        console.log('[DEBUG][App.jsx] Injected stats into character (loading phase):', char);
+      }
       if (!window._phaserGame) {
-        console.log('[DEBUG][App.jsx] About to import Game.js');
+        console.log('[DEBUG][App.jsx] [LOADING] About to import Game.js');
         import('./Game.js')
           .then(({ initGame }) => {
-            console.log('[DEBUG][App.jsx] Game.js imported');
-            console.log('[DEBUG][App.jsx] About to call initGame');
+            console.log('[DEBUG][App.jsx] [LOADING] Game.js imported');
+            console.log('[DEBUG][App.jsx] [LOADING] About to call initGame');
             window._phaserGame = initGame(
               document.getElementById('renderDiv'),
               dungeon,
-              characters[selectedCharacter]
+              char
             );
-            console.log('[DEBUG][App.jsx] initGame called');
+            console.log('[DEBUG][App.jsx] [LOADING] initGame called');
+            setTimeout(() => setScreen('game'), 100); // Ensure game is only shown after setup
           })
           .catch((err) => {
-            console.error('[DEBUG][App.jsx] Error importing or running Game.js:', err);
+            console.error('[DEBUG][App.jsx] [LOADING] Error importing or running Game.js:', err);
           });
+      } else {
+        setTimeout(() => setScreen('game'), 100);
       }
-    } else {
-      console.log('[DEBUG][App.jsx] Phaser useEffect: Not starting Phaser. Condition failed.');
     }
   }, [screen, characters, selectedCharacter, dungeon]);
 
@@ -1163,7 +1173,7 @@ function App() {
     </>;
   }
   if (screen === 'loading') {
-    return <LoadingScreen onLoaded={() => setScreen('game')} />;
+    return <LoadingScreen onLoaded={() => { /* do nothing, transition handled above */ }} />;
   }
   if (screen === 'characterServerSelect') {
     // --- Expose supabase and current character ID for BagManager when character is selected ---
