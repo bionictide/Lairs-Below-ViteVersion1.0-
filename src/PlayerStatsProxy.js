@@ -42,4 +42,34 @@ export class PlayerStatsProxy {
   getAttack() { return this.getStat('attack'); }
   getDefense() { return this.getStat('defense'); }
   // ...
+
+  // No-op: Add item to inventory (client never mutates inventory directly)
+  addItemToInventory(item) {
+    // Optionally emit a request to the server
+    this.socket.emit('request_add_item', { playerId: this.playerId, item });
+  }
+
+  // No-op: Remove item from inventory
+  removeItemFromInventory(item) {
+    this.socket.emit('request_remove_item', { playerId: this.playerId, item });
+  }
+
+  // No-op: Update stats from inventory (server authoritative)
+  updateStatsFromInventory(inventory) {
+    // Optionally request a stat update from the server
+    this.socket.emit('request_stats_update', { playerId: this.playerId });
+  }
+
+  // No-op: Get magical damage (should be calculated server-side)
+  getMagicalDamage(spellResult) {
+    // Optionally request calculation from the server
+    this.socket.emit('request_magical_damage', { playerId: this.playerId, spellResult });
+    return 0; // Return 0 or undefined until server responds
+  }
+
+  // No-op: Apply healing (should be server-side)
+  applyHealing(amount) {
+    this.socket.emit('request_apply_healing', { playerId: this.playerId, amount });
+    return 0; // Return 0 or undefined until server responds
+  }
 } 
