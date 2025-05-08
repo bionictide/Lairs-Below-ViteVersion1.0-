@@ -112,88 +112,29 @@ export var PlayerStats = /*#__PURE__*/ function() {
         },
         {
             // --- Modifiers ---
-            key: "applyDamage",
+            // key: "applyDamage",
             value: function applyDamage(rawDamage) {
-                var mitigation = 1.0 - this.getDefenseRating();
-                var finalPhysicalDamage = Math.max(0, Math.floor(rawDamage * mitigation)); // Ensure non-negative damage
-                var previousHealth = this._currentHealth;
-                this._currentHealth = Math.max(0, this._currentHealth - finalPhysicalDamage); // Prevent health going below 0
-                console.log("[PlayerStats] Applied Damage: Raw=".concat(rawDamage, ", Mitigated=").concat(mitigation.toFixed(2), ", Actual=").concat(finalPhysicalDamage, ". Health: ").concat(previousHealth, " -> ").concat(this._currentHealth));
-                this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
-                if (this._currentHealth <= 0) {
-                    this.events.emit('playerDied');
-                    console.log("[PlayerStats] Player Died!");
-                }
-                return finalPhysicalDamage; // Return how much damage was actually dealt
+                // /* commented out */
             }
         },
         {
-            key: "applyHealing",
+            // key: "applyHealing",
             value: function applyHealing(amount) {
-                var previousHealth = this._currentHealth;
-                this._currentHealth = Math.min(this.getMaxHealth(), this._currentHealth + amount); // Cap at max health
-                console.log("[PlayerStats] Applied Healing: Amount=".concat(amount, ". Health: ").concat(previousHealth, " -> ").concat(this._currentHealth));
-                if (this._currentHealth > previousHealth) {
-                    this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
-                }
-                return this._currentHealth - previousHealth; // Return amount actually healed
+                // /* commented out */
             }
         },
         {
             // --- Setters (for potential future direct modification/resetting) ---
-            key: "setHealth",
+            // key: "setHealth",
             value: function setHealth(newHealth) {
-                var previousHealth = this._currentHealth;
-                this._currentHealth = Phaser.Math.Clamp(newHealth, 0, this.getMaxHealth());
-                console.log("[PlayerStats] Health Set To: ".concat(this._currentHealth));
-                if (this._currentHealth !== previousHealth) {
-                    this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
-                }
-                if (this._currentHealth <= 0 && previousHealth > 0) {
-                    this.events.emit('playerDied');
-                    console.log("[PlayerStats] Player Died (via setHealth)!");
-                }
+                // /* commented out */
             }
         },
         {
             // --- Inventory Stat Calculation ---
-            key: "updateStatsFromInventory",
+            // key: "updateStatsFromInventory",
             value: function updateStatsFromInventory() {
-                var _this = this;
-                var items = arguments.length > 0 && arguments[0] !== void 0 ? arguments[0] : [];
-                // Reset bonuses before recalculating
-                this.itemDefenseBonus = 0;
-                this.swordCount = 0;
-                var healthChanged = false; // Flag if max health changes
-                var oldMaxHealth = this.getMaxHealth(); // Get current max before recalc
-                // TODO: Recalculate max health bonus from items here if needed in future
-                // Iterate through the inventory array of item *instances*
-                items.forEach(function(itemInstance) {
-                    // Access the itemKey from the instance
-                    var itemKey = itemInstance.itemKey;
-                    var stats = _this.ITEM_STATS[itemKey];
-                    if (stats) {
-                        if (stats.defense) {
-                            _this.itemDefenseBonus += stats.defense;
-                        }
-                        if (stats.physicalDamageMultiplier && itemKey === 'sword1') {
-                            _this.swordCount++;
-                        }
-                    // Example for max health bonus later:
-                    // if (stats.maxHealth) { this.itemMaxHealthBonus += stats.maxHealth; healthChanged = true; }
-                    }
-                });
-                var newMaxHealth = this.getMaxHealth(); // Get new max after recalc
-                // Updated console log
-                var damageMultiplier = this.swordCount > 0 ? Math.pow(this.ITEM_STATS['sword1'].physicalDamageMultiplier, this.swordCount).toFixed(2) : '1.00';
-                console.log("[PlayerStats] Stats updated from inventory. Swords: ".concat(this.swordCount, " (x").concat(damageMultiplier, " dmg), Defense Bonus: +").concat((this.itemDefenseBonus * 100).toFixed(0), "%"));
-                // If max health changed, emit event and potentially adjust current health
-                if (healthChanged && newMaxHealth !== oldMaxHealth) {
-                    // Optional: Adjust current health proportionally or just clamp
-                    this._currentHealth = Math.min(this._currentHealth, newMaxHealth); // Clamp current health
-                    this.events.emit('healthChanged', this._currentHealth, newMaxHealth);
-                    console.log("[PlayerStats] Max Health changed: ".concat(oldMaxHealth, " -> ").concat(newMaxHealth));
-                }
+                // /* commented out */
             }
         },
         {

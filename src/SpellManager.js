@@ -107,10 +107,10 @@ export class SpellManager {
     // Process spell cast request
     processSpellCast(spellName) {
         // Verify spell exists and requirements are met
-                if (!this.hasRequiredGemsForSpell(spellName)) {
+        if (!this.hasRequiredGemsForSpell(spellName)) {
             console.warn(`Cannot cast ${spellName}: missing required gems`);
             return null;
-                }
+        }
 
         // Get base spell data
         const spellData = this.getSpellData(spellName);
@@ -118,5 +118,5 @@ export class SpellManager {
 
         // Send to PlayerStats for modification and return the result
         return this.playerStats.modifyMagicalDamage(spellData);
-            }
-        }
+    }
+}

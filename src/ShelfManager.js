@@ -115,7 +115,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 // Update room data to remove the gem
                                 var roomData = _this.scene.dungeonService.getRoomById(room.id);
                                 if (roomData) {
-                                    roomData.gemType = null;
+                                    // roomData.gemType = null;
                                 }
                                 // Remove the gem shelf sprite
                                 gemShelf.destroy();
@@ -149,7 +149,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                             // Update room data to remove the potion
                             var roomData = _this.scene.dungeonService.getRoomById(room.id);
                             if (roomData) {
-                                roomData.hasPotion = false;
+                                // roomData.hasPotion = false;
                             }
                             // Remove the potion shelf sprite
                             potionShelf.destroy();

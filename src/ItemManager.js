@@ -91,3 +91,5 @@ export var ItemManager = /*#__PURE__*/ function() {
     ]);
     return ItemManager;
 }();
+
+// ItemManager is UI-only. No state mutation should occur here.

@@ -99,7 +99,7 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                     }
                     // Now, mark the puzzle (key) as collected in the room data
                     if (roomData) {
-                        roomData.puzzleType = null; // Mark as permanently collected
+                        // roomData.puzzleType = null; // Mark as permanently collected
                         console.log("[DEBUG] Permanently marked key as collected in room ".concat(room.id, "."));
                     } else {
                         console.error("[ERROR] Could not find room data for ".concat(room.id, " to mark key collected."));

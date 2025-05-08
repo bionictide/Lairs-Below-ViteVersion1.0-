@@ -120,7 +120,7 @@ export var TreasureManager = /*#__PURE__*/ function() {
                         }
                         // Now, mark the treasure as collected in the room data
                         if (roomData) {
-                            roomData.treasureLevel = null;
+                            // roomData.treasureLevel = null;
                             console.log("[DEBUG] Permanently marked treasure as collected in room ".concat(room.id, "."));
                         } else {
                             console.error("[ERROR] Could not find room data for ".concat(room.id, " to mark treasure collected."));
