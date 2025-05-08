@@ -145,6 +145,8 @@ import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIMana
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
+import { PlayerStatsProxy } from './PlayerStatsProxy.js';
+import { socket } from './socket.js';
 // Define door configurations outside the class for clarity
 var DOOR_CONFIGS = {
     forward: {
@@ -330,6 +332,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
+
+                // Replace PlayerStats with PlayerStatsProxy
+                this.playerStats = new PlayerStatsProxy(socket, this.playerId);
 
                 // Then managers that depend on itemManager and playerStats
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager);
@@ -1061,7 +1066,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     currentRoomId: this.playerPosition.roomId,
                     direction: direction,
                     facing: this.playerPosition.facing
-                });
+                    });
             }
         },
         {
