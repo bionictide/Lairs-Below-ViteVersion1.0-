@@ -142,7 +142,6 @@ import { BagManager } from './BagManager.js';
 import { HealthBar } from './HealthBar.js'; // Import the new HealthBar class
 import { NPCLootManager } from './NPCLootManager.js'; // Import the new NPCLootManager
 import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIManager
-import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
