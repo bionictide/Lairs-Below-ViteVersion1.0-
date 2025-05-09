@@ -1,5 +1,7 @@
 # Multiplayer Feature Change Checklist
 
+0. **Review the 'Absolutely Critical, Proven Rules for a Secure Migration' section in README.md and ai_instructions.md. These rules are mandatory for all multiplayer, event, and state logic changes.**
+
 1. **Review the latest Q&A clarifications in `README.md` and `ai_instructions.md`. Never guess or assume; always ask for clarification and update this folder with new lessons.**
 
 2. **Update `/StuffForAI` folder:**
@@ -7,9 +9,7 @@
    - Update `schema.md` if the database changes.
    - Add notes to `ai_instructions.md` if needed.
    - **Verify that every event, payload, and schema field in this folder matches the codebase after any change.**
-   - **This folder is the single source of truth for all multiplayer logic, event names, payloads, and canonical data. Update it first.**
-   - **Verify that all canonical data (items, stats, loot tables, etc.) is defined in a single source-of-truth module per environment, and that all managers import from this source. Duplication is not allowed.**
-   - **Confirm that DungeonCore (`src/shared/DungeonCore.js`) is the only valid dungeon logic module for the server.**
+   - **This folder is the single source of truth for all multiplayer logic, event names, and payloads. Update it first.**
 
 3. **Update Supabase/Postgres schema:**
    - Add/alter columns as needed (e.g., inventory, mana, party_id).

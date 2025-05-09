@@ -1,27 +1,3 @@
-console.log('[DEBUG] DungeonScene.js loaded');
-import { EVENTS } from './shared/events.js';
-import { socket } from './socket.js';
-// Define door configurations outside the class for clarity
-var DOOR_CONFIGS = {
-    forward: {
-        xFactor: 0.50,
-        yFactor: 0.46,
-        wFactor: 0.25,
-        hFactor: 0.55
-    },
-    right: {
-        xFactor: 0.875,
-        yFactor: 0.50,
-        wFactor: 0.15,
-        hFactor: 0.70
-    },
-    left: {
-        xFactor: 0.125,
-        yFactor: 0.50,
-        wFactor: 0.15,
-        hFactor: 0.70
-    } // Mirrored right door
-};
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -160,21 +136,43 @@ import { RoomManager } from './RoomManager.js';
 import { DebugHelper } from './DebugHelper.js';
 import { EncounterManager } from './EncounterManager.js';
 import { PuzzleManager } from './PuzzleManager.js';
+import { TreasureManager } from './TreasureManager.js';
 import { HintManager } from './HintManager.js';
 import { ShelfManager } from './ShelfManager.js';
 import { BagManager } from './BagManager.js';
 import { HealthBar } from './HealthBar.js'; // Import the new HealthBar class
 import { NPCLootManager } from './NPCLootManager.js'; // Import the new NPCLootManager
 import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIManager
+import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
-import { PlayerStatsProxy } from './PlayerStatsProxy.js';
+import { SpellManager } from './SpellManager.js';
+// Define door configurations outside the class for clarity
+var DOOR_CONFIGS = {
+    forward: {
+        xFactor: 0.50,
+        yFactor: 0.46,
+        wFactor: 0.25,
+        hFactor: 0.55
+    },
+    right: {
+        xFactor: 0.875,
+        yFactor: 0.50,
+        wFactor: 0.15,
+        hFactor: 0.70
+    },
+    left: {
+        xFactor: 0.125,
+        yFactor: 0.50,
+        wFactor: 0.15,
+        hFactor: 0.70
+    } // Mirrored right door
+};
 export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
     "use strict";
     _inherits(DungeonScene, _Phaser_Scene);
     function DungeonScene() {
-        console.log('[DEBUG] DungeonScene constructor called');
         _class_call_check(this, DungeonScene);
         var _this = _call_super(this, DungeonScene, ['default']);
         _this.playerPosition = {
@@ -187,6 +185,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.debugHelper = null;
         _this.encounterManager = null;
         _this.puzzleManager = null;
+        _this.treasureManager = null;
         _this.hintManager = null;
         _this.shelfManager = null; // Add ShelfManager instance
         _this.bagManager = null; // Add BagManager instance
@@ -195,6 +194,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerStats = null; // Add PlayerStats instance
         _this.itemManager = null; // Add ItemManager instance
         _this.combatVisuals = null; // Add CombatVisuals instance
+        _this.spellManager = null;
         _this.dungeon = null;
         _this.playerCount = 6;
         _this.isRearranging = false;
@@ -213,17 +213,12 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerId = null; // Add property to store the player's unique ID
         _this.entitySprites = new Map(); // Map to store entityId -> sprite mapping
         _this.statBlock = null; // <-- Add this property for stat block injection
-        _this.socket = socket;
         return _this;
     }
     _create_class(DungeonScene, [
         {
             key: "init",
             value: function init(data) {
-                console.log('[DEBUG] DungeonScene.init() called', data);
-                if (data && data.character) {
-                    this.character = data.character;
-                }
                 if (data && data.serverDungeon) {
                     this.serverDungeon = data.serverDungeon;
                 }
@@ -232,7 +227,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "preload",
             value: function preload() {
-                console.log('[DEBUG] DungeonScene.preload() called');
                 var _this = this;
                 Object.entries(this.roomManager.roomAssets).forEach(function(param) {
                     var _param = _sliced_to_array(param, 2), key = _param[0], url = _param[1];
@@ -300,7 +294,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "create",
             value: function create() {
-                console.log('[DEBUG] DungeonScene.create() called', arguments, this, typeof data !== 'undefined' ? data : '[data not defined]');
+                var _this = this;
+                // Debug: Log the state of serverDungeon and dungeon before use
+                console.log('[DEBUG] DungeonScene.create() - serverDungeon:', this.serverDungeon);
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
                     // Sync DungeonService with server dungeon data
@@ -308,21 +304,13 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     this.dungeonService.dungeonGrid = this.dungeon.grid;
                 } else {
                     console.error('[ERROR] No serverDungeon provided to DungeonScene!');
-                    return;
+                    return; // Prevent further execution
                 }
-                console.log('[DEBUG] Passed serverDungeon check');
                 if (!this.dungeon || !this.dungeon.rooms || !Array.isArray(this.dungeon.rooms)) {
                     console.error('[ERROR] Invalid dungeon object in DungeonScene:', this.dungeon);
-                    return;
+                    return; // Prevent further execution
                 }
-                console.log('[DEBUG] Passed dungeon validity check');
-                if (!this.character || !this.character.stats) {
-                    console.error('[ERROR] Character or character.stats is undefined in DungeonScene.create', this.character);
-                    return;
-                }
-                console.log('[DEBUG] Passed character check');
                 this.placePlayerRandomly();
-                console.log('[DEBUG] Player placed in room:', this.playerPosition.roomId);
                 this.debugHelper = new DebugHelper(this);
 
                 // --- Player ID Generation ---
@@ -333,128 +321,51 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.itemManager = new ItemManager(this);
                 // Use injected statBlock if available, else fallback
                 var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+                this.playerStats = new PlayerStats(this, this.playerId, statBlock);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
-
-                // Replace PlayerStats with PlayerStatsProxy
-                this.playerStats = new PlayerStatsProxy(this.socket, this.playerId);
 
                 // Then managers that depend on itemManager and playerStats
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager);
                 
                 // Then managers that depend on bagManager
-                // this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
+                this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
                 this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
                 this.puzzleManager = new PuzzleManager(this);
+                this.treasureManager = new TreasureManager(this);
                 this.hintManager = new HintManager(this);
                 this.shelfManager = new ShelfManager(this);
 
                 this.debugHelper.setVisibility(false); // Start with debug off
                 // Listen for keydown event globally
-                if (this.input && this.input.keyboard) {
-                    this.input.keyboard.on('keydown', function(event) {
-                        // Check for Ctrl + Alt + D combination
-                        if (event.ctrlKey && event.altKey && event.code === 'KeyD') {
-                            _this.debugHelper.toggleVisibility();
-                        }
-                    });
-                } else {
-                    console.error('[ERROR] this.input or this.input.keyboard is undefined in DungeonScene.create');
-                }
+                this.input.keyboard.on('keydown', function(event) {
+                    // Check for Ctrl + Alt + D combination
+                    if (event.ctrlKey && event.altKey && event.code === 'KeyD') {
+                        _this.debugHelper.toggleVisibility();
+                    }
+                });
                 this.setupUIEvents();
                 this.displayCurrentRoom();
-                console.log('[DEBUG] displayCurrentRoom() finished');
                 this.encounterTimer = this.encounterInterval;
                 this.bagManager.createToggleButton();
                 // Create the player's health bar using initial values from PlayerStats AND the new playerId
-                this.playerHealthBar = new HealthBar(this, 20, 20, this.character.stats.health, this.character.stats.health, this.playerId);
+                this.playerHealthBar = new HealthBar(this, 20, 20, this.playerStats.getCurrentHealth(), this.playerStats.getMaxHealth(), this.playerId);
                 // Listen for health changes from PlayerStats to update the HealthBar display
-                console.log('[DEBUG] About to add healthChanged listener', this.playerStats, this.playerStats && this.playerStats.events);
-                if (this.playerStats && this.playerStats.events) {
-                    this.playerStats.events.on('healthChanged', (current, max) => {
-                        console.log('[DEBUG] healthChanged event received', { current, max, playerHealthBar: this.playerHealthBar });
-                        if (this.playerHealthBar) {
-                            this.playerHealthBar.updateHealth(current);
-                        } else {
-                            console.warn('[WARN] healthChanged event fired but playerHealthBar is not initialized');
-                        }
-                    });
-                } else {
-                    console.error('[ERROR] playerStats or playerStats.events is undefined', this.playerStats);
-                }
+                this.playerStats.events.on('healthChanged', function(current, max) {
+                    if (_this.playerHealthBar) {
+                        // Directly update the health bar display with the authoritative value from PlayerStats
+                        _this.playerHealthBar.updateHealth(current);
+                    }
+                }, this);
                 // Listen for generic entity death (emitted by HealthBar - might move source later)
-                console.log('[DEBUG] About to add entityDied listener', this.events);
-                if (this.events && this.events.on) {
-                    this.events.on('entityDied', this.handleEntityDeath, this);
-                } else {
-                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
-                }
+                this.events.on('entityDied', this.handleEntityDeath, this);
                 // Listen for specific player-killed-by-NPC event (emitted by HealthBar)
-                console.log('[DEBUG] About to add playerKilledByNPC listener', this.events);
-                if (this.events && this.events.on) {
-                    this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
-                } else {
-                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
-                }
+                this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
                 // Listen for loot bag clicks (emitted by HealthBar)
-                console.log('[DEBUG] About to add lootBagClicked listener', this.events);
-                if (this.events && this.events.on) {
-                    this.events.on('lootBagClicked', this.handleLootBagClick, this);
-                } else {
-                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
-                }
-                console.log('[DEBUG] About to add treasurePickupResult listener', this.events, typeof this.events, this.events && this.events.on);
-                if (this.events && typeof this.events.on === 'function') {
-                    this.events.on('treasurePickupResult', (result) => {
-                        if (result.success) {
-                            this.events.emit('showActionPrompt', `You picked up a treasure: ${result.item.name || result.item.itemKey}`);
-                        } else {
-                            this.events.emit('showActionPrompt', result.message || 'Treasure pickup failed.');
-                        }
-                    });
-                } else {
-                    console.error('[ERROR] this.events or this.events.on is undefined or not a function', this.events);
-                }
-                console.log('[DEBUG] About to add EVENTS.TREASURE_PICKED_UP listener', this.events, typeof this.events, this.events && this.events.on);
-                if (this.events && typeof this.events.on === 'function') {
-                    this.events.on(EVENTS.TREASURE_PICKED_UP, ({ roomId }) => {
-                        if (this.playerPosition.roomId === roomId && this.treasureSprite) {
-                            this.treasureSprite.destroy();
-                            this.treasureSprite = null;
-                        }
-                        const room = this.dungeonService.getRoomById(roomId);
-                        if (room) room.treasureLevel = null;
-                    });
-                } else {
-                    console.error('[ERROR] this.events or this.events.on is undefined or not a function', this.events);
-                }
-                console.log('[DEBUG] About to add attackResult listener', this.socket, typeof this.socket, this.socket && this.socket.on);
-                if (this.socket && typeof this.socket.on === 'function') {
-                    this.socket.on('attackResult', (result) => {
-                        this.events.emit('showActionPrompt', result.message);
-                    });
-                } else {
-                    console.error('[ERROR] this.socket or this.socket.on is undefined or not a function', this.socket);
-                }
-                console.log('[DEBUG] About to add stealResult listener', this.socket, typeof this.socket, this.socket && this.socket.on);
-                if (this.socket && typeof this.socket.on === 'function') {
-                    this.socket.on('stealResult', (result) => {
-                        this.events.emit('showActionPrompt', result.message);
-                        if (result.success && result.item) {
-                            if (result.initiatorId === this.playerId) {
-                                this.playerStats.addItemToInventory(result.item);
-                            }
-                            if (result.targetId === this.playerId) {
-                                this.playerStats.removeItemFromInventory(result.item);
-                            }
-                        }
-                    });
-                } else {
-                    console.error('[ERROR] this.socket or this.socket.on is undefined or not a function', this.socket);
-                }
+                this.events.on('lootBagClicked', this.handleLootBagClick, this);
             }
         },
         {
@@ -767,8 +678,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     _this.promptTimer = newTimerEvent;
                 });
                 this.events.on('addToInventory', function(itemKey) {
-                    // Request server to add item
-                    _this.events.emit('requestAddItem', itemKey);
+                    // Pass the item key directly to the BagManager
+                    _this.bagManager.addItem(itemKey);
                 });
                 this.events.on('fleeToPreviousRoom', function(roomId) {
                     var room = _this.dungeonService.getRoomById(roomId);
@@ -786,7 +697,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     }
                     _this.isInEncounter = false; // Reset state on encounter end
                     _this.bagManager.setBagButtonVisibility(true); // Show bag button when encounter ends
-                    this.setupNavigationButtons(); // Restore nav buttons
+                    _this.setupNavigationButtons(); // Restore nav buttons
                     if (_this.enemySprite) {
                         var _find;
                         // --- Remove sprite reference on destruction ---
@@ -895,8 +806,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "update",
             value: function update(time, delta) {
-                // REMOVE or comment out the per-frame debug log
-                // console.log('[DEBUG] DungeonScene.update() called', { time, delta });
                 // Update Action Menu Timer Bar
                 if (this.actionMenuTimer && this.actionMenuTimerBar && this.actionMenu) {
                     var elapsed = this.actionMenuTimer.getElapsed();
@@ -935,7 +844,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "placePlayerRandomly",
             value: function placePlayerRandomly() {
-                console.log('[DEBUG] DungeonScene.placePlayerRandomly() called');
                 var validRooms = this.dungeon.rooms.filter(function(r) {
                     return r.doors.length >= 1 && !r.isDeadEnd;
                 });
@@ -948,76 +856,39 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "displayCurrentRoom",
             value: function displayCurrentRoom() {
-                console.log('[DEBUG] displayCurrentRoom() start');
                 if (this.currentRoomSprite) this.currentRoomSprite.destroy();
-                console.log('[DEBUG] currentRoomSprite destroyed');
                 if (this.actionMenu) this.actionMenu.destroy();
-                console.log('[DEBUG] actionMenu destroyed');
                 if (this.dialogBox) this.dialogBox.destroy();
-                console.log('[DEBUG] dialogBox destroyed');
                 if (this.promptText) this.promptText.destroy();
-                console.log('[DEBUG] promptText destroyed');
                 if (this.talkInputField) {
+                    // Use cleanup function on room change
                     this.removeTalkInputAndListeners();
-                    console.log('[DEBUG] talkInputField destroyed');
                 }
                 this.puzzleManager.clearPuzzles();
-                console.log('[DEBUG] puzzleManager.clearPuzzles() called');
+                this.treasureManager.clearTreasures();
                 this.hintManager.clearHints();
-                console.log('[DEBUG] hintManager.clearHints() called');
                 this.shelfManager.clearShelves();
-                console.log('[DEBUG] shelfManager.clearShelves() called');
-                if (this.bagManager.isOpen) this.bagManager.closeBagUI();
-                console.log('[DEBUG] bagManager.closeBagUI() called if open');
+                if (this.bagManager.isOpen) this.bagManager.closeBagUI(); // Close bag if open on room change
+                // Update bag sprite visibility *before* displaying the room visuals, passing facing direction
                 this.bagManager.updateBagVisibility(this.playerPosition.roomId, this.playerPosition.facing);
-                console.log('[DEBUG] bagManager.updateBagVisibility() called');
                 var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
-                console.log('[DEBUG] got room:', room);
                 var imageKey = this.roomManager.getRoomImageKey(room, this.playerPosition.facing, this.dungeonService);
-                console.log('[DEBUG] got imageKey:', imageKey);
                 var assetKey = this.roomManager.findBestMatchingRoomAsset(imageKey);
-                console.log('[DEBUG] got assetKey:', assetKey);
                 if (!this.textures.exists(assetKey)) {
-                    console.log('[DEBUG] Texture missing, using "none"');
+                    console.log("[DEBUG] Texture ".concat(assetKey, " missing, using 'none'"));
                     assetKey = 'none';
                 }
                 this.currentRoomSprite = this.add.image(gameConfig.width / 2, gameConfig.height / 2, assetKey);
-                console.log('[DEBUG] currentRoomSprite added');
                 var visibleDoors = this.roomManager.getVisibleDoors(room, this.playerPosition.facing, this.dungeonService);
-                console.log('[DEBUG] got visibleDoors:', visibleDoors);
+                console.log("[DEBUG] Room ".concat(room.id, ": doors=").concat(visibleDoors.join(',') || 'none', ", asset=").concat(assetKey));
                 this.setupDoorInteractions(visibleDoors);
-                console.log('[DEBUG] setupDoorInteractions() called');
+                // Check if encounter already running (e.g., from flee failure) before initializing new one
+                // Setup nav buttons *after* potential encounter start
                 this.setupNavigationButtons();
-                console.log('[DEBUG] setupNavigationButtons() called');
-                this.puzzleManager.initializePuzzles(room);
-                console.log('[DEBUG] puzzleManager.initializePuzzles() called');
+                this.puzzleManager.initializePuzzles(room); // Removed facing argument
+                this.treasureManager.initializeTreasures(room); // Removed facing argument
                 this.hintManager.initializeHints(room);
-                console.log('[DEBUG] hintManager.initializeHints() called');
                 this.shelfManager.initializeShelves(room);
-                console.log('[DEBUG] shelfManager.initializeShelves() called');
-                if (room.treasureLevel && !this.treasureSprite) {
-                    const treasureKey = room.treasureLevel === 'sword1' ? 'Sword1' : room.treasureLevel === 'helm1' ? 'Helm1' : room.treasureLevel === 'Potion1(red)' ? 'Potion1(red)' : null;
-                    if (treasureKey && this.textures.exists(treasureKey)) {
-                        this.treasureSprite = this.add.sprite(gameConfig.width / 2, gameConfig.height * 0.7, treasureKey)
-                            .setInteractive({ useHandCursor: true })
-                            .setDepth(40)
-                            .setScale(0.2);
-                        this.treasureSprite.on('pointerdown', () => {
-                            if (this.isInEncounter) {
-                                this.events.emit('showActionPrompt', 'Cannot loot items during combat!');
-                                return;
-                            }
-                            this.events.emit('requestTreasurePickup', { roomId: room.id });
-                        });
-                        console.log('[DEBUG] treasureSprite added');
-                    }
-                }
-                if (!room.treasureLevel && this.treasureSprite) {
-                    this.treasureSprite.destroy();
-                    this.treasureSprite = null;
-                    console.log('[DEBUG] treasureSprite destroyed');
-                }
-                console.log('[DEBUG] Room rendered');
             }
         },
         {
@@ -1117,23 +988,60 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "handleDoorClick",
             value: function handleDoorClick(direction) {
+                var _this = this;
+                // Block if rearranging, in encounter, OR bag is open, OR loot UI is open
                 if (this.isRearranging || this.isInEncounter || this.bagManager.isOpen || this.lootUIManager.isOpen) return;
-                // Request server to move to new room
-                this.events.emit('requestRoomEnter', {
-                    currentRoomId: this.playerPosition.roomId,
-                    direction: direction,
-                    facing: this.playerPosition.facing
+                var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
+                var visibleDoors = this.roomManager.getVisibleDoors(room, this.playerPosition.facing, this.dungeonService);
+                if (!visibleDoors.includes(direction)) {
+                    console.log("[DEBUG] Invalid move: ".concat(direction, " not in ").concat(visibleDoors.join(',') || 'none'));
+                    return;
+                }
+                var _this_roomManager_getMovementDelta = this.roomManager.getMovementDelta(this.playerPosition.facing, direction, room, this.dungeonService), dx = _this_roomManager_getMovementDelta.dx, dy = _this_roomManager_getMovementDelta.dy, newFacing = _this_roomManager_getMovementDelta.newFacing, targetId = _this_roomManager_getMovementDelta.targetId;
+                if (targetId) {
+                    console.log("[DEBUG] Move ".concat(direction, ": target=").concat(targetId, ", facing=").concat(newFacing));
+                    this.cameras.main.fade(250, 0, 0, 0, false, function(camera, progress) {
+                        if (progress === 1) {
+                            var prevRoomId = _this.playerPosition.roomId;
+                            _this.playerPosition = {
+                                roomId: targetId,
+                                facing: newFacing,
+                                entryRoomId: prevRoomId
+                            };
+                            // Display the new room visuals first
+                            _this.displayCurrentRoom();
+                            // Then, initialize encounter if applicable
+                            var newRoom = _this.dungeonService.getRoomById(targetId);
+                            if (!_this.isInEncounter) {
+                                _this.encounterManager.initializeEncounter(newRoom, 'playerEntry');
+                            }
+                            _this.cameras.main.fadeIn(250);
+                        }
                     });
+                }
             }
         },
         {
             key: "handleTurn",
             value: function handleTurn(rotation) {
+                var _this = this;
+                // Block if rearranging, in encounter, OR bag is open, OR loot UI is open
                 if (this.isRearranging || this.isInEncounter || this.bagManager.isOpen || this.lootUIManager.isOpen) return;
-                this.events.emit('requestTurn', {
-                    currentRoomId: this.playerPosition.roomId,
-                    rotation: rotation,
-                    facing: this.playerPosition.facing
+                this.cameras.main.fade(250, 0, 0, 0, false, function(camera, progress) {
+                    if (progress === 1) {
+                        var oldFacing = _this.playerPosition.facing;
+                        _this.playerPosition.facing = _this.roomManager.rotateFacing(_this.playerPosition.facing, rotation);
+                        var room = _this.dungeonService.getRoomById(_this.playerPosition.roomId);
+                        var oldDoors = _this.roomManager.getVisibleDoors(room, oldFacing, _this.dungeonService);
+                        var newDoors = _this.roomManager.getVisibleDoors(room, _this.playerPosition.facing, _this.dungeonService);
+                        console.log("[DEBUG] Turn ".concat(rotation, ": facing=").concat(oldFacing, " -> ").concat(_this.playerPosition.facing, ", doors=").concat(oldDoors.join(',') || 'none', " -> ").concat(newDoors.join(',') || 'none'));
+                        // Update shelf visibility without redisplaying the entire room
+                        if (_this.shelfManager) {
+                            _this.shelfManager.updateAllShelvesVisibility(room);
+                        }
+                        _this.displayCurrentRoom();
+                        _this.cameras.main.fadeIn(250);
+                    }
                 });
             }
         },

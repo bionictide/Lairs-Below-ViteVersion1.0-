@@ -78,12 +78,35 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                 sprite.on('pointerdown', function() {
                     // Prevent pickup during encounter
                     if (_this.scene.isInEncounter) {
-                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
+                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!'); // Updated message
                         return;
                     }
-                    // Emit server event to request puzzle pickup
-                    _this.scene.events.emit('requestPuzzlePickup', { roomId: room.id });
-                    // Do not mutate local state here. Wait for server response to update UI.
+                    // Get the room data from DungeonService
+                    var roomData = _this.scene.dungeonService.getRoomById(room.id);
+                    // Determine item key BEFORE modifying roomData
+                    var itemKey;
+                    var originalPuzzleType = roomData ? roomData.puzzleType : null; // Store original type
+                    if (originalPuzzleType === 'key') {
+                        itemKey = 'Key1'; // Use capitalized 'Key1' for consistency
+                    }
+                    // Emit event only if an itemKey was determined
+                    if (itemKey) {
+                        // Emit BEFORE destroying sprite or modifying room data
+                        _this.scene.events.emit('addToInventory', itemKey);
+                    } else {
+                        // Log if no valid item key could be determined
+                        console.warn("[PuzzleManager] Clicked puzzle in room ".concat(room.id, ", but original puzzleType (").concat(originalPuzzleType, ") didn't map to a known itemKey."));
+                    }
+                    // Now, mark the puzzle (key) as collected in the room data
+                    if (roomData) {
+                        roomData.puzzleType = null; // Mark as permanently collected
+                        console.log("[DEBUG] Permanently marked key as collected in room ".concat(room.id, "."));
+                    } else {
+                        console.error("[ERROR] Could not find room data for ".concat(room.id, " to mark key collected."));
+                    }
+                    // Finally, destroy the sprite and remove from tracking
+                    sprite.destroy();
+                    _this.puzzles.delete(room.id);
                 });
                 this.puzzles.set(room.id, sprite);
                 this.updateSpriteVisibility(sprite, room); // Renamed and removed facing

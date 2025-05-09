@@ -1,10 +1,7 @@
 # StuffForAI
 
 > **IMPORTANT:**
-> This folder is the single source of truth for all multiplayer, event, schema, and canonical data logic. All canonical data (items, stats, loot tables, etc.) must be defined in a single source-of-truth module per environment. All managers must import from this source. Duplication is not allowed.
-
-- All event, schema, and data changes must be reflected here before any code changes.
-- Dungeon generation and all related logic (loot, puzzles, encounters, etc.) must use `DungeonCore` (`src/shared/DungeonCore.js`) as the only valid dungeon logic module for the server. No other dungeon manager or service should be created or used.
+> Always update this folder FIRST when making any changes to multiplayer, events, or database logic. This is essential for AI and future development. Forgetting to update this folder can cause bugs, lost context, and broken features. If you have memory or cognitive issues, make it a habit to update this folder before anything else!
 
 This folder contains all documentation, event specifications, schema definitions, and workflow checklists needed for AI assistants and developers to safely and consistently update multiplayer, event, and database logic in this project.
 
@@ -55,20 +52,39 @@ This section summarizes key clarifications and lessons from the latest Q&A sessi
 - **General Rule:**
   - Never guess or assume anything about the code, game, or plans. If unsure, always ask the user for clarification. Update this folder with any new lessons or clarifications immediately.
 
-- **Dungeon Logic (DungeonCore):**
-  - `DungeonCore` (`src/shared/DungeonCore.js`) is the **single source of truth** for all dungeon generation, persistence, and mutation logic on the server.
-  - No other dungeon manager, wrapper, or service (e.g., `DungeonService.js`) should be created or used for server-side dungeon logic. All helpers or mutations must be added to `DungeonCore` if needed.
-  - If any file is deprecated or removed (such as `server/managers/DungeonService.js`), document it here to prevent confusion for future AI or developers.
-
 If you are a new AI or developer, this section—along with the rest of this folder—should bring you fully up to speed with the current state and goals of the project.
+
+## Absolutely Critical, Proven Rules for a Secure Migration (2024-06)
+
+- **All Game Logic and State Must Be Server-Authoritative**
+  - The client must never calculate, guess, or create any gameplay state (stats, encounters, inventory, etc.).
+  - The server must send all necessary data for gameplay.
+
+- **No Client-Side Fallbacks or Guessing**
+  - If the server does not provide a value, the client must not "fill in the blanks."
+  - Missing data = error or "waiting for server," never a guess or default.
+
+- **All Encounters and Entities Are Created by the Server**
+  - The client only requests actions (e.g., "start encounter").
+  - The server responds with a complete, authoritative payload.
+  - The client only renders what the server sends.
+
+- **Stat Calculation for Gameplay Is Server-Only**
+  - Any stat values used in gameplay (health, attack, defense, etc.) must come from the server.
+  - The client may hard-code values for character creation/preview only, never for gameplay.
+
+- **Event Flow Is Always Request/Response**
+  - The client emits a request (e.g., "move," "attack," "start encounter").
+  - The server responds with the result and all data needed to render the new state.
+  - The client never assumes the result.
+
+- **No Per-Frame or Excessive Debug Logging**
+  - Only log errors and critical warnings.
+  - Remove or comment out all per-frame or spammy debug logs.
 
 ---
 
 **Keep this folder up to date!**
-
-- Always update this folder first for any multiplayer, event, or database logic changes.
-- Document all architectural decisions, deprecated files, and the current source of truth for each system.
-- This prevents confusion, duplication, and logic overlap for future AI or developers.
 
 - Dungeon generation and all related logic (loot, puzzles, encounters, etc.) are being refactored to use a deterministic, seedable RNG and shared module (`src/shared/DungeonCore.js`, `src/shared/RNG.js`).
 - This ensures identical output on both client and server, and all randomization is now cross-platform and testable.

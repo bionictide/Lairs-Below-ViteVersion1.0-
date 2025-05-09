@@ -1,9 +1,13 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getCharacterDefinition } from './CharacterTypes.js';
+import {
+  getHealthFromVIT,
+  getPhysicalAttackFromSTR,
+  getDefenseFromVIT
+} from './StatDefinitions.js';
 import { connectSocket, joinPlayer, enterRoom } from './socket.js';
 import { EVENTS } from './shared/events.js';
-import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT } from './statPreview.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
@@ -933,7 +937,6 @@ function LoadingScreen({ onLoaded }) {
 
 // 2. Update App to use the new sequence
 function App() {
-  console.log('[DEBUG][App.jsx] App function entered');
   const [screen, setScreen] = React.useState('intro'); // 'intro', 'login', 'loading', 'characterServerSelect', 'characterCreate', 'game'
   const [user, setUser] = React.useState(null);
   const [characters, setCharacters] = React.useState(Array(5).fill(null));
@@ -1047,49 +1050,42 @@ function App() {
     }
   };
 
-  // Start Phaser and inject stats during the loading screen, not after
+  // Start Phaser only when entering the 'game' screen
   React.useEffect(() => {
-    if (
-      screen === 'loading' &&
-      dungeon &&
-      selectedCharacter !== null &&
-      characters[selectedCharacter]
-    ) {
-      // Inject stats property if missing or incomplete
-      let char = characters[selectedCharacter];
-      let stats = char.stats;
-      if (!stats || !stats.vit) {
-        const def = getCharacterDefinition(char.type?.toLowerCase());
-        stats = def?.stats || {
-          vit: char.vit,
-          str: char.str,
-          int: char.int,
-          dex: char.dex,
-          mnd: char.mnd,
-          spd: char.spd
-        };
-        char = { ...char, stats };
-        console.log('[DEBUG][App.jsx] Injected stats into character (loading phase):', char);
+    if (screen === 'game') {
+      if (!dungeon) {
+        console.error('[ERROR] Attempted to start game but dungeon is null or undefined:', dungeon);
+        return;
       }
       if (!window._phaserGame) {
-        console.log('[DEBUG][App.jsx] [LOADING] About to import Game.js');
-        import('./Game.js')
-          .then(({ initGame }) => {
-            console.log('[DEBUG][App.jsx] [LOADING] Game.js imported');
-            console.log('[DEBUG][App.jsx] [LOADING] About to call initGame');
-            window._phaserGame = initGame(
-              document.getElementById('renderDiv'),
-              dungeon,
-              char
-            );
-            console.log('[DEBUG][App.jsx] [LOADING] initGame called');
-            setTimeout(() => setScreen('game'), 100); // Ensure game is only shown after setup
-          })
-          .catch((err) => {
-            console.error('[DEBUG][App.jsx] [LOADING] Error importing or running Game.js:', err);
-          });
-      } else {
-        setTimeout(() => setScreen('game'), 100);
+        console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
+        import('./Game.js').then(({ initGame }) => {
+          window._phaserGame = initGame(document.getElementById('renderDiv'), dungeon);
+          // --- Inject stat block into DungeonScene ---
+          // Wait for Phaser to create the scene, then set statBlock before create() runs
+          const tryInjectStatBlock = () => {
+            // Find the DungeonScene instance
+            const game = window._phaserGame;
+            if (!game || !game.scene || !game.scene.scenes) return;
+            const dungeonScene = game.scene.scenes.find(s => s.sys && s.sys.config && s.sys.config.key === 'default');
+            if (dungeonScene && !dungeonScene.statBlock) {
+              // Get selected character's stat block
+              const char = characters[selectedCharacter];
+              const statBlock = char ? {
+                vit: char.vit,
+                str: char.str,
+                int: char.int,
+                dex: char.dex,
+                mnd: char.mnd,
+                spd: char.spd
+              } : { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+              dungeonScene.statBlock = statBlock;
+            }
+          };
+          // Try immediately, then again after a short delay (Phaser may not instantiate instantly)
+          setTimeout(tryInjectStatBlock, 50);
+          setTimeout(tryInjectStatBlock, 200);
+        });
       }
     }
   }, [screen, characters, selectedCharacter, dungeon]);
@@ -1130,15 +1126,15 @@ function App() {
       joinPlayer(
         { playerId: char.id, user_id: char.user_id },
         (data) => {
-          // Store the enriched character from the server
-          window.currentCharacter = data.character;
+          // onSuccess: expose current character globally for game
+          window.currentCharacter = char;
+          // Store the dungeon layout from the server
           setDungeon(data.dungeon);
-          setCharacters(prev => {
-            const newChars = [...prev];
-            newChars[lockedCharacter] = data.character;
-            return newChars;
-          });
-          setSelectedCharacter(lockedCharacter);
+          // Log the first 5 dungeon room IDs for debugging
+          if (data.dungeon && data.dungeon.rooms) {
+            console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
+          }
+          // Optionally store spawnRoomId, etc. from data
         },
         (errorMsg) => {
           setConnectionError(true);
@@ -1173,7 +1169,7 @@ function App() {
     </>;
   }
   if (screen === 'loading') {
-    return <LoadingScreen onLoaded={() => { /* do nothing, transition handled above */ }} />;
+    return <LoadingScreen onLoaded={() => setScreen('game')} />;
   }
   if (screen === 'characterServerSelect') {
     // --- Expose supabase and current character ID for BagManager when character is selected ---
@@ -1208,15 +1204,12 @@ function App() {
     }} error={charCreateError} />;
   }
   if (screen === 'game') {
-    console.log('[DEBUG][App.jsx] Rendering <div id="renderDiv" /> for game screen');
     return (
       <div id="renderDiv" style={{ width: '100vw', height: '100vh', position: 'fixed', left: 0, top: 0, background: '#000' }} />
     );
   }
-  console.log('[DEBUG][App.jsx] Before render return');
   return (
     <>
-      {console.log('[DEBUG][App.jsx] In render JSX')}
       {notification && (
         <div style={{ position: 'fixed', top: 24, right: 24, background: 'rgba(34,34,34,0.95)', color: '#fff', padding: '16px 32px', borderRadius: 12, fontWeight: 900, fontSize: 20, zIndex: 20000, boxShadow: '0 2px 16px #000a' }}>
           {notification}

@@ -3,9 +3,7 @@
 > **NEW Q&A CLARIFICATIONS (2024-06):**
 > - Never guess or assume anything about the code, game, or plans. If you are unsure, always ask the user for clarification and commit the answer here.
 > - All new lessons, clarifications, or user answers must be added to this folder immediately for future AI/developers.
-> - This folder is the single source of truth for all multiplayer, event, schema, and canonical data logic. All canonical data (items, stats, loot tables, etc.) must be defined in a single source-of-truth module per environment. All managers must import from this source. Duplication is not allowed.
-> - All event, schema, and data changes must be reflected here before any code changes.
-> - DungeonCore (`src/shared/DungeonCore.js`) is the only valid dungeon logic module for the server. No other dungeon manager or service should be created or used.
+> - This folder is the single source of truth for all multiplayer, event, and schema logic. Always update it first.
 
 > **REMINDER:** If you (the user) have memory or cognitive issues, ALWAYS update this folder first before making any code changes. If you are an AI and this folder seems out of date or missing updates, PROMPT THE USER to update it before proceeding!
 
@@ -130,5 +128,16 @@
 - Supabase is used only for persistent player/account data, not for real-time dungeon state.
 - The `/StuffForAI` folder is fully up to date with event payloads, architectural notes, and workflow checklists. All multiplayer and event-driven logic is documented and matches the codebase.
 - This approach ensures nothing is lost, all logic is preserved, and the refactor is both safe and future-proof. The architecture is robust against cheating and ready for future multiplayer features.
+
+---
+
+## Absolutely Critical, Proven Rules for a Secure Migration (2024-06)
+
+- All game logic and state must be server-authoritative. The client must never calculate, guess, or create any gameplay state (stats, encounters, inventory, etc.). The server must send all necessary data for gameplay.
+- No client-side fallbacks or guessing. If the server does not provide a value, the client must not "fill in the blanks." Missing data = error or "waiting for server," never a guess or default.
+- All encounters and entities are created by the server. The client only requests actions (e.g., "start encounter"). The server responds with a complete, authoritative payload. The client only renders what the server sends.
+- Stat calculation for gameplay is server-only. Any stat values used in gameplay (health, attack, defense, etc.) must come from the server. The client may hard-code values for character creation/preview only, never for gameplay.
+- Event flow is always request/response. The client emits a request (e.g., "move," "attack," "start encounter"). The server responds with the result and all data needed to render the new state. The client never assumes the result.
+- No per-frame or excessive debug logging. Only log errors and critical warnings. Remove or comment out all per-frame or spammy debug logs.
 
 --- 

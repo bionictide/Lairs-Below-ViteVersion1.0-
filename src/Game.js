@@ -1,4 +1,3 @@
-console.log('[DEBUG][Game.js] File loaded');
 function _define_property(obj, key, value) {
     if (key in obj) {
         Object.defineProperty(obj, key, {
@@ -75,17 +74,13 @@ export var gameConfig = {
         autoCenter: Phaser.Scale.CENTER_BOTH
     }
 };
-export var initGame = function(parent, dungeon, character) {
-    console.log('[DEBUG][Game.js] initGame called', { parent, dungeon, character });
+export var initGame = function(parent, dungeon) {
     var config = _object_spread_props(_object_spread({}, gameConfig), {
         parent: parent,
         scene: [DungeonScene]
     });
-    console.log('[DEBUG][Game.js] Creating Phaser.Game instance');
     var game = new Phaser.Game(config);
-    console.log('[DEBUG][Game.js] Phaser.Game created', game);
-    console.log('[DEBUG][Game.js] About to start DungeonScene with data:', { serverDungeon: dungeon, character });
-    game.scene.start('default', { serverDungeon: dungeon, character });
-    console.log('[DEBUG][Game.js] DungeonScene started');
+    // Start the scene with the server dungeon as data
+    game.scene.start('default', { serverDungeon: dungeon });
     return game;
 };
