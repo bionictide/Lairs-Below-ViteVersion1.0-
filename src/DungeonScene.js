@@ -371,22 +371,40 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Create the player's health bar using initial values from PlayerStats AND the new playerId
                 this.playerHealthBar = new HealthBar(this, 20, 20, this.character.stats.health, this.character.stats.health, this.playerId);
                 // Listen for health changes from PlayerStats to update the HealthBar display
-                this.playerStats.events.on('healthChanged', function(current, max) {
-                    if (_this.playerHealthBar) {
-                        // Directly update the health bar display with the authoritative value from PlayerStats
-                        _this.playerHealthBar.updateHealth(current);
-                    }
-                }, this);
+                console.log('[DEBUG] About to add healthChanged listener', this.playerStats, this.playerStats && this.playerStats.events);
+                if (this.playerStats && this.playerStats.events) {
+                    this.playerStats.events.on('healthChanged', function(current, max) {
+                        if (_this.playerHealthBar) {
+                            _this.playerHealthBar.updateHealth(current);
+                        }
+                    }, _this);
+                } else {
+                    console.error('[ERROR] playerStats or playerStats.events is undefined', _this.playerStats);
+                }
                 // Listen for generic entity death (emitted by HealthBar - might move source later)
-                this.events.on('entityDied', this.handleEntityDeath, this);
+                console.log('[DEBUG] About to add entityDied listener', this.events);
+                if (this.events && this.events.on) {
+                    this.events.on('entityDied', this.handleEntityDeath, this);
+                } else {
+                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
+                }
                 // Listen for specific player-killed-by-NPC event (emitted by HealthBar)
-                this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
+                console.log('[DEBUG] About to add playerKilledByNPC listener', this.events);
+                if (this.events && this.events.on) {
+                    this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
+                } else {
+                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
+                }
                 // Listen for loot bag clicks (emitted by HealthBar)
-                this.events.on('lootBagClicked', this.handleLootBagClick, this);
+                console.log('[DEBUG] About to add lootBagClicked listener', this.events);
+                if (this.events && this.events.on) {
+                    this.events.on('lootBagClicked', this.handleLootBagClick, this);
+                } else {
+                    console.error('[ERROR] this.events or this.events.on is undefined', this.events);
+                }
                 this.events.on('treasurePickupResult', (result) => {
                     if (result.success) {
                         this.events.emit('showActionPrompt', `You picked up a treasure: ${result.item.name || result.item.itemKey}`);
-                        // Optionally update inventory UI here
                     } else {
                         this.events.emit('showActionPrompt', result.message || 'Treasure pickup failed.');
                     }
