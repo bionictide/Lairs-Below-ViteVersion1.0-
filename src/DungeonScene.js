@@ -1,5 +1,6 @@
 console.log('[DEBUG] DungeonScene.js loaded');
 import { EVENTS } from './shared/events.js';
+import { socket } from './socket.js';
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -148,28 +149,6 @@ import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
 import { PlayerStatsProxy } from './PlayerStatsProxy.js';
-import { socket } from './socket.js';
-// Define door configurations outside the class for clarity
-var DOOR_CONFIGS = {
-    forward: {
-        xFactor: 0.50,
-        yFactor: 0.46,
-        wFactor: 0.25,
-        hFactor: 0.55
-    },
-    right: {
-        xFactor: 0.875,
-        yFactor: 0.50,
-        wFactor: 0.15,
-        hFactor: 0.70
-    },
-    left: {
-        xFactor: 0.125,
-        yFactor: 0.50,
-        wFactor: 0.15,
-        hFactor: 0.70
-    } // Mirrored right door
-};
 export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
     "use strict";
     _inherits(DungeonScene, _Phaser_Scene);
@@ -213,6 +192,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerId = null; // Add property to store the player's unique ID
         _this.entitySprites = new Map(); // Map to store entityId -> sprite mapping
         _this.statBlock = null; // <-- Add this property for stat block injection
+        _this.socket = socket;
         return _this;
     }
     _create_class(DungeonScene, [
@@ -336,7 +316,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.npcLootManager = new NPCLootManager(this);
 
                 // Replace PlayerStats with PlayerStatsProxy
-                this.playerStats = new PlayerStatsProxy(socket, this.playerId);
+                this.playerStats = new PlayerStatsProxy(this.socket, this.playerId);
 
                 // Then managers that depend on itemManager and playerStats
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager);
