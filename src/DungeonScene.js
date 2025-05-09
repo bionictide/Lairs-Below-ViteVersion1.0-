@@ -361,6 +361,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 });
                 this.setupUIEvents();
                 this.displayCurrentRoom();
+                console.log('[DEBUG] displayCurrentRoom() finished');
                 this.encounterTimer = this.encounterInterval;
                 this.bagManager.createToggleButton();
                 // Create the player's health bar using initial values from PlayerStats AND the new playerId
@@ -909,41 +910,53 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "displayCurrentRoom",
             value: function displayCurrentRoom() {
-                console.log('[DEBUG] DungeonScene.displayCurrentRoom() called');
+                console.log('[DEBUG] displayCurrentRoom() start');
                 if (this.currentRoomSprite) this.currentRoomSprite.destroy();
+                console.log('[DEBUG] currentRoomSprite destroyed');
                 if (this.actionMenu) this.actionMenu.destroy();
+                console.log('[DEBUG] actionMenu destroyed');
                 if (this.dialogBox) this.dialogBox.destroy();
+                console.log('[DEBUG] dialogBox destroyed');
                 if (this.promptText) this.promptText.destroy();
+                console.log('[DEBUG] promptText destroyed');
                 if (this.talkInputField) {
-                    // Use cleanup function on room change
                     this.removeTalkInputAndListeners();
+                    console.log('[DEBUG] talkInputField destroyed');
                 }
                 this.puzzleManager.clearPuzzles();
-                // this.treasureManager.clearTreasures();
+                console.log('[DEBUG] puzzleManager.clearPuzzles() called');
                 this.hintManager.clearHints();
+                console.log('[DEBUG] hintManager.clearHints() called');
                 this.shelfManager.clearShelves();
-                if (this.bagManager.isOpen) this.bagManager.closeBagUI(); // Close bag if open on room change
-                // Update bag sprite visibility *before* displaying the room visuals, passing facing direction
+                console.log('[DEBUG] shelfManager.clearShelves() called');
+                if (this.bagManager.isOpen) this.bagManager.closeBagUI();
+                console.log('[DEBUG] bagManager.closeBagUI() called if open');
                 this.bagManager.updateBagVisibility(this.playerPosition.roomId, this.playerPosition.facing);
+                console.log('[DEBUG] bagManager.updateBagVisibility() called');
                 var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
+                console.log('[DEBUG] got room:', room);
                 var imageKey = this.roomManager.getRoomImageKey(room, this.playerPosition.facing, this.dungeonService);
+                console.log('[DEBUG] got imageKey:', imageKey);
                 var assetKey = this.roomManager.findBestMatchingRoomAsset(imageKey);
+                console.log('[DEBUG] got assetKey:', assetKey);
                 if (!this.textures.exists(assetKey)) {
-                    console.log("[DEBUG] Texture ".concat(assetKey, " missing, using 'none'"));
+                    console.log('[DEBUG] Texture missing, using "none"');
                     assetKey = 'none';
                 }
                 this.currentRoomSprite = this.add.image(gameConfig.width / 2, gameConfig.height / 2, assetKey);
+                console.log('[DEBUG] currentRoomSprite added');
                 var visibleDoors = this.roomManager.getVisibleDoors(room, this.playerPosition.facing, this.dungeonService);
-                console.log("[DEBUG] Room ".concat(room.id, ": doors=").concat(visibleDoors.join(',') || 'none', ", asset=").concat(assetKey));
+                console.log('[DEBUG] got visibleDoors:', visibleDoors);
                 this.setupDoorInteractions(visibleDoors);
-                // Check if encounter already running (e.g., from flee failure) before initializing new one
-                // Setup nav buttons *after* potential encounter start
+                console.log('[DEBUG] setupDoorInteractions() called');
                 this.setupNavigationButtons();
-                this.puzzleManager.initializePuzzles(room); // Removed facing argument
-                // this.treasureManager.initializeTreasures(room); // Removed facing argument
+                console.log('[DEBUG] setupNavigationButtons() called');
+                this.puzzleManager.initializePuzzles(room);
+                console.log('[DEBUG] puzzleManager.initializePuzzles() called');
                 this.hintManager.initializeHints(room);
+                console.log('[DEBUG] hintManager.initializeHints() called');
                 this.shelfManager.initializeShelves(room);
-                // Render treasure sprite if present and not already picked up
+                console.log('[DEBUG] shelfManager.initializeShelves() called');
                 if (room.treasureLevel && !this.treasureSprite) {
                     const treasureKey = room.treasureLevel === 'sword1' ? 'Sword1' : room.treasureLevel === 'helm1' ? 'Helm1' : room.treasureLevel === 'Potion1(red)' ? 'Potion1(red)' : null;
                     if (treasureKey && this.textures.exists(treasureKey)) {
@@ -958,12 +971,13 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                             }
                             this.events.emit('requestTreasurePickup', { roomId: room.id });
                         });
+                        console.log('[DEBUG] treasureSprite added');
                     }
                 }
-                // Remove treasure sprite if not present in room
                 if (!room.treasureLevel && this.treasureSprite) {
                     this.treasureSprite.destroy();
                     this.treasureSprite = null;
+                    console.log('[DEBUG] treasureSprite destroyed');
                 }
                 console.log('[DEBUG] Room rendered');
             }
