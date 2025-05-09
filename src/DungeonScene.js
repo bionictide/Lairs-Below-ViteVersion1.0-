@@ -373,13 +373,16 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Listen for health changes from PlayerStats to update the HealthBar display
                 console.log('[DEBUG] About to add healthChanged listener', this.playerStats, this.playerStats && this.playerStats.events);
                 if (this.playerStats && this.playerStats.events) {
-                    this.playerStats.events.on('healthChanged', function(current, max) {
-                        if (_this.playerHealthBar) {
-                            _this.playerHealthBar.updateHealth(current);
+                    this.playerStats.events.on('healthChanged', (current, max) => {
+                        console.log('[DEBUG] healthChanged event received', { current, max, playerHealthBar: this.playerHealthBar });
+                        if (this.playerHealthBar) {
+                            this.playerHealthBar.updateHealth(current);
+                        } else {
+                            console.warn('[WARN] healthChanged event fired but playerHealthBar is not initialized');
                         }
-                    }, _this);
+                    });
                 } else {
-                    console.error('[ERROR] playerStats or playerStats.events is undefined', _this.playerStats);
+                    console.error('[ERROR] playerStats or playerStats.events is undefined', this.playerStats);
                 }
                 // Listen for generic entity death (emitted by HealthBar - might move source later)
                 console.log('[DEBUG] About to add entityDied listener', this.events);
