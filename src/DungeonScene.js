@@ -405,44 +405,55 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 } else {
                     console.error('[ERROR] this.events or this.events.on is undefined', this.events);
                 }
-                this.events.on('treasurePickupResult', (result) => {
-                    if (result.success) {
-                        this.events.emit('showActionPrompt', `You picked up a treasure: ${result.item.name || result.item.itemKey}`);
-                    } else {
-                        this.events.emit('showActionPrompt', result.message || 'Treasure pickup failed.');
-                    }
-                });
-                this.events.on(EVENTS.TREASURE_PICKED_UP, ({ roomId }) => {
-                    // Remove treasure sprite if in this room
-                    if (this.playerPosition.roomId === roomId && this.treasureSprite) {
-                        this.treasureSprite.destroy();
-                        this.treasureSprite = null;
-                    }
-                    // Also update local room state if needed
-                    const room = this.dungeonService.getRoomById(roomId);
-                    if (room) room.treasureLevel = null;
-                });
-                this.socket.on('attackResult', (result) => {
-                    // Show the attack result message
-                    this.events.emit('showActionPrompt', result.message);
-                    // Optionally update health bars and handle death animations
-                    // Example: if (result.died) { this.handleEntityDeath(result.targetId); }
-                });
-                this.socket.on('stealResult', (result) => {
-                    // Show the steal result message
-                    this.events.emit('showActionPrompt', result.message);
-                    // Optionally update inventory if the player is initiator or target
-                    if (result.success && result.item) {
-                        if (result.initiatorId === this.playerId) {
-                            // Add item to player's inventory UI
-                            this.playerStats.addItemToInventory(result.item);
+                console.log('[DEBUG] About to add treasurePickupResult listener', this.events, typeof this.events, this.events && this.events.on);
+                if (this.events && typeof this.events.on === 'function') {
+                    this.events.on('treasurePickupResult', (result) => {
+                        if (result.success) {
+                            this.events.emit('showActionPrompt', `You picked up a treasure: ${result.item.name || result.item.itemKey}`);
+                        } else {
+                            this.events.emit('showActionPrompt', result.message || 'Treasure pickup failed.');
                         }
-                        if (result.targetId === this.playerId) {
-                            // Remove item from player's inventory UI
-                            this.playerStats.removeItemFromInventory(result.item);
+                    });
+                } else {
+                    console.error('[ERROR] this.events or this.events.on is undefined or not a function', this.events);
+                }
+                console.log('[DEBUG] About to add EVENTS.TREASURE_PICKED_UP listener', this.events, typeof this.events, this.events && this.events.on);
+                if (this.events && typeof this.events.on === 'function') {
+                    this.events.on(EVENTS.TREASURE_PICKED_UP, ({ roomId }) => {
+                        if (this.playerPosition.roomId === roomId && this.treasureSprite) {
+                            this.treasureSprite.destroy();
+                            this.treasureSprite = null;
                         }
-                    }
-                });
+                        const room = this.dungeonService.getRoomById(roomId);
+                        if (room) room.treasureLevel = null;
+                    });
+                } else {
+                    console.error('[ERROR] this.events or this.events.on is undefined or not a function', this.events);
+                }
+                console.log('[DEBUG] About to add attackResult listener', this.socket, typeof this.socket, this.socket && this.socket.on);
+                if (this.socket && typeof this.socket.on === 'function') {
+                    this.socket.on('attackResult', (result) => {
+                        this.events.emit('showActionPrompt', result.message);
+                    });
+                } else {
+                    console.error('[ERROR] this.socket or this.socket.on is undefined or not a function', this.socket);
+                }
+                console.log('[DEBUG] About to add stealResult listener', this.socket, typeof this.socket, this.socket && this.socket.on);
+                if (this.socket && typeof this.socket.on === 'function') {
+                    this.socket.on('stealResult', (result) => {
+                        this.events.emit('showActionPrompt', result.message);
+                        if (result.success && result.item) {
+                            if (result.initiatorId === this.playerId) {
+                                this.playerStats.addItemToInventory(result.item);
+                            }
+                            if (result.targetId === this.playerId) {
+                                this.playerStats.removeItemFromInventory(result.item);
+                            }
+                        }
+                    });
+                } else {
+                    console.error('[ERROR] this.socket or this.socket.on is undefined or not a function', this.socket);
+                }
             }
         },
         {
