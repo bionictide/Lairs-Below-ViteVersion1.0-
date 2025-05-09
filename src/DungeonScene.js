@@ -895,7 +895,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "update",
             value: function update(time, delta) {
-                console.log('[DEBUG] DungeonScene.update() called', { time, delta });
+                // REMOVE or comment out the per-frame debug log
+                // console.log('[DEBUG] DungeonScene.update() called', { time, delta });
                 // Update Action Menu Timer Bar
                 if (this.actionMenuTimer && this.actionMenuTimerBar && this.actionMenu) {
                     var elapsed = this.actionMenuTimer.getElapsed();
