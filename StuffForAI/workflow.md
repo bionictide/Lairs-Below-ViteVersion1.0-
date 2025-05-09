@@ -7,7 +7,9 @@
    - Update `schema.md` if the database changes.
    - Add notes to `ai_instructions.md` if needed.
    - **Verify that every event, payload, and schema field in this folder matches the codebase after any change.**
-   - **This folder is the single source of truth for all multiplayer logic, event names, and payloads. Update it first.**
+   - **This folder is the single source of truth for all multiplayer logic, event names, payloads, and canonical data. Update it first.**
+   - **Verify that all canonical data (items, stats, loot tables, etc.) is defined in a single source-of-truth module per environment, and that all managers import from this source. Duplication is not allowed.**
+   - **Confirm that DungeonCore (`src/shared/DungeonCore.js`) is the only valid dungeon logic module for the server.**
 
 3. **Update Supabase/Postgres schema:**
    - Add/alter columns as needed (e.g., inventory, mana, party_id).

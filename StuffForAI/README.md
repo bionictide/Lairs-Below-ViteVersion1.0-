@@ -1,7 +1,10 @@
 # StuffForAI
 
 > **IMPORTANT:**
-> Always update this folder FIRST when making any changes to multiplayer, events, or database logic. This is essential for AI and future development. Forgetting to update this folder can cause bugs, lost context, and broken features. If you have memory or cognitive issues, make it a habit to update this folder before anything else!
+> This folder is the single source of truth for all multiplayer, event, schema, and canonical data logic. All canonical data (items, stats, loot tables, etc.) must be defined in a single source-of-truth module per environment. All managers must import from this source. Duplication is not allowed.
+
+- All event, schema, and data changes must be reflected here before any code changes.
+- Dungeon generation and all related logic (loot, puzzles, encounters, etc.) must use `DungeonCore` (`src/shared/DungeonCore.js`) as the only valid dungeon logic module for the server. No other dungeon manager or service should be created or used.
 
 This folder contains all documentation, event specifications, schema definitions, and workflow checklists needed for AI assistants and developers to safely and consistently update multiplayer, event, and database logic in this project.
 

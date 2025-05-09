@@ -299,7 +299,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         {
             key: "create",
             value: function create() {
-                console.log('[DEBUG] DungeonScene.create() called', { character: this.character, serverDungeon: this.serverDungeon });
+                console.log('[DEBUG] DungeonScene.create() called', arguments, this, typeof data !== 'undefined' ? data : '[data not defined]');
                 if (this.serverDungeon) {
                     this.dungeon = this.serverDungeon;
                     // Sync DungeonService with server dungeon data

@@ -3,7 +3,9 @@
 > **NEW Q&A CLARIFICATIONS (2024-06):**
 > - Never guess or assume anything about the code, game, or plans. If you are unsure, always ask the user for clarification and commit the answer here.
 > - All new lessons, clarifications, or user answers must be added to this folder immediately for future AI/developers.
-> - This folder is the single source of truth for all multiplayer, event, and schema logic. Always update it first.
+> - This folder is the single source of truth for all multiplayer, event, schema, and canonical data logic. All canonical data (items, stats, loot tables, etc.) must be defined in a single source-of-truth module per environment. All managers must import from this source. Duplication is not allowed.
+> - All event, schema, and data changes must be reflected here before any code changes.
+> - DungeonCore (`src/shared/DungeonCore.js`) is the only valid dungeon logic module for the server. No other dungeon manager or service should be created or used.
 
 > **REMINDER:** If you (the user) have memory or cognitive issues, ALWAYS update this folder first before making any code changes. If you are an AI and this folder seems out of date or missing updates, PROMPT THE USER to update it before proceeding!
 
