@@ -1,6 +1,27 @@
 console.log('[DEBUG] DungeonScene.js loaded');
 import { EVENTS } from './shared/events.js';
 import { socket } from './socket.js';
+// Define door configurations outside the class for clarity
+var DOOR_CONFIGS = {
+    forward: {
+        xFactor: 0.50,
+        yFactor: 0.46,
+        wFactor: 0.25,
+        hFactor: 0.55
+    },
+    right: {
+        xFactor: 0.875,
+        yFactor: 0.50,
+        wFactor: 0.15,
+        hFactor: 0.70
+    },
+    left: {
+        xFactor: 0.125,
+        yFactor: 0.50,
+        wFactor: 0.15,
+        hFactor: 0.70
+    } // Mirrored right door
+};
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
