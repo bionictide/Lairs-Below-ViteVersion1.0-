@@ -353,12 +353,16 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
 
                 this.debugHelper.setVisibility(false); // Start with debug off
                 // Listen for keydown event globally
-                this.input.keyboard.on('keydown', function(event) {
-                    // Check for Ctrl + Alt + D combination
-                    if (event.ctrlKey && event.altKey && event.code === 'KeyD') {
-                        _this.debugHelper.toggleVisibility();
-                    }
-                });
+                if (this.input && this.input.keyboard) {
+                    this.input.keyboard.on('keydown', function(event) {
+                        // Check for Ctrl + Alt + D combination
+                        if (event.ctrlKey && event.altKey && event.code === 'KeyD') {
+                            _this.debugHelper.toggleVisibility();
+                        }
+                    });
+                } else {
+                    console.error('[ERROR] this.input or this.input.keyboard is undefined in DungeonScene.create');
+                }
                 this.setupUIEvents();
                 this.displayCurrentRoom();
                 console.log('[DEBUG] displayCurrentRoom() finished');
