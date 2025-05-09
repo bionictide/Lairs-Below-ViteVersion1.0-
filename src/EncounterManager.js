@@ -249,17 +249,38 @@ export var EncounterManager = /*#__PURE__*/ function() {
                 var definition = getCharacterDefinition(selectedType);
                 var stats = definition && definition.stats ? definition.stats : { vit: 6, str: 5, int: 0, dex: 5, mnd: 5, spd: 5 };
                 // Use StatDefinitions.js for derived stats
-                var maxHealth = getHealthFromVIT(stats.vit);
-                var physicalBaseDamage = getPhysicalAttackFromSTR(stats.str);
-                var defense = getDefenseFromVIT(stats.vit);
+                var maxHealth = (serverEntity && serverEntity.maxHealth !== undefined)
+                    ? serverEntity.maxHealth
+                    : (stats && stats.vit !== undefined)
+                        ? (console.warn('[EncounterManager] Server did not provide maxHealth, using statPreview.js fallback.'), getHealthFromVIT(stats.vit))
+                        : 1;
+                var physicalBaseDamage = (serverEntity && serverEntity.physicalBaseDamage !== undefined)
+                    ? serverEntity.physicalBaseDamage
+                    : (stats && stats.str !== undefined)
+                        ? (console.warn('[EncounterManager] Server did not provide physicalBaseDamage, using statPreview.js fallback.'), getPhysicalAttackFromSTR(stats.str))
+                        : 0;
+                var defense = (serverEntity && serverEntity.defense !== undefined)
+                    ? serverEntity.defense
+                    : (stats && stats.vit !== undefined)
+                        ? (console.warn('[EncounterManager] Server did not provide defense, using statPreview.js fallback.'), getDefenseFromVIT(stats.vit))
+                        : 0;
                 // Store stat block and derived stats in entity
+                if (
+                    !serverEntity ||
+                    serverEntity.maxHealth === undefined ||
+                    serverEntity.physicalBaseDamage === undefined ||
+                    serverEntity.defense === undefined
+                ) {
+                    console.error('[EncounterManager] Server did not provide required derived stats for entity', selectedType, serverEntity);
+                    return; // Abort entity creation
+                }
                 this.entities.set(entityId1, {
                     type: selectedType,
                     statBlock: stats,
-                    maxHealth: maxHealth,
-                    health: maxHealth,
-                    physicalBaseDamage: physicalBaseDamage,
-                    defense: defense,
+                    maxHealth: serverEntity.maxHealth,
+                    health: serverEntity.maxHealth,
+                    physicalBaseDamage: serverEntity.physicalBaseDamage,
+                    defense: serverEntity.defense,
                     roomId: room.id,
                     mood: 'neutral',
                     instanceLoot: this.calculateInitialLoot(selectedType)
