@@ -109,7 +109,13 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 gemKey = 'RawRuby';
                             }
                             // UI feedback only; actual inventory update will come from server event
-                            _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: gemKey, roomId: room.id });
+                            console.log('[CLIENT] Shelf gem clicked:', { roomId: room.id, gemKey });
+                            if (_this.scene.socket) {
+                                console.log('[CLIENT] Emitting SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: gemKey, roomId: room.id });
+                                _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: gemKey, roomId: room.id });
+                            } else {
+                                console.error('[CLIENT] _this.scene.socket is undefined!');
+                            }
                         });
                         shelfData1.gemShelf = gemShelf;
                     }
@@ -133,7 +139,13 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 return;
                             }
                             // UI feedback only; actual inventory update will come from server event
-                            _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: 'Potion1(red)', roomId: room.id });
+                            console.log('[CLIENT] Shelf potion clicked:', { roomId: room.id });
+                            if (_this.scene.socket) {
+                                console.log('[CLIENT] Emitting SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: 'Potion1(red)', roomId: room.id });
+                                _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: 'Potion1(red)', roomId: room.id });
+                            } else {
+                                console.error('[CLIENT] _this.scene.socket is undefined!');
+                            }
                         });
                         shelfData1.potionShelf = potionShelf;
                     }

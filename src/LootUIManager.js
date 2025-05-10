@@ -278,8 +278,13 @@ export var LootUIManager = /*#__PURE__*/ function() {
             value: function _handleLootItemClick(itemSprite) {
                 var itemKey = itemSprite.getData('itemKey');
                 console.log("[LootUIManager] Clicked loot item: ".concat(itemKey));
-                // 1. Attempt to add the item to the player's bag
-                this.scene.socket.emit('LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
+                console.log('[CLIENT] Loot item clicked:', { itemKey, sourceEntityId: this.currentSourceEntityId });
+                if (this.scene.socket) {
+                    console.log('[CLIENT] Emitting LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
+                    this.scene.socket.emit('LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
+                } else {
+                    console.error('[CLIENT] this.scene.socket is undefined!');
+                }
                 // UI feedback only; actual inventory and loot update will come from server event
             }
         }
