@@ -279,7 +279,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 var itemKey = itemSprite.getData('itemKey');
                 console.log("[LootUIManager] Clicked loot item: ".concat(itemKey));
                 // 1. Attempt to add the item to the player's bag
-                this.scene.socket.emit('LOOT_ITEM_PICKUP_REQUEST', { itemKey, sourceEntityId: this.currentSourceEntityId });
+                this.scene.socket.emit('LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
                 // UI feedback only; actual inventory and loot update will come from server event
             }
         }
