@@ -1060,31 +1060,12 @@ function App() {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          window._phaserGame = initGame(document.getElementById('renderDiv'), dungeon);
-          // --- Inject stat block into DungeonScene ---
-          // Wait for Phaser to create the scene, then set statBlock before create() runs
-          const tryInjectStatBlock = () => {
-            // Find the DungeonScene instance
-            const game = window._phaserGame;
-            if (!game || !game.scene || !game.scene.scenes) return;
-            const dungeonScene = game.scene.scenes.find(s => s.sys && s.sys.config && s.sys.config.key === 'default');
-            if (dungeonScene && !dungeonScene.statBlock) {
-              // Get selected character's stat block
-              const char = characters[selectedCharacter];
-              const statBlock = char ? {
-                vit: char.vit,
-                str: char.str,
-                int: char.int,
-                dex: char.dex,
-                mnd: char.mnd,
-                spd: char.spd
-              } : { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
-              dungeonScene.statBlock = statBlock;
-            }
-          };
-          // Try immediately, then again after a short delay (Phaser may not instantiate instantly)
-          setTimeout(tryInjectStatBlock, 50);
-          setTimeout(tryInjectStatBlock, 200);
+          // Start the game with the selected dungeon and stat block
+          initGame(
+            document.getElementById('renderDiv'),
+            selectedServer.dungeon,
+            characters[lockedCharacter] // Pass the full character object as statBlock
+          );
         });
       }
     }
