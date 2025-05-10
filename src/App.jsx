@@ -1113,6 +1113,12 @@ function App() {
         return;
       }
 
+      // Update the local characters array with the freshChar
+      const idx = lockedCharacter;
+      const newChars = [...characters];
+      newChars[idx] = freshChar;
+      setCharacters(newChars);
+
       // Get Supabase session (JWT)
       const { data, error } = await supabase.auth.getSession();
       if (error || !data.session || !data.session.access_token) {
