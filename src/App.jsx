@@ -1060,16 +1060,16 @@ function App() {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          // Start the game with the selected dungeon and stat block
+          // Start the game with the actual dungeon and stat block
           initGame(
             document.getElementById('renderDiv'),
-            selectedServer.dungeon,
-            characters[lockedCharacter] // Pass the full character object as statBlock
+            dungeon, // Use the real dungeon object from state
+            characters[lockedCharacter] // Pass the stat block
           );
         });
       }
     }
-  }, [screen, characters, selectedCharacter, dungeon]);
+  }, [screen, characters, lockedCharacter, dungeon]);
 
   // Add onJoinServer handler
   const handleJoinServer = async () => {
