@@ -1060,11 +1060,20 @@ function App() {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          // Start the game with the actual dungeon and stat block
+          // Coerce stat fields to numbers before passing to PlayerStats
+          const char = characters[lockedCharacter];
+          const statBlock = {
+            vit: Number(char.vit),
+            str: Number(char.str),
+            int: Number(char.int),
+            dex: Number(char.dex),
+            mnd: Number(char.mnd),
+            spd: Number(char.spd)
+          };
           initGame(
             document.getElementById('renderDiv'),
             dungeon, // Use the real dungeon object from state
-            characters[lockedCharacter] // Pass the stat block
+            statBlock // Pass the stat block with numbers
           );
         });
       }
