@@ -213,6 +213,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerId = null; // Add property to store the player's unique ID
         _this.entitySprites = new Map(); // Map to store entityId -> sprite mapping
         _this.statBlock = null; // <-- Add this property for stat block injection
+        // --- Ensure server socket is available to all managers ---
+        _this.socket = window.socket || window._socket || null; // Assign the active socket connection
         return _this;
     }
     _create_class(DungeonScene, [
