@@ -92,7 +92,7 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                     // Emit event only if an itemKey was determined
                     if (itemKey) {
                         // Emit BEFORE destroying sprite or modifying room data
-                        _this.scene.socket.emit('PUZZLE_ITEM_PICKUP_REQUEST', { itemKey, roomId: room.id });
+                        _this.scene.socket.emit('PUZZLE_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey, roomId: room.id });
                     } else {
                         // Log if no valid item key could be determined
                         console.warn("[PuzzleManager] Clicked puzzle in room ".concat(room.id, ", but original puzzleType (").concat(originalPuzzleType, ") didn't map to a known itemKey."));

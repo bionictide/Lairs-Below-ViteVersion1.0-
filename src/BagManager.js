@@ -341,7 +341,7 @@ export var BagManager = /*#__PURE__*/ function() {
                     newItemInstance.gridY = placement.y;
                     this.markGridOccupancy(placement.x, placement.y, newItemInstance.width, newItemInstance.height, instanceId);
                     // Instead of mutating inventory directly, emit intent to server
-                    this.scene.socket.emit('ITEM_ADD_REQUEST', { itemKey, gridX: placement.x, gridY: placement.y });
+                    this.scene.socket.emit('ITEM_ADD_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, gridX: placement.x, gridY: placement.y });
                     // UI feedback only; actual inventory update will come from server event
                     this.scene.events.emit('showActionPrompt', `Picked up ${newItemInstance.name}`);
                     if (this.isOpen) {
@@ -358,7 +358,7 @@ export var BagManager = /*#__PURE__*/ function() {
             key: "removeItem",
             value: function removeItem(instanceId) {
                 // Instead of mutating inventory directly, emit intent to server
-                this.scene.socket.emit('ITEM_REMOVE_REQUEST', { instanceId });
+                this.scene.socket.emit('ITEM_REMOVE_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), instanceId });
                 // UI feedback only; actual inventory update will come from server event
                 if (this.isOpen) {
                     this.openBagUI();
@@ -1003,7 +1003,7 @@ export var BagManager = /*#__PURE__*/ function() {
         {
             key: "clearInventory",
             value: function clearInventory() {
-                this.scene.socket.emit('INVENTORY_CLEAR_REQUEST', {});
+                this.scene.socket.emit('INVENTORY_CLEAR_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId) });
                 if (this.isOpen) {
                     this.openBagUI();
                 }

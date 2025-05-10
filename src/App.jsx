@@ -1154,6 +1154,32 @@ function App() {
     }
   }, [screen, dungeon]);
 
+  // --- Add socket event listeners for authoritative inventory and loot updates ---
+  if (window.socket) {
+    window.socket.on('INVENTORY_UPDATE', ({ inventory }) => {
+      if (window.dungeonScene && window.dungeonScene.bagManager) {
+        window.dungeonScene.bagManager.inventory = inventory || [];
+        if (window.dungeonScene.bagManager.isOpen) {
+          window.dungeonScene.bagManager.openBagUI(); // Refresh UI if open
+        }
+      }
+    });
+    window.socket.on('LOOT_UPDATE', ({ bagId, items }) => {
+      if (window.dungeonScene && window.dungeonScene.lootUIManager) {
+        // Find the open loot UI and update its items
+        if (window.dungeonScene.lootUIManager.currentSourceEntityId === bagId) {
+          window.dungeonScene.lootUIManager.currentLootItems = items || [];
+          if (window.dungeonScene.lootUIManager.isOpen) {
+            window.dungeonScene.lootUIManager._renderLootItems(
+              window.dungeonScene.lootUIManager.gridStartX,
+              window.dungeonScene.lootUIManager.gridStartY
+            );
+          }
+        }
+      }
+    });
+  }
+
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
       setScreen('login');
