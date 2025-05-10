@@ -1092,41 +1092,34 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     // Check AI Behavior Definition for low health action
                     var lowHealthDef = aiBehavior === null || aiBehavior === void 0 ? void 0 : aiBehavior.lowHealthAction;
                     // Dwarf low health: Use definition if available and matches 'HealAndStand'
-                    if (entity.type === 'dwarf' && (lowHealthDef === null || lowHealthDef === void 0 ? void 0 : lowHealthDef.type) === 'HealAndStand') {
-                        var _lowHealthDef_amount;
-                        var healAmount = (_lowHealthDef_amount = lowHealthDef.amount) !== null && _lowHealthDef_amount !== void 0 ? _lowHealthDef_amount : 0; // Get heal amount from definition, default 0
-                        if (healAmount > 0) {
-                            entity.health += healAmount;
-                            entity.health = Math.min(entity.health, entity.maxHealth); // Cap health at max
-                            this.scene.events.emit('showActionPrompt', "The ".concat(entityName, " glares weakly, but stands firm. (Regains some health!)"));
-                            console.log("[DEBUG] AI Action (".concat(entityName, ", low health): Dwarf stands firm & heals ").concat(healAmount, " HP from definition (New HP: ").concat(entity.health, ")."));
+                    if (entity.type === 'dwarf' && (lowHealthDef?.type) === 'HealAndStand') {
+                        // Only allow once per encounter if specified
+                        if (lowHealthDef.oncePerEncounter && entity.standFirmUsed) {
+                            // Already used, fall through to other logic
                         } else {
-                            // If definition exists but heal amount is 0 or missing, just stand firm
-                            this.scene.events.emit('showActionPrompt', "The ".concat(entityName, " glares weakly, but stands firm."));
-                            console.log("[DEBUG] AI Action (".concat(entityName, ", low health): Dwarf stands firm (no heal defined or amount 0)."));
-                        }
-                        this.endTurn(initiatorId);
-                        return; // Stop processing if Dwarf low health was handled by definition
-                        // --- Low Health Flee Check (Other types OR Dwarf without 'HealAndStand') ---
-                        if ((lowHealthDef === null || lowHealthDef === void 0 ? void 0 : lowHealthDef.type) === 'AttemptFlee') {
-                            var _lowHealthDef_chance;
-                            var fleeChance = (_lowHealthDef_chance = lowHealthDef.chance) !== null && _lowHealthDef_chance !== void 0 ? _lowHealthDef_chance : 0.0; // Use defined chance, default 0
-                            if (Math.random() < fleeChance) {
-                                console.log("[DEBUG] AI Action (".concat(entityName, ", low health): Attempting to flee from definition (Chance: ").concat(fleeChance * 100, "%, mood: ").concat(entity.mood, ")."));
-                                this.handleFlee(initiatorId, entity.roomId);
-                                return; // Flee attempted
-                            } else {
-                                console.log("[DEBUG] AI Action (".concat(entityName, ", low health): Failed defined flee roll (Chance: ").concat(fleeChance * 100, "%). Ending turn."));
-                                // Flee roll failed, end the turn immediately.
+                            // Check chance if specified
+                            if (!lowHealthDef.chance || Math.random() < lowHealthDef.chance) {
+                                var healAmount = lowHealthDef.amount ?? 0;
+                                if (healAmount > 0) {
+                                    entity.health += healAmount;
+                                    entity.health = Math.min(entity.health, entity.maxHealth);
+                                    this.scene.events.emit('showActionPrompt', `The ${entityName} glares weakly, but stands firm. (Regains some health!)`);
+                                    console.log(`[DEBUG] AI Action (${entityName}, low health): Dwarf stands firm & heals ${healAmount} HP from definition (New HP: ${entity.health}).`);
+                                } else {
+                                    this.scene.events.emit('showActionPrompt', `The ${entityName} glares weakly, but stands firm.`);
+                                    console.log(`[DEBUG] AI Action (${entityName}, low health): Dwarf stands firm (no heal defined or amount 0).`);
+                                }
+                                if (lowHealthDef.oncePerEncounter) entity.standFirmUsed = true;
                                 this.endTurn(initiatorId);
-                                return; // Stop processing further actions
+                                return;
                             }
-                        } else {
-                            // No specific 'AttemptFlee' defined OR lowHealthAction missing - Do nothing special here, proceed to other checks
-                            console.log("[DEBUG] AI Action (".concat(entityName, ", low health): No 'AttemptFlee' action defined. Proceeding to other checks."));
+                            // If chance fails, fall through to other low health logic
                         }
-                    // Fall through if flee wasn't attempted or failed
+                    } else {
+                        // No specific 'AttemptFlee' defined OR lowHealthAction missing - Do nothing special here, proceed to other checks
+                        console.log("[DEBUG] AI Action (".concat(entityName, ", low health): No 'AttemptFlee' action defined. Proceeding to other checks."));
                     }
+                // Fall through if flee wasn't attempted or failed
                 }
                 // --- PRIORITY 2: Check Mood (Guard Clause - runs if NOT low health OR low health flee attempt failed) ---
                 // Angry enemies use their defined angryAction if available, otherwise default to attack.

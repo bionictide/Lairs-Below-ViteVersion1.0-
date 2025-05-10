@@ -24,7 +24,9 @@ export var characterDefinitions = {
             aggression: 'Neutral',
             lowHealthAction: {
                 type: 'HealAndStand',
-                amount: 75
+                amount: 75,
+                chance: 0.5,
+                oncePerEncounter: true
             },
             talkResponses: {
                 keywords: [
