@@ -28,12 +28,8 @@
 6. **Test the full flow:**
    - Simulate all relevant client-server interactions.
    - Ensure data is consistent between client, server, and database.
+   - Verify that the client never calculates, simulates, or guesses any gameplay state. All stat, encounter, and event logic must be server-authoritative.
+   - Check that error handling and retry logic for missing server data matches the latest requirements (1 silent retry, then prompt, then disconnect after 2 more failures).
 
 7. **Update documentation:**
-   - Add notes to `README.md` and/or `CHANGELOG.md`.
-   - Ensure `/StuffForAI` is current before finishing.
-
----
-
-**Always keep this folder up to date!**
-**As of the latest audit, every event, payload, and schema field in this folder is fully mapped to the codebase.** 
+   - Add notes to `

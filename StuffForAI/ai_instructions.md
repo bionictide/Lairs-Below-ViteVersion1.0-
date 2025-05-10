@@ -140,4 +140,47 @@
 - Event flow is always request/response. The client emits a request (e.g., "move," "attack," "start encounter"). The server responds with the result and all data needed to render the new state. The client never assumes the result.
 - No per-frame or excessive debug logging. Only log errors and critical warnings. Remove or comment out all per-frame or spammy debug logs.
 
---- 
+---
+
+## 2024-06: Server-Authoritative Architecture and Client Contract (Clarified)
+
+- The client is a pure renderer and event sender. It does not calculate, simulate, or guess any gameplay state (stats, encounters, inventory, etc.).
+- All game logic, stat calculations, AI, encounters, PVP, and event handling are performed server-side. The client only displays what the server sends and emits user actions as requests.
+- There is no client-side fallback logic. If the server does not provide a value, the client must not fill in the blanks. Missing data results in an error or a 'Disconnected' pop-up, returning the player to the lobby.
+- Stat calculations (including derived stats, damage, healing, etc.) are server-only. The client never has access to formulas or definitions for gameplay. For character creation/preview, hard-coded values may be used in the UI only.
+- All encounter and AI logic (turns, loot, actions) are server-side. The client only receives authoritative event payloads and renders the results. No simulation or prediction is allowed on the client.
+- PVP is fully server-authoritative. All actions, stat checks, and results are processed on the server. The client only sees what the server sends, never direct access to other players' stats or state.
+- All game events (move, attack, spell, loot, etc.) are request/response. The client emits a request and always waits for the server's confirmation and result before updating the UI.
+- Error handling: If the server fails to send required data, the client retries once silently. If that fails, the client shows a retry/disconnect pop-up. After two more failed retries, the client disconnects and returns to the lobby.
+- Debug mode is server-driven and password-protected. CTRL+D on the client opens a password prompt (validated server-side). The debug menu is GUI-based and only available after server validation. All debug actions affecting game state are processed server-side.
+
+These rules are absolute and must be followed for all future development and migration. Any deviation risks desync, security issues, or loss of multiplayer integrity.
+
+---
+
+## PVP Event and Calculation Rules (2024-06)
+
+- PVP encounters follow the same flow as NPC encounters unless otherwise specified.
+- When two players enter the same room, both are tracked as entities in the server's room state. If PVP is enabled, the server triggers a PVP encounter and locks the room for others.
+- **Turn Order:** The player who enters the room always goes first. This matches NPC encounter logic and is enforced by the server.
+- **Physical Attacks:**
+  1. Start with the attacker's character type STR to get base physical damage.
+  2. Apply all attacker multipliers (items, buffs, etc.).
+  3. Apply defender's modifiers (defense, resistances, etc.) to reduce the damage.
+  4. Apply final damage to the defender and update both players' states.
+  5. Server sends the result to both clients for display. The client never calculates or modifies damage.
+- **Spell Attacks:**
+  1. Use the attacker's PlayerStats and spell definition to calculate base spell damage.
+  2. Apply all attacker modifiers (items, buffs, etc.).
+  3. Apply defender's PlayerStats (resistances, modifiers) to reduce the damage.
+  4. Apply final damage and effects, update both players' states.
+  5. Server sends the result to both clients for display.
+- **Steal Attempts:**
+  1. Server calculates base steal chance.
+  2. Applies attacker's modifiers (steal bonuses).
+  3. Applies defender's modifiers (steal protection).
+  4. Rolls for success.
+  5. If successful, removes a random item from the defender's inventory and adds it to the attacker's.
+  6. Server sends the result and updated inventories to both clients.
+- All calculations, rolls, and state changes are performed server-side. The client only displays results and never simulates, guesses, or modifies gameplay state.
+- All PVP event flows must be mapped in events.md and events.js, and all state changes must be documented in this folder. 

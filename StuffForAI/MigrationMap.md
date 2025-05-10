@@ -9,7 +9,8 @@
 - Stat/data fallbacks: tryInjectStatBlock (must be removed; client must error if server data is missing)
 - All gameplay state, stat blocks, and dungeon data must come from the server only
 - Only hard-code stat values for character creation/preview UI; all other stat logic must be server-side
-- Client must only render and communicate with the server; no local data or logic 
+- Client must only render and communicate with the server; no local data or logic
+- Error handling: If the server fails to send required data, the client retries once silently. If that fails, the client shows a retry/disconnect pop-up. After two more failed retries, the client disconnects and returns to the lobby.
 
 ## src/BagManager.js
 
@@ -150,7 +151,8 @@
 - Emitters: this.events.emit('healthChanged', ...), this.events.emit('playerDied')
 - Methods: getMaxHealth, getCurrentHealth, getPhysicalDamage, getDefenseRating, applyDamage, applyHealing, setHealth, updateStatsFromInventory, modifyMagicalDamage, getMagicalDamage, getMagicalDamageMultiplier, getElementalDamageMultiplier
 - All stat calculation, health, damage, and inventory effect logic must be server-authoritative; client only renders and emits user actions
-- Remove all local state and logic except for rendering and UI 
+- Remove all local state and logic except for rendering and UI
+- No client fallback or guessing for stat values; all gameplay values must be provided by the server.
 
 ## src/PuzzleManager.js
 
@@ -192,6 +194,7 @@
 - No emitters, handlers, or state; pure stat conversion logic
 - All stat conversion logic must be duplicated server-side for authoritative calculations
 - Remove from client except for character creation/preview UI
+- No client fallback or guessing for stat values; all gameplay values must be provided by the server.
 
 ## src/TreasureManager.js
 

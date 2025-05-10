@@ -26,7 +26,7 @@ This folder contains all documentation, event specifications, schema definitions
 This section summarizes key clarifications and lessons from the latest Q&A session. If you are a new AI or developer, read this to understand the current architecture, goals, and future plans:
 
 - **Debug Menu:**
-  - Debug commands are being moved server-side. Access will require a password prompt (triggered by CTRL+D), with the password stored and validated server-side only. The debug menu will be styled and expanded, accessible only after server validation.
+  - Debug commands are being moved server-side. Access will require a password prompt (triggered by CTRL+D), with the password stored and validated server-side only. The debug menu will be styled and expanded, accessible only after server validation. All debug actions affecting game state are processed server-side. The debug menu is GUI-based and only available after server validation.
 
 - **Inventory/Items:**
   - Inventory is currently a simple array of `{ itemKey, quantity }`. Future plans may include item metadata or instance data (e.g., durability, enchantments), but this is not part of the current refactor.
@@ -48,6 +48,7 @@ This section summarizes key clarifications and lessons from the latest Q&A sessi
 
 - **Testing & Migration:**
   - Manual QA is used for now. No parallel migration; full switch to server authority. Follow existing working code and logic patterns.
+  - Error handling: If the server fails to send required data, the client retries once silently. If that fails, the client shows a retry/disconnect pop-up. After two more failed retries, the client disconnects and returns to the lobby.
 
 - **General Rule:**
   - Never guess or assume anything about the code, game, or plans. If unsure, always ask the user for clarification. Update this folder with any new lessons or clarifications immediately.
