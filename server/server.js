@@ -287,32 +287,42 @@ io.on('connection', (socket) => {
 
   // SHELF ITEM PICKUP
   socket.on('SHELF_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
+    console.log('[SERVER] SHELF_ITEM_PICKUP_REQUEST:', { playerId, itemKey, roomId });
     const player = players.get(playerId);
     if (!player || !player.alive) return;
     const def = itemData[itemKey];
-    if (!def) return;
+    if (!def) {
+      console.log('[SERVER] Item definition not found for:', itemKey);
+      return;
+    }
     const item = { ...def, itemKey, instanceId: uuidv4(), source: 'shelf', roomId };
     player.inventory.push(item);
+    console.log('[SERVER] Player inventory after shelf pickup:', player.inventory);
     socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
   });
 
   // LOOT ITEM PICKUP
   socket.on('LOOT_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, sourceEntityId }) => {
+    console.log('[SERVER] LOOT_ITEM_PICKUP_REQUEST:', { playerId, itemKey, sourceEntityId });
     const player = players.get(playerId);
     if (!player || !player.alive) return;
-    // Find the bag/loot source
     const bag = bags.get(sourceEntityId);
     if (bag && bag.items) {
+      console.log('[SERVER] Bag found:', bag);
       const itemIndex = bag.items.findIndex(i => i.itemKey === itemKey);
       if (itemIndex > -1) {
         const [item] = bag.items.splice(itemIndex, 1);
+        console.log('[SERVER] Item removed from bag:', item);
         player.inventory.push(item);
-        // If bag is empty, remove it
+        console.log('[SERVER] Player inventory after loot:', player.inventory);
         if (bag.items.length === 0) bags.delete(sourceEntityId);
         socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
         socket.emit('LOOT_UPDATE', { bagId: sourceEntityId, items: bag.items });
-        // TODO: Sync with Supabase
+      } else {
+        console.log('[SERVER] Item not found in bag:', itemKey);
       }
+    } else {
+      console.log('[SERVER] Bag not found for sourceEntityId:', sourceEntityId);
     }
   });
 
