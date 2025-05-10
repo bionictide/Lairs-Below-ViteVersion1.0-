@@ -999,9 +999,6 @@ function App() {
       newChars[idx] = newChar;
       setCharacters(newChars);
       setSelectedCharacter(idx);
-      // --- Expose supabase and current character ID for BagManager ---
-      window.supabase = supabase;
-      window.currentCharacterId = newChar.id;
       setScreen('characterServerSelect');
     }
   };
@@ -1060,8 +1057,12 @@ function App() {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          // Coerce stat fields to numbers before passing to PlayerStats
           const char = characters[lockedCharacter];
+          if (!char) {
+            console.error('[ERROR] No character selected for game start.');
+            return;
+          }
+          // Only use stat block from server-provided character data
           const statBlock = {
             vit: Number(char.vit),
             str: Number(char.str),
@@ -1116,6 +1117,7 @@ function App() {
         return;
       }
       const token = data.session.access_token;
+
       window.socket = connectSocket(token);
 
       window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
@@ -1131,7 +1133,6 @@ function App() {
       joinPlayer(
         { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
-          window.currentCharacter = freshChar;
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
@@ -1173,11 +1174,6 @@ function App() {
     return <LoadingScreen onLoaded={() => setScreen('game')} />;
   }
   if (screen === 'characterServerSelect') {
-    // --- Expose supabase and current character ID for BagManager when character is selected ---
-    if (selectedCharacter !== null && characters[selectedCharacter] && characters[selectedCharacter].id) {
-      window.supabase = supabase;
-      window.currentCharacterId = characters[selectedCharacter].id;
-    }
     return <CharacterServerSelectScreen
       characters={characters}
       onCreateCharacter={handleCreateCharacter}

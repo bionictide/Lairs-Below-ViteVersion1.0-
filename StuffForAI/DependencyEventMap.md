@@ -1,5 +1,135 @@
 # DependencyEventMap
 
+## Migration Checklist & Status
+
+This section consolidates all actionable migration notes and requirements from the former MigrationMap.md. Use this as a high-level checklist for server-authoritative migration. For detailed event, state, and dependency mapping, see the per-file sections below.
+
+### src/App.jsx
+- All gameplay state, stat blocks, and dungeon data must come from the server only.
+- Only hard-code stat values for character creation/preview UI; all other stat logic must be server-side.
+- Remove all global window state (supabase, currentCharacterId, currentCharacter, socket).
+- Remove all stat/data fallbacks (e.g., tryInjectStatBlock); client must error if server data is missing.
+- Client must only render and communicate with the server; no local data or logic.
+- Error handling: If the server fails to send required data, the client retries once silently. If that fails, the client shows a retry/disconnect pop-up. After two more failed retries, the client disconnects and returns to the lobby.
+
+### src/BagManager.js
+- All inventory logic, item add/remove, bag drops, and stat updates must move to server.
+- Remove all direct Supabase updates from client.
+- All bag/loot/interaction events must be request/response with server.
+- Client must only render bag UI and emit user actions to server.
+
+### src/CharacterTypes.js
+- Used for character creation/preview UI only; all gameplay stat logic must be server-side.
+- Definitions must be duplicated server-side for authoritative logic.
+- Remove from client except for hard-coded preview data.
+
+### src/CombatVisuals.js
+- All combat logic and state must be server-side; this file should only render effects based on server events.
+- No sensitive data or logic; keep only rendering code client-side.
+
+### src/DebugHelper.js
+- All debug actions that affect game state (e.g., adding items) must be server-side.
+- Only debug rendering and UI should remain client-side.
+
+### src/DungeonScene.js
+- All game logic, state changes, and event handling must move to server; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+- All emitters/handlers must become request/response with server; no local fallback or guessing.
+- All stateful managers must be refactored to server-side, preserving circular dependencies and event flows.
+
+### src/EncounterManager.js
+- All encounter logic, state, and event handling must move to server; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+- All emitters/handlers must become request/response with server; no local fallback or guessing.
+- All stateful managers and entity state must be refactored to server-side, preserving event flows and dependencies.
+
+### src/DungeonService.js
+- All dungeon generation, world state, and room logic must move to server; client only renders and requests state.
+- Remove all local state and logic except for rendering and UI.
+- All dungeon/room state must be server-authoritative and event-driven.
+
+### src/Game.js
+- All game initialization and scene data must be server-authoritative.
+- Client should only start the game with server-provided state.
+
+### src/HealthBar.js
+- All health/death logic and state must be server-authoritative; client only renders health bar and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/HintManager.js
+- All hint logic and state must be server-authoritative; client only renders hints based on server data.
+- Remove all local state and logic except for rendering and UI.
+
+### src/index.css
+- Pure CSS file; no logic, state, emitters, or handlers. No migration required.
+
+### src/ItemManager.js
+- All item usage logic and effects must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/LootUIManager.js
+- All loot registration, transfer, and state logic must be server-authoritative; client only renders loot UI and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/main.jsx
+- No migration required except to ensure entry point only renders server-driven UI.
+
+### src/NPCLootManager.js
+- All loot table logic and entity loot assignment must be server-authoritative; client only renders loot UI.
+- Remove from client except for rendering loot preview if needed.
+
+### src/PlayerStats.js
+- All stat calculation, health, damage, and inventory effect logic must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+- No client fallback or guessing for stat values; all gameplay values must be provided by the server.
+
+### src/PuzzleManager.js
+- All puzzle/key logic and state must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/RoomManager.js
+- All room/door logic and state must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/ShelfManager.js
+- All shelf/gem/potion logic and state must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/SpellManager.js
+- All spell logic, requirements, and cast processing must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/StatDefinitions.js
+- All stat conversion logic must be duplicated server-side for authoritative calculations.
+- Remove from client except for character creation/preview UI.
+- No client fallback or guessing for stat values; all gameplay values must be provided by the server.
+
+### src/TreasureManager.js
+- All treasure logic and state must be server-authoritative; client only renders and emits user actions.
+- Remove all local state and logic except for rendering and UI.
+
+### src/socket.js
+- All player join, room enter, and related flows are now request/response with the server; no local fallback or guessing.
+- Client only emits actions and handles server responses. Listeners are cleaned up after each request to avoid leaks or duplicate handling.
+- JWT auth is used for secure connection. All gameplay state is server-driven.
+
+### src/shared/dungeoncore.js
+- Dungeon generation logic has already been successfully migrated to server-side/shared code. All dungeon structure, room state, and layout are generated server-authoritatively and sent to the client as a payload. No local fallback or guessing. Client only renders the dungeon based on server data. Deterministic generation (seeded RNG) ensures consistency between server and client for preview/visualization. All gameplay state is server-driven.
+
+### src/shared/events.js
+- All multiplayer, inventory, encounter, and state events are now defined centrally and used for server-authoritative request/response flows. Client and server share the same event names, ensuring consistency and reducing errors. No local fallback or guessing. All gameplay state is server-driven.
+
+### src/shared/RNG.js
+- All randomization and UUID generation for dungeon and game state is now deterministic and server-authoritative. Shared code ensures consistency between server and client for preview/visualization. No local fallback or guessing. All gameplay state is server-driven.
+
+### server/server.js
+- All game logic, world state, and event handling are now server-authoritative. Client only emits requests and renders server responses. Player join, room enter, inventory update, loot bag drop/pickup, and dungeon reset on 0 players are all managed and validated on the server. JWT auth is enforced for all connections. No client-side fallback or guessing. All gameplay state is server-driven and persistent. Event flows are request/response, and all state changes are validated and broadcast by the server. Successfully migrated flows include player join, room enter, inventory update, loot bag drop/pickup, and dungeon reset on 0 players.
+
+### server/package.json
+- All dependencies are required for server-authoritative logic, event handling, environment config, fetch, and deterministic RNG.
+
+---
+
 ## /server/server.js
 
 ### Emitters

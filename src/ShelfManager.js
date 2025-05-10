@@ -108,19 +108,8 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 gemName = 'a Raw Ruby';
                                 gemKey = 'RawRuby';
                             }
-                            // Add gem to inventory
-                            if (gemKey) {
-                                _this.scene.events.emit('addToInventory', gemKey);
-                                _this.scene.events.emit('showActionPrompt', "Picked up ".concat(gemName));
-                                // Update room data to remove the gem
-                                var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                                if (roomData) {
-                                    roomData.gemType = null;
-                                }
-                                // Remove the gem shelf sprite
-                                gemShelf.destroy();
-                                delete shelfData1.gemShelf;
-                            }
+                            // UI feedback only; actual inventory update will come from server event
+                            _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { itemKey: gemKey, roomId: room.id });
                         });
                         shelfData1.gemShelf = gemShelf;
                     }
@@ -143,17 +132,8 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // Add potion to inventory
-                            _this.scene.events.emit('addToInventory', 'Potion1(red)');
-                            _this.scene.events.emit('showActionPrompt', 'Picked up a Red Potion');
-                            // Update room data to remove the potion
-                            var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                            if (roomData) {
-                                roomData.hasPotion = false;
-                            }
-                            // Remove the potion shelf sprite
-                            potionShelf.destroy();
-                            delete shelfData1.potionShelf;
+                            // UI feedback only; actual inventory update will come from server event
+                            _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { itemKey: 'Potion1(red)', roomId: room.id });
                         });
                         shelfData1.potionShelf = potionShelf;
                     }

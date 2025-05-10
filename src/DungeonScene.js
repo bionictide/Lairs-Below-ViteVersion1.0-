@@ -319,7 +319,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // --- Initialize Managers in Dependency Order ---
                 this.itemManager = new ItemManager(this);
                 // Use the statBlock from init
-                var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+                var statBlock = this.statBlock; // Must be provided by server
+                if (!statBlock) { throw new Error('No statBlock provided from server!'); }
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);

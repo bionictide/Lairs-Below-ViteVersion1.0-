@@ -260,6 +260,79 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
   });
 
+  // --- MIGRATION: Server-authoritative handlers for new intent events ---
+
+  // PUZZLE ITEM PICKUP
+  socket.on('PUZZLE_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    // Validate puzzle/item logic here (TODO: check if puzzle is available in room)
+    player.inventory.push({ itemKey, source: 'puzzle', roomId });
+    // TODO: Remove puzzle from room state
+    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+    // TODO: Sync with Supabase
+  });
+
+  // SHELF ITEM PICKUP
+  socket.on('SHELF_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    // Validate shelf/item logic here (TODO: check if shelf item is available in room)
+    player.inventory.push({ itemKey, source: 'shelf', roomId });
+    // TODO: Remove item from shelf in room state
+    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+    // TODO: Sync with Supabase
+  });
+
+  // LOOT ITEM PICKUP
+  socket.on('LOOT_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, sourceEntityId }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    // Find the bag/loot source
+    const bag = bags.get(sourceEntityId);
+    if (bag && bag.items) {
+      const itemIndex = bag.items.findIndex(i => i.itemKey === itemKey);
+      if (itemIndex > -1) {
+        const [item] = bag.items.splice(itemIndex, 1);
+        player.inventory.push(item);
+        // If bag is empty, remove it
+        if (bag.items.length === 0) bags.delete(sourceEntityId);
+        socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+        socket.emit('LOOT_UPDATE', { bagId: sourceEntityId, items: bag.items });
+        // TODO: Sync with Supabase
+      }
+    }
+  });
+
+  // ITEM ADD (e.g., from BagManager intent)
+  socket.on('ITEM_ADD_REQUEST', ({ playerId, itemKey, gridX, gridY }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    // TODO: Validate itemKey, placement, and bag capacity
+    player.inventory.push({ itemKey, gridX, gridY, source: 'add' });
+    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+    // TODO: Sync with Supabase
+  });
+
+  // ITEM REMOVE (e.g., from BagManager intent)
+  socket.on('ITEM_REMOVE_REQUEST', ({ playerId, instanceId }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    // Remove item by instanceId
+    player.inventory = player.inventory.filter(i => i.instanceId !== instanceId);
+    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+    // TODO: Sync with Supabase
+  });
+
+  // INVENTORY CLEAR (e.g., on player death)
+  socket.on('INVENTORY_CLEAR_REQUEST', ({ playerId }) => {
+    const player = players.get(playerId);
+    if (!player || !player.alive) return;
+    player.inventory = [];
+    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
+    // TODO: Sync with Supabase
+  });
+
   // DISCONNECT (remove player entity, drop loot if alive)
   socket.on('disconnect', () => {
     for (const [playerId, player] of players.entries()) {
