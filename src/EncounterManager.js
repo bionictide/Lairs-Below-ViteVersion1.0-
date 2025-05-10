@@ -635,8 +635,8 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         this.combatVisuals.playPlayerDamageEffect();
                     }
                     
-                    // Use the finalPhysicalDamage in the prompt
-                    this.scene.events.emit('showActionPrompt', "".concat(initiatorName, " attacks YOU for ").concat(finalPhysicalDamage, " damage!"));
+                    // Use the actual damage taken in the prompt
+                    this.scene.events.emit('showActionPrompt', `${initiatorName} attacks YOU for ${actualDamage} damage!`);
                     
                     // --- Make ANY attacker angry after attacking player ---
                     if (initiator) {
