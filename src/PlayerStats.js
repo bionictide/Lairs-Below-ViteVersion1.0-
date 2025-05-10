@@ -93,7 +93,7 @@ export var PlayerStats = /*#__PURE__*/ function() {
             value: function getDefenseRating() {
                 // Apply defense bonus from items, capped at 90% reduction
                 var totalDefense = this._defenseRating + this.itemDefenseBonus;
-                return Math.min(0.9, totalDefense); // Cap defense at 0.9 (90%)
+                return Math.min(0.9, totalDefense * 0.01); // 1 DEF = 1% mitigation, cap at 90%
             }
         },
         {
