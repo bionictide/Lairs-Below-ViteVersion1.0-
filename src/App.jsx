@@ -1092,7 +1092,6 @@ function App() {
 
   // Add onJoinServer handler
   const handleJoinServer = async () => {
-    // Only proceed if character and server are locked in
     if (
       lockedCharacter === null ||
       lockedServer === null ||
@@ -1103,6 +1102,17 @@ function App() {
       return;
     }
     try {
+      // Always fetch the selected character from Supabase
+      const { data: freshChar, error: fetchError } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('id', characters[lockedCharacter].id)
+        .single();
+      if (fetchError || !freshChar) {
+        setConnectionError(true);
+        return;
+      }
+
       // Get Supabase session (JWT)
       const { data, error } = await supabase.auth.getSession();
       if (error || !data.session || !data.session.access_token) {
@@ -1110,9 +1120,8 @@ function App() {
         return;
       }
       const token = data.session.access_token;
-      // Connect to Socket.io
       window.socket = connectSocket(token);
-      // Listen for join/leave notifications (optional, as in LoginScreen)
+
       window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
         setNotification(`${name} is now roaming the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
@@ -1121,20 +1130,16 @@ function App() {
         setNotification(`${name} has left the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
       });
-      // Use joinPlayer for the new join flow
-      const char = characters[lockedCharacter];
+
+      // Use the freshly fetched character for joinPlayer
       joinPlayer(
-        { playerId: char.id, user_id: char.user_id },
+        { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
-          // onSuccess: expose current character globally for game
-          window.currentCharacter = char;
-          // Store the dungeon layout from the server
+          window.currentCharacter = freshChar;
           setDungeon(data.dungeon);
-          // Log the first 5 dungeon room IDs for debugging
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
           }
-          // Optionally store spawnRoomId, etc. from data
         },
         (errorMsg) => {
           setConnectionError(true);
