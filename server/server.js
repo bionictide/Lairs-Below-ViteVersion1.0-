@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
 import { generateDungeon } from '../src/shared/DungeonCore.js';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -87,6 +88,17 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
   grid: dungeon.grid.length
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
+
+const itemData = {
+  Key1: { name: 'Key', asset: 'Key1', width: 2, height: 1, stackable: false },
+  sword1: { name: 'Sword', asset: 'Sword1', width: 3, height: 1, stackable: false, usable: false },
+  helm1: { name: 'Helm', asset: 'Helm1', width: 2, height: 2, stackable: false, usable: false },
+  'Potion1(red)': { name: 'Red Potion', asset: 'Potion1(red)', width: 1, height: 1, stackable: true, usable: true },
+  Emerald: { name: 'Emerald', asset: 'Emerald', width: 1, height: 1, stackable: true, usable: false },
+  BlueApatite: { name: 'Blue Apatite', asset: 'BlueApatite', width: 1, height: 1, stackable: true, usable: false },
+  Amethyst: { name: 'Amethyst', asset: 'Amethyst', width: 1, height: 1, stackable: true, usable: false },
+  RawRuby: { name: 'Raw Ruby', asset: 'RawRuby', width: 1, height: 1, stackable: true, usable: false },
+};
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
@@ -266,22 +278,22 @@ io.on('connection', (socket) => {
   socket.on('PUZZLE_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
     const player = players.get(playerId);
     if (!player || !player.alive) return;
-    // Validate puzzle/item logic here (TODO: check if puzzle is available in room)
-    player.inventory.push({ itemKey, source: 'puzzle', roomId });
-    // TODO: Remove puzzle from room state
+    const def = itemData[itemKey];
+    if (!def) return;
+    const item = { ...def, itemKey, instanceId: uuidv4(), source: 'puzzle', roomId };
+    player.inventory.push(item);
     socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-    // TODO: Sync with Supabase
   });
 
   // SHELF ITEM PICKUP
   socket.on('SHELF_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
     const player = players.get(playerId);
     if (!player || !player.alive) return;
-    // Validate shelf/item logic here (TODO: check if shelf item is available in room)
-    player.inventory.push({ itemKey, source: 'shelf', roomId });
-    // TODO: Remove item from shelf in room state
+    const def = itemData[itemKey];
+    if (!def) return;
+    const item = { ...def, itemKey, instanceId: uuidv4(), source: 'shelf', roomId };
+    player.inventory.push(item);
     socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-    // TODO: Sync with Supabase
   });
 
   // LOOT ITEM PICKUP
@@ -308,10 +320,11 @@ io.on('connection', (socket) => {
   socket.on('ITEM_ADD_REQUEST', ({ playerId, itemKey, gridX, gridY }) => {
     const player = players.get(playerId);
     if (!player || !player.alive) return;
-    // TODO: Validate itemKey, placement, and bag capacity
-    player.inventory.push({ itemKey, gridX, gridY, source: 'add' });
+    const def = itemData[itemKey];
+    if (!def) return;
+    const item = { ...def, itemKey, instanceId: uuidv4(), gridX, gridY, source: 'add' };
+    player.inventory.push(item);
     socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-    // TODO: Sync with Supabase
   });
 
   // ITEM REMOVE (e.g., from BagManager intent)
