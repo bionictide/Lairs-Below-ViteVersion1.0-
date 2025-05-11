@@ -2,8 +2,6 @@
 // Uses: Node.js, Socket.io, ES modules
 // Run with: node server.js
 
-console.log('[SERVER] server/server.js is running and this is the correct file.');
-
 console.log('=== Lairs Below server.js STARTED ===');
 
 import { Server } from 'socket.io';
@@ -89,22 +87,6 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
   grid: dungeon.grid.length
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
-
-// Helper: Generate full item object from itemKey
-function createItemInstance(itemKey) {
-  // Minimal fallback if itemData is not available server-side
-  // In production, import itemData from shared or DB
-  return {
-    instanceId: `${itemKey}-${Date.now()}-${Math.floor(Math.random()*10000)}`,
-    itemKey,
-    name: itemKey,
-    asset: itemKey,
-    width: 1,
-    height: 1,
-    stackable: false,
-    usable: false
-  };
-}
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
@@ -228,101 +210,26 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
-  // INVENTORY UPDATE (server-authoritative, broadcast to all)
-  socket.on(EVENTS.INVENTORY_UPDATE, ({ playerId, action, itemKey, instanceId }) => {
+  // INVENTORY UPDATE
+  socket.on(EVENTS.INVENTORY_UPDATE, ({ playerId, inventory }) => {
     const player = players.get(playerId);
-    if (!player) return;
-    let success = false;
-    let message = '';
-    let updatedInventory = player.inventory;
-    switch (action) {
-      case 'add':
-        if (itemKey) {
-          const item = createItemInstance(itemKey);
-          updatedInventory = [...player.inventory, item];
-          player.inventory = updatedInventory;
-          success = true;
-          message = `Added ${itemKey}`;
-        }
-        break;
-      case 'remove':
-        if (instanceId) {
-          updatedInventory = player.inventory.filter(item => item.instanceId !== instanceId);
-          player.inventory = updatedInventory;
-          success = true;
-          message = `Removed item ${instanceId}`;
-        }
-        break;
-      case 'clear':
-        player.inventory = [];
-        updatedInventory = [];
-        success = true;
-        message = 'Inventory cleared';
-        break;
-      default:
-        message = 'Invalid inventory action';
+    if (player) {
+      player.inventory = inventory;
+      // TODO: Sync with Supabase
+      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success: true, message: 'Inventory updated' });
     }
-    io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success, message, data: { playerId, inventory: updatedInventory } });
   });
 
-  // LOOT BAG DROP (broadcast to all)
-  function dropLootBag(player) {
-    if (player && player.alive && player.roomId) {
-      const bagId = `bag-${player.character.id}-${Date.now()}`;
-      bags.set(bagId, { roomId: player.roomId, items: player.inventory });
-      io.emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
-    }
-  }
-
-  // LOOT BAG PICKUP (server-authoritative, broadcast to all)
+  // LOOT BAG PICKUP
   socket.on(EVENTS.LOOT_BAG_PICKUP, ({ playerId, bagId }) => {
-    console.log('[SERVER] LOOT_BAG_PICKUP received:', { playerId, bagId });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
-    console.log('[SERVER] Found bag:', bag);
-    console.log('[SERVER] Found player:', player ? player.character?.name : null);
     if (bag && player) {
-      // Enrich all items with instanceId if missing
-      const enrichedItems = bag.items.map(item => item.instanceId ? item : createItemInstance(item.itemKey || item.name || 'unknown'));
-      console.log('[SERVER] Enriched items:', enrichedItems);
-      player.inventory = [...player.inventory, ...enrichedItems];
+      // Transfer items to player
+      player.inventory.push(...bag.items);
       bags.delete(bagId);
-      const actionResultPayload = { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, inventory: player.inventory } };
-      console.log('[SERVER] Emitting ACTION_RESULT:', actionResultPayload);
-      io.emit(EVENTS.ACTION_RESULT, actionResultPayload);
-      io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] }); // Remove bag for all
-    } else {
-      console.log('[SERVER] Bag not found or player not found.');
-      socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });
-    }
-  });
-
-  // LOOT ITEM PICKUP
-  socket.on(EVENTS.LOOT_ITEM_PICKUP, ({ playerId, bagId, itemKey }) => {
-    console.log('[SERVER] Received loot_item_pickup event:', { playerId, bagId, itemKey });
-    const bag = bags.get(bagId);
-    const player = players.get(playerId);
-    if (bag && player) {
-      // Find and remove the item from the bag
-      const itemIndex = bag.items.findIndex(item => (item.itemKey || item.name) === itemKey);
-      if (itemIndex !== -1) {
-        const [removedItem] = bag.items.splice(itemIndex, 1);
-        // Add to player inventory (enrich if needed)
-        const itemToAdd = removedItem.instanceId ? removedItem : createItemInstance(itemKey);
-        player.inventory = [...player.inventory, itemToAdd];
-        // Broadcast updated inventory
-        io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success: true, message: `Picked up ${itemKey}`, data: { playerId, inventory: player.inventory } });
-        // If bag is now empty, remove it and broadcast
-        if (bag.items.length === 0) {
-          bags.delete(bagId);
-          io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] });
-        } else {
-          // Otherwise, broadcast updated bag contents
-          io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: bag.items });
-        }
-      } else {
-        socket.emit(EVENTS.ERROR, { message: 'Item not found in bag', code: 'ITEM_NOT_FOUND' });
-      }
+      // TODO: Sync with Supabase
+      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { items: bag.items } });
     } else {
       socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });
     }
@@ -386,8 +293,6 @@ server.on('request', (req, res) => {
     res.end('Lairs Below Socket.IO server is running!');
   }
 });
-
-console.log('[SERVER] EVENTS.LOOT_ITEM_PICKUP:', EVENTS.LOOT_ITEM_PICKUP);
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);

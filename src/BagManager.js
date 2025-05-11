@@ -1,5 +1,3 @@
-import { socket } from './socket.js';
-
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
     for(var i = 0, arr2 = new Array(len); i < len; i++)arr2[i] = arr[i];
@@ -174,23 +172,6 @@ export var BagManager = /*#__PURE__*/ function() {
         this.initializeGridOccupancy();
         // Start player with one potion for healing
         this.addItem('Potion1(red)'); // Keep the potion for gameplay purposes
-        // In constructor, set up listeners for ACTION_RESULT and LOOT_BAG_DROP
-        socket.on('action_result', (payload) => {
-            if (
-                (payload.action === 'inventory_update' || payload.action === 'loot_bag_pickup') &&
-                payload.data &&
-                payload.data.playerId === this.playerStats.playerId
-            ) {
-                const newInventory = Array.isArray(payload.data.inventory) ? payload.data.inventory : [];
-                // Optionally: filter/validate each item has instanceId, itemKey, name, asset, width, height
-                this.inventory = newInventory.filter(item => item && item.instanceId && item.itemKey && item.name && item.asset);
-                this.playerStats.updateStatsFromInventory(this.inventory);
-                this.updateBagUI();
-            }
-        });
-        socket.on('loot_bag_drop', (payload) => {
-            // Optionally handle bag drop UI updates here if needed
-        });
     }
     _create_class(BagManager, [
         {
@@ -337,21 +318,74 @@ export var BagManager = /*#__PURE__*/ function() {
             }
         },
         {
+            // --- Inventory Management Methods ---
             key: "addItem",
             value: function addItem(itemKey) {
-                socket.emit('inventory_update', { playerId: this.playerStats.playerId, action: 'add', itemKey });
+                var baseItem = itemData[itemKey];
+                if (!baseItem) {
+                    console.warn("[BagManager] Attempted to add unknown item key: ".concat(itemKey));
+                    return false; // Return false if item key is unknown
+                }
+                var instanceId = Phaser.Utils.String.UUID();
+                var newItemInstance = _object_spread({
+                    instanceId: instanceId,
+                    itemKey: itemKey,
+                    gridX: -1,
+                    gridY: -1
+                }, baseItem // Spread all properties from itemData definition
+                );
+                // Find the first available slot (simple top-left placement for now)
+                var placement = this.findFirstAvailableSlot(newItemInstance.width, newItemInstance.height);
+                if (placement) {
+                    newItemInstance.gridX = placement.x;
+                    newItemInstance.gridY = placement.y;
+                    this.markGridOccupancy(placement.x, placement.y, newItemInstance.width, newItemInstance.height, instanceId);
+                    this.inventory.push(newItemInstance);
+                    console.log("[BagManager] Added ".concat(newItemInstance.name, " at [").concat(placement.x, ", ").concat(placement.y, "]. Inventory size: ").concat(this.inventory.length));
+                    this.scene.events.emit('showActionPrompt', "Picked up ".concat(newItemInstance.name));
+                    // If the bag is open, refresh the UI to show the new item
+                    if (this.isOpen) {
+                        this.openBagUI(); // Re-render the bag UI
+                    }
+                    // Update player stats after adding an item
+                    this.playerStats.updateStatsFromInventory(this.inventory);
+                    // --- Sync inventory to Supabase ---
+                    if (window.supabase && window.currentCharacterId) {
+                        window.supabase.from('characters').update({ inventory: this.inventory }).eq('id', window.currentCharacterId);
+                    }
+                    return true; // Indicate success
+                } else {
+                    console.warn("[BagManager] No space available for ".concat(newItemInstance.name));
+                    this.scene.events.emit('showActionPrompt', "Bag is full! Cannot pick up ".concat(newItemInstance.name));
+                    return false; // Indicate failure (no space)
+                }
             }
         },
         {
             key: "removeItem",
             value: function removeItem(instanceId) {
-                socket.emit('inventory_update', { playerId: this.playerStats.playerId, action: 'remove', instanceId });
-            }
-        },
-        {
-            key: "clearInventory",
-            value: function clearInventory() {
-                socket.emit('inventory_update', { playerId: this.playerStats.playerId, action: 'clear' });
+                var index = this.inventory.findIndex(function(item) {
+                    return item.instanceId === instanceId;
+                });
+                if (index !== -1) {
+                    var removedItem = this.inventory.splice(index, 1)[0];
+                    this.unmarkGridOccupancy(removedItem.gridX, removedItem.gridY, removedItem.width, removedItem.height);
+                    console.log("[BagManager] Removed item: ".concat(removedItem.name, " (ID: ").concat(instanceId, "). Inventory size: ").concat(this.inventory.length));
+                    // If the bag is open, refresh the UI
+                    if (this.isOpen) {
+                        this.openBagUI();
+                    }
+                    // Update player stats after removing an item
+                    this.playerStats.updateStatsFromInventory(this.inventory);
+                    // --- Sync inventory to Supabase ---
+                    if (window.supabase && window.currentCharacterId) {
+                        window.supabase.from('characters').update({ inventory: this.inventory }).eq('id', window.currentCharacterId);
+                    }
+                    return removedItem;
+                } else {
+                    console.warn("[BagManager] Attempted to remove item with unknown ID: ".concat(instanceId));
+                    return null;
+                }
             }
         },
         {
@@ -989,7 +1023,30 @@ export var BagManager = /*#__PURE__*/ function() {
             }
         },
         {
-            key: "getRandomItemInstance",
+            key: "clearInventory",
+            value: function clearInventory() {
+                var clearedItems = _to_consumable_array(this.inventory); // Return a copy of what was cleared
+                this.inventory = []; // Empty the inventory array
+                this.initializeGridOccupancy(); // Reset the grid occupancy map
+                // If the bag UI is open, refresh it to show it's empty
+                if (this.isOpen) {
+                    this.openBagUI();
+                }
+                // Update player stats after clearing inventory
+                this.playerStats.updateStatsFromInventory([]); // Pass empty array
+                // --- Sync inventory to Supabase ---
+                if (window.supabase && window.currentCharacterId) {
+                    window.supabase.from('characters').update({ inventory: [] }).eq('id', window.currentCharacterId);
+                }
+                console.log("[BagManager] Inventory cleared. ".concat(clearedItems.length, " items were removed."));
+                return clearedItems; // Return the items that were in the inventory
+            }
+        },
+        {
+            /**
+     * Returns a random item instance from the inventory, or null if empty.
+     * @returns {object|null} A copy of a random item instance or null.
+     */ key: "getRandomItemInstance",
             value: function getRandomItemInstance() {
                 if (this.inventory.length === 0) {
                     return null;
