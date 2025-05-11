@@ -1,4 +1,4 @@
-const { createRNG, shuffle, uuidv4 } = require('./RNG.js');
+import { createRNG, shuffle, uuidv4 } from './RNG.js';
 
 // Minimal deterministic dungeon generator for testing
 export function generateDungeon(seed, options = {}) {

@@ -2,6 +2,7 @@
   "name": "lairs-below-server",
   "version": "1.0.0",
   "main": "server.js",
+  "type": "module",
   "dependencies": {
     "socket.io": "^4.7.5",
     "dotenv": "^16.4.5",
