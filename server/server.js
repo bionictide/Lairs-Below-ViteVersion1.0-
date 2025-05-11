@@ -2,6 +2,8 @@
 // Uses: Node.js, Socket.io, ES modules
 // Run with: node server.js
 
+console.log('[SERVER] server.js is running and this is the latest code.');
+
 console.log('=== Lairs Below server.js STARTED ===');
 
 import { Server } from 'socket.io';
