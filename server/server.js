@@ -385,6 +385,8 @@ server.on('request', (req, res) => {
   }
 });
 
+console.log('[SERVER] EVENTS.LOOT_ITEM_PICKUP:', EVENTS.LOOT_ITEM_PICKUP);
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);
 }); 
