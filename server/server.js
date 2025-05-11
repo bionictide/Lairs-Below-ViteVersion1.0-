@@ -274,16 +274,23 @@ io.on('connection', (socket) => {
 
   // LOOT BAG PICKUP (server-authoritative, broadcast to all)
   socket.on(EVENTS.LOOT_BAG_PICKUP, ({ playerId, bagId }) => {
+    console.log('[SERVER] LOOT_BAG_PICKUP received:', { playerId, bagId });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
+    console.log('[SERVER] Found bag:', bag);
+    console.log('[SERVER] Found player:', player ? player.character?.name : null);
     if (bag && player) {
       // Enrich all items with instanceId if missing
       const enrichedItems = bag.items.map(item => item.instanceId ? item : createItemInstance(item.itemKey || item.name || 'unknown'));
+      console.log('[SERVER] Enriched items:', enrichedItems);
       player.inventory = [...player.inventory, ...enrichedItems];
       bags.delete(bagId);
-      io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, inventory: player.inventory } });
+      const actionResultPayload = { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, inventory: player.inventory } };
+      console.log('[SERVER] Emitting ACTION_RESULT:', actionResultPayload);
+      io.emit(EVENTS.ACTION_RESULT, actionResultPayload);
       io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] }); // Remove bag for all
     } else {
+      console.log('[SERVER] Bag not found or player not found.');
       socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });
     }
   });
