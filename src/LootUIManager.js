@@ -97,7 +97,8 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 this.lootContainer = this.scene.add.container(0, 0).setDepth(92); // Loot UI Container layer
                 // Background (using Bag2 like inventory)
                 var lootBg = this.scene.add.image(centerX, centerY, 'Bag2');
-                // lootBg.setScale(0.8); // Optional scaling
+                // DO NOT set lootBg as interactive
+                // lootBg.setInteractive(false); // Ensure not interactive
                 // Title
                 var title = this.scene.add.text(centerX, centerY - lootBg.displayHeight / 2 + 40, 'Loot', {
                     fontSize: '32px',
@@ -137,6 +138,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
                     lootBg,
                     title
                 ]); // Add only bg and title to the container
+                // DO NOT set lootContainer as interactive
                 // --- Calculate Grid Position ---
                 var totalGridWidth = this.gridCols * this.cellSize;
                 var totalGridHeight = this.gridRows * this.cellSize;
@@ -276,7 +278,9 @@ export var LootUIManager = /*#__PURE__*/ function() {
                     // Correct signature: (pointer, localX, localY, event)
                     itemSprite.on('pointerdown', function(pointer, localX, localY, event) {
                         event.stopPropagation();
-                        socket.emit('loot_item_pickup', { playerId: _this.scene.playerId, bagId: _this.currentSourceEntityId, itemKey });
+                        const payload = { playerId: _this.scene.playerId, bagId: _this.currentSourceEntityId, itemKey };
+                        console.log('[LootUIManager] Emitting loot_item_pickup:', payload);
+                        socket.emit('loot_item_pickup', payload);
                     });
                     _this.lootContainer.add(itemSprite);
                     console.log("[LootUIManager] Rendered loot item ".concat(itemKey, " at grid [").concat(itemGridX, ", ").concat(itemGridY, "]"));
