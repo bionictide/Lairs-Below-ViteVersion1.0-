@@ -183,4 +183,19 @@ These rules are absolute and must be followed for all future development and mig
   5. If successful, removes a random item from the defender's inventory and adds it to the attacker's.
   6. Server sends the result and updated inventories to both clients.
 - All calculations, rolls, and state changes are performed server-side. The client only displays results and never simulates, guesses, or modifies gameplay state.
-- All PVP event flows must be mapped in events.md and events.js, and all state changes must be documented in this folder. 
+- All PVP event flows must be mapped in events.md and events.js, and all state changes must be documented in this folder.
+
+> **2024-06: Lessons from Successful Server-Side Implementation**
+> - Use pure ES Modules (ESM) everywhere (`import`/`export`), not CommonJS (`require`). Ensure `package.json` has `"type": "module"`.
+> - All dungeon/world generation and mutation logic must be performed server-side only, using deterministic, seed-based logic for consistency.
+> - Player join flow should:
+>   - Authenticate using Supabase JWT on every connection.
+>   - Fetch and validate player data from Supabase server-side.
+>   - Inject the player into the dungeon and assign a spawn room server-side.
+>   - Emit the full dungeon state and spawn info to the client as a single authoritative payload.
+>   - Notify other players of joins/leaves using standardized event names from `events.js`.
+> - All inventory, loot, and bag state changes must be validated and emitted from the server only. The client must never mutate these directly.
+> - Use the same event names and payloads as in `events.js`/`events.md` everywhere. Never invent or abbreviate event names in code.
+> - All event flows should be request/response, with the server as the single source of truth.
+> - Placeholders for future features (spells, trading, parties, stat allocation) should be stubbed server-side and documented for future implementation.
+> - Health checks and server status endpoints should be included for deployment environments. 

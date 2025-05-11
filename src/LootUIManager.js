@@ -20,6 +20,7 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 // Import itemData to get asset info (consider moving itemData to a shared file later)
 import { itemData } from './BagManager.js'; // Assuming itemData is exported from BagManager
+import { socket } from './socket.js';
 export var LootUIManager = /*#__PURE__*/ function() {
     "use strict";
     function LootUIManager(scene, npcLootManager, bagManager) {
@@ -41,6 +42,19 @@ export var LootUIManager = /*#__PURE__*/ function() {
         this.gridStartX = 0;
         this.gridStartY = 0;
         console.log("[LootUIManager] Initialized.");
+        // In constructor, set up listeners for ACTION_RESULT and LOOT_BAG_DROP
+        socket.on('action_result', (payload) => {
+            if (payload.action === 'loot_bag_pickup' && payload.data && payload.data.playerId === this.scene.playerId) {
+                // Remove the bag from UI, update inventory via BagManager (already handled by BagManager's listener)
+                if (this.currentSourceEntityId) {
+                    this.bagManager.removeBagSprite(this.currentSourceEntityId);
+                    this.closeLootUI();
+                }
+            }
+        });
+        socket.on('loot_bag_drop', (payload) => {
+            // Optionally handle bag drop UI updates here if needed
+        });
     }
     _create_class(LootUIManager, [
         {
@@ -276,27 +290,9 @@ export var LootUIManager = /*#__PURE__*/ function() {
      * @private
      */ key: "_handleLootItemClick",
             value: function _handleLootItemClick(itemSprite) {
-                var itemKey = itemSprite.getData('itemKey');
-                console.log("[LootUIManager] Clicked loot item: ".concat(itemKey));
-                // 1. Attempt to add the item to the player's bag
-                var addedSuccessfully = this.bagManager.addItem(itemKey);
-                // 2. Handle success or failure
-                if (addedSuccessfully) {
-                    console.log("[LootUIManager] Successfully transferred ".concat(itemKey, " to player bag."));
-                    // Remove item from the loot list
-                    var itemIndex = this.currentLootItems.indexOf(itemKey);
-                    if (itemIndex > -1) {
-                        this.currentLootItems.splice(itemIndex, 1);
-                    }
-                    // Destroy the sprite in the loot UI
-                    itemSprite.destroy();
-                // Optional: Re-render loot items if placement logic gets complex later
-                // this._renderLootItems(this.gridStartX, this.gridStartY);
-                // Prompt already handled by BagManager.addItem on success
-                } else {
-                    console.log("[LootUIManager] Failed to transfer ".concat(itemKey, ". Bag likely full."));
-                // Prompt already handled by BagManager.addItem on failure
-                }
+                const itemKey = itemSprite.getData('itemKey');
+                // Emit LOOT_BAG_PICKUP intent to server
+                socket.emit('loot_bag_pickup', { playerId: this.scene.playerId, bagId: this.currentSourceEntityId });
             }
         }
     ]);

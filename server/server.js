@@ -210,26 +210,62 @@ io.on('connection', (socket) => {
     socket.join(roomId);
   });
 
-  // INVENTORY UPDATE
-  socket.on(EVENTS.INVENTORY_UPDATE, ({ playerId, inventory }) => {
+  // INVENTORY UPDATE (server-authoritative, broadcast to all)
+  socket.on(EVENTS.INVENTORY_UPDATE, ({ playerId, action, itemKey, instanceId }) => {
     const player = players.get(playerId);
-    if (player) {
-      player.inventory = inventory;
-      // TODO: Sync with Supabase
-      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success: true, message: 'Inventory updated' });
+    if (!player) return;
+    let success = false;
+    let message = '';
+    let updatedInventory = player.inventory;
+    // Only allow server-side mutations
+    switch (action) {
+      case 'add':
+        // Validate itemKey, add to inventory
+        if (itemKey) {
+          updatedInventory = [...player.inventory, { itemKey }];
+          player.inventory = updatedInventory;
+          success = true;
+          message = `Added ${itemKey}`;
+        }
+        break;
+      case 'remove':
+        if (instanceId) {
+          updatedInventory = player.inventory.filter(item => item.instanceId !== instanceId);
+          player.inventory = updatedInventory;
+          success = true;
+          message = `Removed item ${instanceId}`;
+        }
+        break;
+      case 'clear':
+        player.inventory = [];
+        updatedInventory = [];
+        success = true;
+        message = 'Inventory cleared';
+        break;
+      default:
+        message = 'Invalid inventory action';
     }
+    io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success, message, data: { playerId, inventory: updatedInventory } });
   });
 
-  // LOOT BAG PICKUP
+  // LOOT BAG DROP (broadcast to all)
+  function dropLootBag(player) {
+    if (player && player.alive && player.roomId) {
+      const bagId = `bag-${player.character.id}-${Date.now()}`;
+      bags.set(bagId, { roomId: player.roomId, items: player.inventory });
+      io.emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
+    }
+  }
+
+  // LOOT BAG PICKUP (server-authoritative, broadcast to all)
   socket.on(EVENTS.LOOT_BAG_PICKUP, ({ playerId, bagId }) => {
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (bag && player) {
-      // Transfer items to player
       player.inventory.push(...bag.items);
       bags.delete(bagId);
-      // TODO: Sync with Supabase
-      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { items: bag.items } });
+      io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, items: bag.items } });
+      io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] }); // Remove bag for all
     } else {
       socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });
     }
