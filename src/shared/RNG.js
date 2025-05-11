@@ -1,12 +1,12 @@
-import seedrandom from 'seedrandom';
+const seedrandom = require('seedrandom');
 
 // Create a deterministic, seedable RNG
-export function createRNG(seed) {
+function createRNG(seed) {
   return seedrandom(seed);
 }
 
 // Deterministic Fisher-Yates shuffle using provided RNG
-export function shuffle(array, rng) {
+function shuffle(array, rng) {
   const arr = array.slice(); // Do not mutate original
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -16,7 +16,7 @@ export function shuffle(array, rng) {
 }
 
 // Deterministic UUID generator using RNG (v4-like)
-export function uuidv4(rng) {
+function uuidv4(rng) {
   let uuid = '', i;
   for (i = 0; i < 36; i++) {
     if (i === 8 || i === 13 || i === 18 || i === 23) {
@@ -30,4 +30,6 @@ export function uuidv4(rng) {
     }
   }
   return uuid;
-} 
+}
+
+module.exports = { createRNG, shuffle, uuidv4 }; 

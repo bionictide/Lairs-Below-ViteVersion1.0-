@@ -1,17 +1,17 @@
 // Multiplayer Server Skeleton for Dungeon Crawler
-// Uses: Node.js, Socket.io, ES modules
+// Uses: Node.js, Socket.io, CommonJS modules
 // Run with: node server.js
 
 console.log('[SERVER] server/server.js is running and this is the correct file.');
 
 console.log('=== Lairs Below server.js STARTED ===');
 
-import { Server } from 'socket.io';
-import http from 'http';
-import dotenv from 'dotenv';
-import { EVENTS } from '../src/shared/events.js';
-import fetch from 'node-fetch';
-import { generateDungeon } from '../src/shared/DungeonCore.js';
+const { Server } = require('socket.io');
+const http = require('http');
+const dotenv = require('dotenv');
+const { EVENTS } = require('../src/shared/events.js');
+const fetch = require('node-fetch');
+const { generateDungeon } = require('../src/shared/DungeonCore.js');
 
 dotenv.config();
 
