@@ -92,6 +92,17 @@
   }
   ```
 
+## loot_item_pickup
+- Direction: client → server
+- Payload:
+  ```json
+  {
+    "playerId": "string",
+    "bagId": "string",
+    "itemKey": "string"
+  }
+  ```
+
 ## health_update
 - Direction: server → client
 - Payload:

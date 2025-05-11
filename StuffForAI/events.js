@@ -11,6 +11,7 @@ export const EVENTS = {
   INVENTORY_UPDATE: 'inventory_update',
   LOOT_BAG_DROP: 'loot_bag_drop',
   LOOT_BAG_PICKUP: 'loot_bag_pickup',
+  LOOT_ITEM_PICKUP: 'loot_item_pickup',
   HEALTH_UPDATE: 'health_update',
   SPELL_CAST: 'spell_cast',
   SPELL_RESULT: 'spell_result',

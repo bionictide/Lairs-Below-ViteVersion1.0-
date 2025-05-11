@@ -275,8 +275,8 @@ export var LootUIManager = /*#__PURE__*/ function() {
                     // Add click listener (placeholder for transfer logic)
                     // Correct signature: (pointer, localX, localY, event)
                     itemSprite.on('pointerdown', function(pointer, localX, localY, event) {
-                        event.stopPropagation(); // Call on the DOM event object
-                        _this._handleLootItemClick(itemSprite);
+                        event.stopPropagation();
+                        socket.emit('loot_item_pickup', { playerId: _this.scene.playerId, bagId: _this.currentSourceEntityId, itemKey });
                     });
                     _this.lootContainer.add(itemSprite);
                     console.log("[LootUIManager] Rendered loot item ".concat(itemKey, " at grid [").concat(itemGridX, ", ").concat(itemGridY, "]"));

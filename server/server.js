@@ -295,6 +295,37 @@ io.on('connection', (socket) => {
     }
   });
 
+  // LOOT ITEM PICKUP
+  socket.on(EVENTS.LOOT_ITEM_PICKUP, ({ playerId, bagId, itemKey }) => {
+    console.log('[SERVER] LOOT_ITEM_PICKUP received:', { playerId, bagId, itemKey });
+    const bag = bags.get(bagId);
+    const player = players.get(playerId);
+    if (bag && player) {
+      // Find and remove the item from the bag
+      const itemIndex = bag.items.findIndex(item => (item.itemKey || item.name) === itemKey);
+      if (itemIndex !== -1) {
+        const [removedItem] = bag.items.splice(itemIndex, 1);
+        // Add to player inventory (enrich if needed)
+        const itemToAdd = removedItem.instanceId ? removedItem : createItemInstance(itemKey);
+        player.inventory = [...player.inventory, itemToAdd];
+        // Broadcast updated inventory
+        io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.INVENTORY_UPDATE, success: true, message: `Picked up ${itemKey}`, data: { playerId, inventory: player.inventory } });
+        // If bag is now empty, remove it and broadcast
+        if (bag.items.length === 0) {
+          bags.delete(bagId);
+          io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] });
+        } else {
+          // Otherwise, broadcast updated bag contents
+          io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: bag.items });
+        }
+      } else {
+        socket.emit(EVENTS.ERROR, { message: 'Item not found in bag', code: 'ITEM_NOT_FOUND' });
+      }
+    } else {
+      socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });
+    }
+  });
+
   // SPELL CAST
   socket.on(EVENTS.SPELL_CAST, ({ playerId, spellName, targetId }) => {
     // TODO: Implement spell logic, mana check, etc.
