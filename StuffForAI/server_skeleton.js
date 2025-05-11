@@ -5,7 +5,7 @@
 import { Server } from 'socket.io';
 import http from 'http';
 import dotenv from 'dotenv';
-import { EVENTS } from './events.js';
+import { EVENTS } from '../src/shared/events.js';
 
 dotenv.config();
 
