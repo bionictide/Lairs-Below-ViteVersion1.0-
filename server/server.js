@@ -88,6 +88,22 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
 
+// Helper: Generate full item object from itemKey
+function createItemInstance(itemKey) {
+  // Minimal fallback if itemData is not available server-side
+  // In production, import itemData from shared or DB
+  return {
+    instanceId: `${itemKey}-${Date.now()}-${Math.floor(Math.random()*10000)}`,
+    itemKey,
+    name: itemKey,
+    asset: itemKey,
+    width: 1,
+    height: 1,
+    stackable: false,
+    usable: false
+  };
+}
+
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
   console.log('[SOCKET] Client connected:', socket.id, 'User:', socket.user?.id || '[no user]');
@@ -217,12 +233,11 @@ io.on('connection', (socket) => {
     let success = false;
     let message = '';
     let updatedInventory = player.inventory;
-    // Only allow server-side mutations
     switch (action) {
       case 'add':
-        // Validate itemKey, add to inventory
         if (itemKey) {
-          updatedInventory = [...player.inventory, { itemKey }];
+          const item = createItemInstance(itemKey);
+          updatedInventory = [...player.inventory, item];
           player.inventory = updatedInventory;
           success = true;
           message = `Added ${itemKey}`;
@@ -262,9 +277,11 @@ io.on('connection', (socket) => {
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (bag && player) {
-      player.inventory.push(...bag.items);
+      // Enrich all items with instanceId if missing
+      const enrichedItems = bag.items.map(item => item.instanceId ? item : createItemInstance(item.itemKey || item.name || 'unknown'));
+      player.inventory = [...player.inventory, ...enrichedItems];
       bags.delete(bagId);
-      io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, items: bag.items } });
+      io.emit(EVENTS.ACTION_RESULT, { action: EVENTS.LOOT_BAG_PICKUP, success: true, message: 'Looted bag', data: { playerId, inventory: player.inventory } });
       io.emit(EVENTS.LOOT_BAG_DROP, { roomId: bag.roomId, bagId, items: [] }); // Remove bag for all
     } else {
       socket.emit(EVENTS.ERROR, { message: 'Bag not found', code: 'BAG_NOT_FOUND' });

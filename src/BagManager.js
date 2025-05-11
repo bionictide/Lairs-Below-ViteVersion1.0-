@@ -176,10 +176,16 @@ export var BagManager = /*#__PURE__*/ function() {
         this.addItem('Potion1(red)'); // Keep the potion for gameplay purposes
         // In constructor, set up listeners for ACTION_RESULT and LOOT_BAG_DROP
         socket.on('action_result', (payload) => {
-            if (payload.action === 'inventory_update' && payload.data && payload.data.playerId === this.playerStats.playerId) {
-                this.inventory = payload.data.inventory || [];
+            if (
+                (payload.action === 'inventory_update' || payload.action === 'loot_bag_pickup') &&
+                payload.data &&
+                payload.data.playerId === this.playerStats.playerId
+            ) {
+                const newInventory = Array.isArray(payload.data.inventory) ? payload.data.inventory : [];
+                // Optionally: filter/validate each item has instanceId, itemKey, name, asset, width, height
+                this.inventory = newInventory.filter(item => item && item.instanceId && item.itemKey && item.name && item.asset);
                 this.playerStats.updateStatsFromInventory(this.inventory);
-                if (this.isOpen) this.openBagUI();
+                this.updateBagUI();
             }
         });
         socket.on('loot_bag_drop', (payload) => {
