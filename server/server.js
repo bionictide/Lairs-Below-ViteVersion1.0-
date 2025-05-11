@@ -297,7 +297,7 @@ io.on('connection', (socket) => {
 
   // LOOT ITEM PICKUP
   socket.on(EVENTS.LOOT_ITEM_PICKUP, ({ playerId, bagId, itemKey }) => {
-    console.log('[SERVER] LOOT_ITEM_PICKUP received:', { playerId, bagId, itemKey });
+    console.log('[SERVER] Received loot_item_pickup event:', { playerId, bagId, itemKey });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (bag && player) {
