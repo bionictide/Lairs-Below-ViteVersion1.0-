@@ -113,7 +113,7 @@ export var TreasureManager = /*#__PURE__*/ function() {
                         // Emit event only if an itemKey was determined
                         if (itemKey) {
                             // Emit BEFORE destroying sprite or modifying room data
-                            _this.scene.socket.emit('ITEM_ADD_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey });
+                            _this.scene.events.emit('addToInventory', itemKey);
                         } else {
                             // Log if no valid item key could be determined from the original level
                             console.warn("[TreasureManager] Clicked treasure in room ".concat(room.id, ", but original treasureLevel (").concat(originalTreasureLevel, ") didn't map to a known itemKey."));

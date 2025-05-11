@@ -10,7 +10,6 @@ import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
 import { generateDungeon } from '../src/shared/DungeonCore.js';
-import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config();
 
@@ -88,17 +87,6 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
   grid: dungeon.grid.length
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
-
-const itemData = {
-  Key1: { name: 'Key', asset: 'Key1', width: 2, height: 1, stackable: false },
-  sword1: { name: 'Sword', asset: 'Sword1', width: 3, height: 1, stackable: false, usable: false },
-  helm1: { name: 'Helm', asset: 'Helm1', width: 2, height: 2, stackable: false, usable: false },
-  'Potion1(red)': { name: 'Red Potion', asset: 'Potion1(red)', width: 1, height: 1, stackable: true, usable: true },
-  Emerald: { name: 'Emerald', asset: 'Emerald', width: 1, height: 1, stackable: true, usable: false },
-  BlueApatite: { name: 'Blue Apatite', asset: 'BlueApatite', width: 1, height: 1, stackable: true, usable: false },
-  Amethyst: { name: 'Amethyst', asset: 'Amethyst', width: 1, height: 1, stackable: true, usable: false },
-  RawRuby: { name: 'Raw Ruby', asset: 'RawRuby', width: 1, height: 1, stackable: true, usable: false },
-};
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
@@ -270,90 +258,6 @@ io.on('connection', (socket) => {
   socket.on(EVENTS.STAT_ALLOCATION, (payload) => {
     // TODO: Implement stat allocation logic
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
-  });
-
-  // --- MIGRATION: Server-authoritative handlers for new intent events ---
-
-  // PUZZLE ITEM PICKUP
-  socket.on('PUZZLE_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    const def = itemData[itemKey];
-    if (!def) return;
-    const item = { ...def, itemKey, instanceId: uuidv4(), source: 'puzzle', roomId };
-    player.inventory.push(item);
-    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-  });
-
-  // SHELF ITEM PICKUP
-  socket.on('SHELF_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, roomId }) => {
-    console.log('[SERVER] SHELF_ITEM_PICKUP_REQUEST:', { playerId, itemKey, roomId });
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    const def = itemData[itemKey];
-    if (!def) {
-      console.log('[SERVER] Item definition not found for:', itemKey);
-      return;
-    }
-    const item = { ...def, itemKey, instanceId: uuidv4(), source: 'shelf', roomId };
-    player.inventory.push(item);
-    console.log('[SERVER] Player inventory after shelf pickup:', player.inventory);
-    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-  });
-
-  // LOOT ITEM PICKUP
-  socket.on('LOOT_ITEM_PICKUP_REQUEST', ({ playerId, itemKey, sourceEntityId }) => {
-    console.log('[SERVER] LOOT_ITEM_PICKUP_REQUEST:', { playerId, itemKey, sourceEntityId });
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    const bag = bags.get(sourceEntityId);
-    if (bag && bag.items) {
-      console.log('[SERVER] Bag found:', bag);
-      const itemIndex = bag.items.findIndex(i => i.itemKey === itemKey);
-      if (itemIndex > -1) {
-        const [item] = bag.items.splice(itemIndex, 1);
-        console.log('[SERVER] Item removed from bag:', item);
-        player.inventory.push(item);
-        console.log('[SERVER] Player inventory after loot:', player.inventory);
-        if (bag.items.length === 0) bags.delete(sourceEntityId);
-        socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-        socket.emit('LOOT_UPDATE', { bagId: sourceEntityId, items: bag.items });
-      } else {
-        console.log('[SERVER] Item not found in bag:', itemKey);
-      }
-    } else {
-      console.log('[SERVER] Bag not found for sourceEntityId:', sourceEntityId);
-    }
-  });
-
-  // ITEM ADD (e.g., from BagManager intent)
-  socket.on('ITEM_ADD_REQUEST', ({ playerId, itemKey, gridX, gridY }) => {
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    const def = itemData[itemKey];
-    if (!def) return;
-    const item = { ...def, itemKey, instanceId: uuidv4(), gridX, gridY, source: 'add' };
-    player.inventory.push(item);
-    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-  });
-
-  // ITEM REMOVE (e.g., from BagManager intent)
-  socket.on('ITEM_REMOVE_REQUEST', ({ playerId, instanceId }) => {
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    // Remove item by instanceId
-    player.inventory = player.inventory.filter(i => i.instanceId !== instanceId);
-    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-    // TODO: Sync with Supabase
-  });
-
-  // INVENTORY CLEAR (e.g., on player death)
-  socket.on('INVENTORY_CLEAR_REQUEST', ({ playerId }) => {
-    const player = players.get(playerId);
-    if (!player || !player.alive) return;
-    player.inventory = [];
-    socket.emit(EVENTS.INVENTORY_UPDATE, { inventory: player.inventory });
-    // TODO: Sync with Supabase
   });
 
   // DISCONNECT (remove player entity, drop loot if alive)

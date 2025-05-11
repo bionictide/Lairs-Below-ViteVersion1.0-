@@ -278,14 +278,25 @@ export var LootUIManager = /*#__PURE__*/ function() {
             value: function _handleLootItemClick(itemSprite) {
                 var itemKey = itemSprite.getData('itemKey');
                 console.log("[LootUIManager] Clicked loot item: ".concat(itemKey));
-                console.log('[CLIENT] Loot item clicked:', { itemKey, sourceEntityId: this.currentSourceEntityId });
-                if (this.scene.socket) {
-                    console.log('[CLIENT] Emitting LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
-                    this.scene.socket.emit('LOOT_ITEM_PICKUP_REQUEST', { playerId: this.scene.playerId || (this.scene.playerStats && this.scene.playerStats.playerId), itemKey, sourceEntityId: this.currentSourceEntityId });
+                // 1. Attempt to add the item to the player's bag
+                var addedSuccessfully = this.bagManager.addItem(itemKey);
+                // 2. Handle success or failure
+                if (addedSuccessfully) {
+                    console.log("[LootUIManager] Successfully transferred ".concat(itemKey, " to player bag."));
+                    // Remove item from the loot list
+                    var itemIndex = this.currentLootItems.indexOf(itemKey);
+                    if (itemIndex > -1) {
+                        this.currentLootItems.splice(itemIndex, 1);
+                    }
+                    // Destroy the sprite in the loot UI
+                    itemSprite.destroy();
+                // Optional: Re-render loot items if placement logic gets complex later
+                // this._renderLootItems(this.gridStartX, this.gridStartY);
+                // Prompt already handled by BagManager.addItem on success
                 } else {
-                    console.error('[CLIENT] this.scene.socket is undefined!');
+                    console.log("[LootUIManager] Failed to transfer ".concat(itemKey, ". Bag likely full."));
+                // Prompt already handled by BagManager.addItem on failure
                 }
-                // UI feedback only; actual inventory and loot update will come from server event
             }
         }
     ]);

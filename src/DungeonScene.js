@@ -213,8 +213,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.playerId = null; // Add property to store the player's unique ID
         _this.entitySprites = new Map(); // Map to store entityId -> sprite mapping
         _this.statBlock = null; // <-- Add this property for stat block injection
-        // --- Ensure server socket is available to all managers ---
-        _this.socket = window.socket || window._socket || null; // Assign the active socket connection
         return _this;
     }
     _create_class(DungeonScene, [
@@ -321,8 +319,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // --- Initialize Managers in Dependency Order ---
                 this.itemManager = new ItemManager(this);
                 // Use the statBlock from init
-                var statBlock = this.statBlock; // Must be provided by server
-                if (!statBlock) { throw new Error('No statBlock provided from server!'); }
+                var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);

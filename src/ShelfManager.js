@@ -108,13 +108,18 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 gemName = 'a Raw Ruby';
                                 gemKey = 'RawRuby';
                             }
-                            // UI feedback only; actual inventory update will come from server event
-                            console.log('[CLIENT] Shelf gem clicked:', { roomId: room.id, gemKey });
-                            if (_this.scene.socket) {
-                                console.log('[CLIENT] Emitting SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: gemKey, roomId: room.id });
-                                _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: gemKey, roomId: room.id });
-                            } else {
-                                console.error('[CLIENT] _this.scene.socket is undefined!');
+                            // Add gem to inventory
+                            if (gemKey) {
+                                _this.scene.events.emit('addToInventory', gemKey);
+                                _this.scene.events.emit('showActionPrompt', "Picked up ".concat(gemName));
+                                // Update room data to remove the gem
+                                var roomData = _this.scene.dungeonService.getRoomById(room.id);
+                                if (roomData) {
+                                    roomData.gemType = null;
+                                }
+                                // Remove the gem shelf sprite
+                                gemShelf.destroy();
+                                delete shelfData1.gemShelf;
                             }
                         });
                         shelfData1.gemShelf = gemShelf;
@@ -138,14 +143,17 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // UI feedback only; actual inventory update will come from server event
-                            console.log('[CLIENT] Shelf potion clicked:', { roomId: room.id });
-                            if (_this.scene.socket) {
-                                console.log('[CLIENT] Emitting SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: 'Potion1(red)', roomId: room.id });
-                                _this.scene.socket.emit('SHELF_ITEM_PICKUP_REQUEST', { playerId: _this.scene.playerId || (_this.scene.playerStats && _this.scene.playerStats.playerId), itemKey: 'Potion1(red)', roomId: room.id });
-                            } else {
-                                console.error('[CLIENT] _this.scene.socket is undefined!');
+                            // Add potion to inventory
+                            _this.scene.events.emit('addToInventory', 'Potion1(red)');
+                            _this.scene.events.emit('showActionPrompt', 'Picked up a Red Potion');
+                            // Update room data to remove the potion
+                            var roomData = _this.scene.dungeonService.getRoomById(room.id);
+                            if (roomData) {
+                                roomData.hasPotion = false;
                             }
+                            // Remove the potion shelf sprite
+                            potionShelf.destroy();
+                            delete shelfData1.potionShelf;
                         });
                         shelfData1.potionShelf = potionShelf;
                     }
