@@ -316,6 +316,7 @@ io.on('connection', (socket) => {
 
   // Pick up a specific item from a loot bag
   socket.on('LOOT_BAG_PICKUP', ({ playerId, bagId, itemKey }) => {
+    console.log('[SERVER] Received LOOT_BAG_PICKUP', { playerId, bagId, itemKey });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (!bag || !player) return socket.emit(EVENTS.ERROR, { message: 'Bag or player not found', code: 'BAG_OR_PLAYER_NOT_FOUND' });

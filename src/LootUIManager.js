@@ -281,7 +281,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
             value: function _handleLootItemClick(itemSprite) {
                 var itemKey = itemSprite.getData('itemKey');
                 var bagId = this.currentSourceEntityId;
-                console.log(`[LootUIManager] Clicked loot item: ${itemKey} in bag: ${bagId}`);
+                console.log(`[LootUIManager] Calling pickupItem for bagId: ${bagId}, itemKey: ${itemKey}`);
                 // Emit intent to server to pick up the item from the bag
                 this.pickupItem(bagId, itemKey);
                 // Do not update UI or inventory here; wait for server events
@@ -294,6 +294,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
      * @param {string} itemKey - The key of the item to pick up.
      */ key: "pickupItem",
             value: function pickupItem(bagId, itemKey) {
+                console.log('[LootUIManager] Emitting LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
                 socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
             }
         },
