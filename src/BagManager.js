@@ -120,6 +120,14 @@ export var BagManager = /*#__PURE__*/ function() {
         this.initializeGridOccupancy();
         // Start player with one potion for healing
         this.addItem('Potion1(red)'); // Keep the potion for gameplay purposes
+        // Listen for authoritative inventory updates from server
+        this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+            if (playerId === this.playerId) {
+                this.inventory = inventory;
+                // Re-render UI as needed
+                if (this.isOpen) this.openBagUI();
+            }
+        });
     }
     _create_class(BagManager, [
         {
@@ -955,12 +963,3 @@ export var BagManager = /*#__PURE__*/ function() {
     ]);
     return BagManager;
 }();
-
-// Listen for authoritative inventory updates from server
-this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
-  if (playerId === this.playerId) {
-    this.inventory = inventory;
-    // Re-render UI as needed
-    if (this.isOpen) this.openBagUI();
-  }
-});
