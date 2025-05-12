@@ -333,6 +333,40 @@ io.on('connection', (socket) => {
     io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
   });
 
+  // Move item in inventory (drag-and-drop, server-authoritative)
+  socket.on('INVENTORY_MOVE_ITEM', ({ playerId, instanceId, gridX, gridY }) => {
+    const player = players.get(playerId);
+    if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
+    const item = player.inventory.find(i => i.instanceId === instanceId);
+    if (!item) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
+    // Validate bounds
+    const gridCols = 10;
+    const gridRows = 7;
+    const itemWidth = item.width || 1;
+    const itemHeight = item.height || 1;
+    if (gridX < 0 || gridY < 0 || gridX + itemWidth > gridCols || gridY + itemHeight > gridRows) {
+      return socket.emit(EVENTS.ERROR, { message: 'Out of bounds', code: 'OUT_OF_BOUNDS' });
+    }
+    // Check for overlap
+    for (const other of player.inventory) {
+      if (other.instanceId === instanceId) continue;
+      const otherWidth = other.width || 1;
+      const otherHeight = other.height || 1;
+      if (
+        gridX < (other.gridX + otherWidth) &&
+        (gridX + itemWidth) > other.gridX &&
+        gridY < (other.gridY + otherHeight) &&
+        (gridY + itemHeight) > other.gridY
+      ) {
+        return socket.emit(EVENTS.ERROR, { message: 'Slot occupied', code: 'OVERLAP' });
+      }
+    }
+    // Valid move
+    item.gridX = gridX;
+    item.gridY = gridY;
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+  });
+
   // DISCONNECT (remove player entity, drop loot if alive)
   socket.on('disconnect', () => {
     for (const [playerId, player] of players.entries()) {

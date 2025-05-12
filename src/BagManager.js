@@ -445,61 +445,37 @@ export var BagManager = /*#__PURE__*/ function() {
                 var itemHeight = itemInstance.height;
                 console.log("Drag End: ".concat(itemInstance.name, " at screen (").concat(gameObject.x, ", ").concat(gameObject.y, "), Dropped: ").concat(dropped));
                 gameObject.setDepth(81); // Reset depth to Bag2 Items layer
-                // --- Check if it was a click ---
                 if (gameObject.getData('preventDragEndSnap')) {
-                    // console.log(`[DEBUG] DragEnd detected 'preventDragEndSnap' flag (likely a click). Skipping placement logic.`); // Removed DEBUG log
-                    // Reset the flag so it doesn't interfere with the *next* drag
                     gameObject.setData('preventDragEndSnap', false);
-                    // Ensure the item stays at its original position visually IF it was just a click without movement.
-                    // We don't need to re-mark grid occupancy as it wasn't unmarked.
                     gameObject.x = gameObject.getData('originalX');
                     gameObject.y = gameObject.getData('originalY');
-                    return; // Exit early, no placement logic needed for a click
+                    return;
                 }
-                // --- Calculate Target Grid Cell (Only if NOT a click) ---
-                // Get position relative to grid top-left corner
                 var relativeX = gameObject.x - this.gridStartX;
                 var relativeY = gameObject.y - this.gridStartY;
-                // Calculate target grid cell (top-left corner of the potential placement)
-                // We bias towards the center of the dragged item for calculation
                 var targetGridX = Math.floor((relativeX - itemWidth * this.cellSize / 2 + this.cellSize / 2) / this.cellSize);
                 var targetGridY = Math.floor((relativeY - itemHeight * this.cellSize / 2 + this.cellSize / 2) / this.cellSize);
                 console.log("Target Grid: [".concat(targetGridX, ", ").concat(targetGridY, "]"));
-                // --- Check Placement Validity ---
-                var isValidPlacement = false;
                 // 1. Unmark original position temporarily
                 this.unmarkGridOccupancy(originalGridX, originalGridY, itemWidth, itemHeight);
                 // 2. Check if the new position is valid (within bounds and not overlapping OTHERS)
                 if (this.canPlaceItemAt(targetGridX, targetGridY, itemWidth, itemHeight)) {
-                    isValidPlacement = true;
-                }
-                // --- Update Inventory and Sprite ---
-                if (isValidPlacement) {
-                    console.log("Valid placement at [".concat(targetGridX, ", ").concat(targetGridY, "]. Updating item."));
-                    // Update item data in the main inventory array
-                    itemInstance.gridX = targetGridX;
-                    itemInstance.gridY = targetGridY;
-                    // Mark the NEW grid position as occupied
-                    this.markGridOccupancy(targetGridX, targetGridY, itemWidth, itemHeight, itemInstance.instanceId);
-                    // Calculate new center position for snapping the sprite
-                    var newItemCenterX = this.gridStartX + targetGridX * this.cellSize + itemWidth * this.cellSize / 2;
-                    var newItemCenterY = this.gridStartY + targetGridY * this.cellSize + itemHeight * this.cellSize / 2;
-                    // Snap sprite to the new valid position
-                    gameObject.x = newItemCenterX;
-                    gameObject.y = newItemCenterY;
-                    // Update original position data on sprite for subsequent drags
-                    gameObject.setData('originalX', newItemCenterX);
-                    gameObject.setData('originalY', newItemCenterY);
+                    // Instead of updating locally, emit intent to server
+                    this.socket.emit('INVENTORY_MOVE_ITEM', {
+                        playerId: this.playerId,
+                        instanceId: itemInstance.instanceId,
+                        gridX: targetGridX,
+                        gridY: targetGridY
+                    });
+                    // Snap back visually until server confirms
+                    gameObject.x = gameObject.getData('originalX');
+                    gameObject.y = gameObject.getData('originalY');
                 } else {
-                    console.log("Invalid placement at [".concat(targetGridX, ", ").concat(targetGridY, "]. Reverting."));
                     // Re-mark the ORIGINAL grid position (since the move failed)
                     this.markGridOccupancy(originalGridX, originalGridY, itemWidth, itemHeight, itemInstance.instanceId);
-                    // Snap sprite back to original position
                     gameObject.x = gameObject.getData('originalX');
                     gameObject.y = gameObject.getData('originalY');
                 }
-            // Optional: Log the grid state for debugging
-            // console.log("Grid Occupancy:", JSON.stringify(this.gridOccupancy));
             }
         },
         {
@@ -954,7 +930,7 @@ export var BagManager = /*#__PURE__*/ function() {
                 }
                 var randomIndex = Math.floor(Math.random() * this.inventory.length);
                 // Return a *copy* to prevent direct modification of the original inventory item object
-                return _object_spread({}, this.inventory[randomIndex]);
+                return { ...this.inventory[randomIndex] };
             }
         }
     ]);
