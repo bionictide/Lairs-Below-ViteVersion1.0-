@@ -220,7 +220,18 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
             key: "init",
             value: function init(data) {
                 this.serverDungeon = data.serverDungeon;
-                this.statBlock = data.statBlock;
+                this.playerData = data.playerData || {};
+                this.playerId = this.playerData.id || ("player-" + Phaser.Math.RND.uuid());
+                this.playerName = this.playerData.name || "Unknown";
+                this.playerType = this.playerData.type || "Unknown";
+                this.statBlock = {
+                    vit: Number(this.playerData.vit) || 20,
+                    str: Number(this.playerData.str) || 20,
+                    int: Number(this.playerData.int) || 20,
+                    dex: Number(this.playerData.dex) || 20,
+                    mnd: Number(this.playerData.mnd) || 20,
+                    spd: Number(this.playerData.spd) || 20
+                };
             }
         },
         {
@@ -312,15 +323,13 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.placePlayerRandomly();
                 this.debugHelper = new DebugHelper(this);
 
-                // --- Player ID Generation ---
-                this.playerId = "player-".concat(Phaser.Math.RND.uuid());
-                console.log("[DungeonScene] Generated Player ID: ".concat(this.playerId));
+                // --- Player ID is now set from playerData in init() ---
+                console.log("[DungeonScene] Using Player ID:", this.playerId, "Name:", this.playerName, "Type:", this.playerType);
 
                 // --- Initialize Managers in Dependency Order ---
                 const socket = window.socket;
                 this.itemManager = new ItemManager(this, socket);
-                // Use the statBlock from init
-                var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
+                var statBlock = this.statBlock;
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock, socket);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);

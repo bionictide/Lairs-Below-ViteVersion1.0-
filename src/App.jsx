@@ -1062,18 +1062,11 @@ function App() {
         import('./Game.js').then(({ initGame }) => {
           // Coerce stat fields to numbers before passing to PlayerStats
           const char = characters[lockedCharacter];
-          const statBlock = {
-            vit: Number(char.vit),
-            str: Number(char.str),
-            int: Number(char.int),
-            dex: Number(char.dex),
-            mnd: Number(char.mnd),
-            spd: Number(char.spd)
-          };
+          // Pass the full character object to the game scene
           initGame(
             document.getElementById('renderDiv'),
             dungeon, // Use the real dungeon object from state
-            statBlock // Pass the stat block with numbers
+            char // Pass the full character object
           );
         });
       }

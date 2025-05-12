@@ -74,13 +74,13 @@ export var gameConfig = {
         autoCenter: Phaser.Scale.CENTER_BOTH
     }
 };
-export var initGame = function(parent, dungeon, statBlock) {
+export var initGame = function(parent, dungeon, playerData) {
     var config = _object_spread_props(_object_spread({}, gameConfig), {
         parent: parent,
         scene: [DungeonScene]
     });
     var game = new Phaser.Game(config);
-    // Pass statBlock as part of the data
-    game.scene.start('default', { serverDungeon: dungeon, statBlock });
+    // Pass playerData as part of the data
+    game.scene.start('default', { serverDungeon: dungeon, playerData });
     return game;
 };
