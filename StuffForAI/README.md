@@ -83,6 +83,14 @@ If you are a new AI or developer, this section—along with the rest of this fol
   - Only log errors and critical warnings.
   - Remove or comment out all per-frame or spammy debug logs.
 
+## Process & Quality Assurance
+
+- When a bug or problem is discovered after an edit, always review the *entire scope* of the previous changes—not just the direct lines or files involved in the bug.
+- Re-examine every file and section touched during the problematic update.
+- Look for any accidental changes, deletions, or logic errors introduced at the same time, not just the same type of error.
+- Document both the root cause and any collateral findings.
+- Never patch only the symptom. Always check for and address any collateral or hidden issues caused by the same edit.
+
 ---
 
 **Keep this folder up to date!**

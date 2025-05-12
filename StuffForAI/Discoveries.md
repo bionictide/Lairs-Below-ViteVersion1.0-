@@ -70,4 +70,26 @@
 - Stat recalculation after inventory changes is server-side.
 - No change to UX or game flow.
 
+## [Process & Quality Assurance Lesson]
+
+- **Lesson:** When a bug or problem is discovered after an edit, always review the *entire scope* of the previous changes—not just the direct lines or files involved in the bug. This means:
+  - Re-examining every file and section touched during the problematic update.
+  - Looking for any accidental changes, deletions, or logic errors introduced at the same time, not just the same type of error.
+  - Documenting both the root cause and any collateral findings in the Discoveries log.
+- **Principle:** Never patch only the symptom. Always check for and address any collateral or hidden issues caused by the same edit.
+
+## [Missed Steps & Should-Have-Done-Differently: Inventory/Loot Migration]
+
+- **Socket Instance Refactor:**
+  - Missed: Initially, each manager (BagManager, ItemManager, LootUIManager, PlayerStats) created its own unauthenticated socket.io-client instance. This caused all real-time events to be rejected by the server.
+  - Should have: Passed the single authenticated socket instance from login to all managers at instantiation, and removed all direct `io()` calls and duplicate sockets from the start of the migration.
+
+- **Transpiler Helpers:**
+  - Missed: During manual edits, the transpiler helpers (`_class_call_check`, `_defineProperties`, `_create_class`) were accidentally omitted from the top of BagManager.js, causing runtime errors.
+  - Should have: Ensured all transpiler helpers were present at the top of every manager file after any manual or bulk edit, especially when copying or restructuring ES5/ES6 code.
+
+- **Event Payload Consistency:**
+  - Missed: Some client events (e.g., loot pickup) were emitted with undefined `playerId`, and loot bag structures were inconsistent (arrays of strings instead of objects with `itemKey` and `instanceId`).
+  - Should have: Standardized all event payloads and structures before wiring up event flows, and validated payloads in both emitters and handlers during migration.
+
 --- 
