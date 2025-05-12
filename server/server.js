@@ -327,7 +327,7 @@ io.on('connection', (socket) => {
     if (bag.items.length === 0) bags.delete(bagId);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${itemKey}` });
-    io.to(player.roomId).emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
+    io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items }); // Broadcast to all clients, not just the room
     // TODO: Sync to Supabase at key points
   });
 
