@@ -290,22 +290,23 @@ export var LootUIManager = /*#__PURE__*/ function() {
      */ key: "_handleLootItemClick",
             value: function _handleLootItemClick(itemSprite) {
                 var itemKey = itemSprite.getData('itemKey');
+                var instanceId = itemSprite.getData('instanceId');
                 var bagId = this.currentSourceEntityId;
-                console.log(`[LootUIManager] Calling pickupItem for bagId: ${bagId}, itemKey: ${itemKey}`);
+                console.log(`[LootUIManager] Calling pickupItem for bagId: ${bagId}, instanceId: ${instanceId}`);
                 // Emit intent to server to pick up the item from the bag
-                this.pickupItem(bagId, itemKey);
+                this.pickupItem(bagId, instanceId);
                 // Do not update UI or inventory here; wait for server events
             }
         },
         {
             /**
-     * Example: Refactor pickupItem to emit to server
+     * Refactor pickupItem to emit to server with instanceId
      * @param {string} bagId - The ID of the bag.
-     * @param {string} itemKey - The key of the item to pick up.
+     * @param {string} instanceId - The instanceId of the item to pick up.
      */ key: "pickupItem",
-            value: function pickupItem(bagId, itemKey) {
-                console.log('[LootUIManager] Emitting LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
-                this.socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
+            value: function pickupItem(bagId, instanceId) {
+                console.log('[LootUIManager] Emitting LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, instanceId });
+                this.socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, instanceId });
             }
         },
         {

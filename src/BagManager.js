@@ -126,12 +126,13 @@ export var BagManager = /*#__PURE__*/ function() {
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             console.log('[BagManager] Received INVENTORY_UPDATE:', { playerId, inventory, thisPlayer: this.playerId });
             if (playerId === this.playerId) {
-                // Merge itemData fields into each item before rendering
+                // Only mark grid slots as occupied, do not reassign unless missing/invalid
+                this.initializeGridOccupancy();
                 inventory.forEach(item => {
                     const def = itemData[item.itemKey] || {};
                     Object.assign(item, def);
-                    // Only assign grid if missing or invalid
-                    if (typeof item.gridX !== 'number' || typeof item.gridY !== 'number' || item.gridX < 0 || item.gridY < 0) {
+                    if (typeof item.gridX !== 'number' || typeof item.gridY !== 'number' || item.gridX < 0 || item.gridY < 0 || !this.canPlaceItemAt(item.gridX, item.gridY, def.width || 1, def.height || 1)) {
+                        // Only assign if missing/invalid
                         const slot = this.findFirstAvailableSlot(def.width || 1, def.height || 1);
                         if (slot) {
                             item.gridX = slot.x;
@@ -142,13 +143,10 @@ export var BagManager = /*#__PURE__*/ function() {
                             item.gridY = -1;
                         }
                     } else {
-                        // Mark existing grid position as occupied
                         this.markGridOccupancy(item.gridX, item.gridY, def.width || 1, def.height || 1, item.instanceId);
                     }
                 });
-                console.log('[BagManager] Inventory after grid assignment:', JSON.stringify(inventory));
                 this.inventory = inventory;
-                // Re-render UI as needed
                 if (this.isOpen) this.openBagUI();
             }
         });

@@ -316,21 +316,20 @@ io.on('connection', (socket) => {
   });
 
   // Pick up a specific item from a loot bag
-  socket.on('LOOT_BAG_PICKUP', ({ playerId, bagId, itemKey }) => {
-    console.log('[SERVER] LOOT_BAG_PICKUP received:', { playerId, bagId, itemKey });
+  socket.on('LOOT_BAG_PICKUP', ({ playerId, bagId, instanceId }) => {
+    console.log('[SERVER] LOOT_BAG_PICKUP received:', { playerId, bagId, instanceId });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (!bag || !player) return socket.emit(EVENTS.ERROR, { message: 'Bag or player not found', code: 'BAG_OR_PLAYER_NOT_FOUND' });
-    const idx = bag.items.findIndex(i => i.itemKey === itemKey);
+    const idx = bag.items.findIndex(i => i.instanceId === instanceId);
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found in bag', code: 'ITEM_NOT_FOUND_IN_BAG' });
     const [item] = bag.items.splice(idx, 1);
-    // Always assign gridX/gridY as -1 (client will assign on receipt)
     item.gridX = -1;
     item.gridY = -1;
     player.inventory.push(item);
     if (bag.items.length === 0) bags.delete(bagId);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
-    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${itemKey}` });
+    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${item.itemKey}` });
     io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
   });
 
