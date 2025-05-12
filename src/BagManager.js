@@ -89,6 +89,7 @@ export { itemData };
 export var BagManager = /*#__PURE__*/ function() {
     "use strict";
     function BagManager(scene, playerStats, itemManager, socket, playerId) {
+        console.log('[BagManager] Constructed with playerId:', playerId, 'socket id:', socket && socket.id);
         _class_call_check(this, BagManager);
         this.scene = scene;
         this.playerStats = playerStats; // Store playerStats
