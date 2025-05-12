@@ -47,6 +47,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
 
         // --- Add socket event listeners for server-authoritative updates ---
         this.socket.on('LOOT_BAG_UPDATE', (data) => {
+            console.log('[LootUIManager] Received LOOT_BAG_UPDATE:', data, { isOpen: this.isOpen, currentSourceEntityId: this.currentSourceEntityId });
             // Only update if the loot UI is open and matches the current bag
             if (this.isOpen && data.bagId === this.currentSourceEntityId) {
                 this.currentLootItems = data.items;
@@ -58,6 +59,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
             }
         });
         this.socket.on('INVENTORY_UPDATE', (data) => {
+            console.log('[LootUIManager] Received INVENTORY_UPDATE:', data, { thisPlayer: this.playerId });
             if (data.playerId === this.playerId) {
                 // Notify BagManager to update inventory and re-render
                 if (this.bagManager && typeof this.bagManager.inventory !== 'undefined') {

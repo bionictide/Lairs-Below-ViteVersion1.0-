@@ -122,6 +122,7 @@ export var BagManager = /*#__PURE__*/ function() {
         this.addItem('Potion1(red)'); // Keep the potion for gameplay purposes
         // Listen for authoritative inventory updates from server
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+            console.log('[BagManager] Received INVENTORY_UPDATE:', { playerId, inventory, thisPlayer: this.playerId });
             if (playerId === this.playerId) {
                 this.inventory = inventory;
                 // Re-render UI as needed

@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+Always use this rule. Check the code (Or suspected code) before speaking. Every single time in every situation you should be reading the FULL (Every chunk) code files relevent to the current topic BEFORE you speak to the user anout ANYTHING. This way you are already ahead of problems and never guessing or assuming anything. We fix problems at the source we don't guess.
