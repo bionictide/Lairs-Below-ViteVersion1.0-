@@ -361,6 +361,42 @@ io.on('connection', (socket) => {
     console.log('Client disconnected:', socket.id);
   });
 
+  // SHELF_PICKUP_REQUEST
+  socket.on('SHELF_PICKUP_REQUEST', ({ playerId, roomId, itemKey }) => {
+    const player = players.get(playerId);
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
+    // Validate shelf item exists
+    let found = false;
+    if (room.gemType && itemKey && room.gemType.replace('Shelf', '') === itemKey) {
+      room.gemType = null;
+      found = true;
+    } else if (room.hasPotion && itemKey === 'Potion1(red)') {
+      room.hasPotion = false;
+      found = true;
+    }
+    if (!found) return socket.emit(EVENTS.ERROR, { message: 'Item not found on shelf', code: 'ITEM_NOT_FOUND' });
+    // Add item to inventory
+    const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    player.inventory.push(newItem);
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.emit('SHELF_UPDATE', { roomId, itemKey });
+  });
+
+  // TREASURE_PICKUP_REQUEST
+  socket.on('TREASURE_PICKUP_REQUEST', ({ playerId, roomId, itemKey }) => {
+    const player = players.get(playerId);
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
+    // Validate treasure exists
+    if (room.treasureLevel !== itemKey) return socket.emit(EVENTS.ERROR, { message: 'Treasure not found', code: 'TREASURE_NOT_FOUND' });
+    room.treasureLevel = null;
+    const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    player.inventory.push(newItem);
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.emit('TREASURE_UPDATE', { roomId, itemKey });
+  });
+
   // --- Add more event handlers as needed ---
 });
 

@@ -25,6 +25,16 @@ export var TreasureManager = /*#__PURE__*/ function() {
         this.scene = scene;
         this.treasures = new Map();
         this.treasureWallDirections = new Map(); // roomId: facing direction
+        this.scene.socket.on('TREASURE_UPDATE', (data) => {
+            // Update treasure UI based on authoritative state from server
+            // (e.g., hide treasure sprite if item is gone)
+            this.updateSpriteVisibility(this.treasures.get(data.roomId), this.scene.dungeonService.getRoomById(data.roomId));
+        });
+        this.scene.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+            if (playerId === this.scene.playerId) {
+                // Optionally trigger a UI update if needed
+            }
+        });
     }
     _create_class(TreasureManager, [
         {
@@ -113,7 +123,11 @@ export var TreasureManager = /*#__PURE__*/ function() {
                         // Emit event only if an itemKey was determined
                         if (itemKey) {
                             // Emit BEFORE destroying sprite or modifying room data
-                            _this.scene.events.emit('addToInventory', itemKey);
+                            _this.scene.socket.emit('TREASURE_PICKUP_REQUEST', {
+                                playerId: _this.scene.playerId,
+                                roomId: room.id,
+                                itemKey: itemKey
+                            });
                         } else {
                             // Log if no valid item key could be determined from the original level
                             console.warn("[TreasureManager] Clicked treasure in room ".concat(room.id, ", but original treasureLevel (").concat(originalTreasureLevel, ") didn't map to a known itemKey."));

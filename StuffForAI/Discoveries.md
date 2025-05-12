@@ -92,4 +92,39 @@
   - Missed: Some client events (e.g., loot pickup) were emitted with undefined `playerId`, and loot bag structures were inconsistent (arrays of strings instead of objects with `itemKey` and `instanceId`).
   - Should have: Standardized all event payloads and structures before wiring up event flows, and validated payloads in both emitters and handlers during migration.
 
+## [Root Cause: Incomplete Migration & Missed Dependencies]
+
+- **Prime Directive Not Followed:** The StuffForAI folder (especially DependencyEventMap and event contracts) was not used as the authoritative checklist during migration. This led to missed flows and incomplete server-authoritative migration.
+- **Missed Full Audit:** Not all files and event/mutation paths were audited. Some legacy and hybrid (client/server) logic was left in place, especially in DungeonScene, BagManager, and loot/inventory flows.
+- **Hybrid/Legacy Flows:** Some systems (e.g., shelf, treasure, puzzle, loot, and inventory) still have client-side mutation or fallback logic, violating the intended architecture.
+- **New Process:** All future audits and migrations will begin with a full reading of StuffForAI, then a file-by-file codebase audit in alphabetical order, cross-referencing every event, mutation, and state change with the intended flows in StuffForAI. No changes will be made without this context.
+
+## [Audit Findings: src/ Migration Gaps]
+
+- **Hybrid/Legacy Logic Detected:**
+  - Some managers (e.g., BagManager, LootUIManager) still have logic that assumes or mutates local state in response to UI events, not just server events.
+  - DungeonScene and EncounterManager still emit or handle some events locally that should be strictly server-authoritative.
+
+- **Event Contract Mismatches:**
+  - Not all event payloads and flows match the contracts in DependencyEventMap (e.g., some inventory/loot events).
+  - Some flows (e.g., shelf, treasure, puzzle) are not yet fully server-authoritative—client can still trigger or mutate state directly.
+
+- **Client Fallbacks:**
+  - It is still possible to play parts of the game with the server down, indicating fallback logic or local state mutation remains in some flows.
+
+- **Migration Incomplete:**
+  - TreasureManager, PuzzleManager, ShelfManager, and some room/dungeon flows are not yet migrated to server authority.
+  - Some UI and input flows (e.g., context menus, drag/drop) still update state locally before server confirmation.
+
+- **Next Steps:**
+  - Complete the migration for all remaining systems (treasure, puzzle, shelf, room, dungeon) to server-authoritative flows.
+  - Remove all client-side fallback and local state mutation for game logic/events.
+  - Standardize all event contracts and payloads to match DependencyEventMap and events.md.
+  - Re-audit after each major migration step.
+
+- **Initial State Sync:**
+  - On player join, the server must send the full authoritative state of the dungeon, shelves, treasures, loot, and inventory.
+  - The client should render the entire dungeon and all interactable objects in their correct state before connecting to real-time events.
+  - No separate catch-up event is needed if the initial payload is complete and authoritative.
+
 --- 

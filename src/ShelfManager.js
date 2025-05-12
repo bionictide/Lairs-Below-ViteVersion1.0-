@@ -25,6 +25,16 @@ export var ShelfManager = /*#__PURE__*/ function() {
         this.scene = scene;
         this.shelves = new Map(); // roomId: {empty: sprite, gem/potion: sprite}
         this.shelfWallDirections = new Map(); // roomId: facing direction
+        this.scene.socket.on('SHELF_UPDATE', (data) => {
+            // Update shelf UI based on authoritative state from server
+            // (e.g., hide shelf sprite if item is gone)
+            this.updateAllShelvesVisibility(this.scene.dungeonService.getRoomById(data.roomId));
+        });
+        this.scene.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+            if (playerId === this.scene.playerId) {
+                // Optionally trigger a UI update if needed
+            }
+        });
     }
     _create_class(ShelfManager, [
         {
@@ -108,19 +118,12 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 gemName = 'a Raw Ruby';
                                 gemKey = 'RawRuby';
                             }
-                            // Add gem to inventory
-                            if (gemKey) {
-                                _this.scene.events.emit('addToInventory', gemKey);
-                                _this.scene.events.emit('showActionPrompt', "Picked up ".concat(gemName));
-                                // Update room data to remove the gem
-                                var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                                if (roomData) {
-                                    roomData.gemType = null;
-                                }
-                                // Remove the gem shelf sprite
-                                gemShelf.destroy();
-                                delete shelfData1.gemShelf;
-                            }
+                            // Add socket event for shelf pickup
+                            _this.scene.socket.emit('SHELF_PICKUP_REQUEST', {
+                                playerId: _this.scene.playerId,
+                                roomId: room.id,
+                                itemKey: gemKey
+                            });
                         });
                         shelfData1.gemShelf = gemShelf;
                     }
@@ -143,17 +146,12 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // Add potion to inventory
-                            _this.scene.events.emit('addToInventory', 'Potion1(red)');
-                            _this.scene.events.emit('showActionPrompt', 'Picked up a Red Potion');
-                            // Update room data to remove the potion
-                            var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                            if (roomData) {
-                                roomData.hasPotion = false;
-                            }
-                            // Remove the potion shelf sprite
-                            potionShelf.destroy();
-                            delete shelfData1.potionShelf;
+                            // Add socket event for shelf pickup
+                            _this.scene.socket.emit('SHELF_PICKUP_REQUEST', {
+                                playerId: _this.scene.playerId,
+                                roomId: room.id,
+                                itemKey: 'Potion1(red)'
+                            });
                         });
                         shelfData1.potionShelf = potionShelf;
                     }
