@@ -125,6 +125,22 @@ export var BagManager = /*#__PURE__*/ function() {
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             console.log('[BagManager] Received INVENTORY_UPDATE:', { playerId, inventory, thisPlayer: this.playerId });
             if (playerId === this.playerId) {
+                // Assign grid positions to new items if missing
+                inventory.forEach(item => {
+                    if (typeof item.gridX !== 'number' || typeof item.gridY !== 'number' || item.gridX < 0 || item.gridY < 0) {
+                        const def = itemData[item.itemKey] || {};
+                        const slot = this.findFirstAvailableSlot(def.width || 1, def.height || 1);
+                        if (slot) {
+                            item.gridX = slot.x;
+                            item.gridY = slot.y;
+                            this.markGridOccupancy(slot.x, slot.y, def.width || 1, def.height || 1, item.instanceId);
+                        } else {
+                            // No space, place off-grid (hidden)
+                            item.gridX = -1;
+                            item.gridY = -1;
+                        }
+                    }
+                });
                 this.inventory = inventory;
                 // Re-render UI as needed
                 if (this.isOpen) this.openBagUI();
