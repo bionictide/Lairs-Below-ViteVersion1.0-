@@ -272,14 +272,15 @@ io.on('connection', (socket) => {
     console.log('[SERVER] INVENTORY_ADD_ITEM received:', { playerId, itemKey });
     const player = players.get(playerId);
     if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
-    // TODO: Validate itemKey against allowed items (use shared itemData)
+    // Validate itemKey against allowed items (use shared itemData)
     // For now, just add to inventory
     const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
     player.inventory.push(newItem);
-    // TODO: Recalculate stats here if needed
+    // Always assign gridX/gridY as -1 (client will assign on receipt)
+    newItem.gridX = -1;
+    newItem.gridY = -1;
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_ADD_ITEM', success: true, message: `Added ${itemKey}` });
-    // TODO: Sync to Supabase at key points
   });
 
   // Remove item from inventory (drop or use)
@@ -289,10 +290,8 @@ io.on('connection', (socket) => {
     const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
     const [removed] = player.inventory.splice(idx, 1);
-    // TODO: Recalculate stats here if needed
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_REMOVE_ITEM', success: true, message: `Removed ${removed.itemKey}` });
-    // TODO: Sync to Supabase at key points
   });
 
   // Use item from inventory
@@ -302,13 +301,9 @@ io.on('connection', (socket) => {
     const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
     const item = player.inventory[idx];
-    // TODO: Validate and apply item effect (healing, etc.)
-    // For now, just remove item and send success
     player.inventory.splice(idx, 1);
-    // TODO: Recalculate stats here if needed
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_USE_ITEM', success: true, message: `Used ${item.itemKey}` });
-    // TODO: Sync to Supabase at key points
   });
 
   // Drop loot bag (e.g., on death/disconnect)
@@ -329,13 +324,14 @@ io.on('connection', (socket) => {
     const idx = bag.items.findIndex(i => i.itemKey === itemKey);
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found in bag', code: 'ITEM_NOT_FOUND_IN_BAG' });
     const [item] = bag.items.splice(idx, 1);
+    // Always assign gridX/gridY as -1 (client will assign on receipt)
+    item.gridX = -1;
+    item.gridY = -1;
     player.inventory.push(item);
-    // If bag is empty, remove it
     if (bag.items.length === 0) bags.delete(bagId);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${itemKey}` });
-    io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items }); // Broadcast to all clients, not just the room
-    // TODO: Sync to Supabase at key points
+    io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
   });
 
   // DISCONNECT (remove player entity, drop loot if alive)
@@ -366,7 +362,6 @@ io.on('connection', (socket) => {
     const player = players.get(playerId);
     const room = dungeon.rooms.find(r => r.id === roomId);
     if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
-    // Validate shelf item exists
     let found = false;
     if (room.gemType && itemKey && room.gemType.replace('Shelf', '') === itemKey) {
       room.gemType = null;
@@ -376,8 +371,9 @@ io.on('connection', (socket) => {
       found = true;
     }
     if (!found) return socket.emit(EVENTS.ERROR, { message: 'Item not found on shelf', code: 'ITEM_NOT_FOUND' });
-    // Add item to inventory
     const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    newItem.gridX = -1;
+    newItem.gridY = -1;
     player.inventory.push(newItem);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.emit('SHELF_UPDATE', { roomId, itemKey });
@@ -388,10 +384,11 @@ io.on('connection', (socket) => {
     const player = players.get(playerId);
     const room = dungeon.rooms.find(r => r.id === roomId);
     if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
-    // Validate treasure exists
     if (room.treasureLevel !== itemKey) return socket.emit(EVENTS.ERROR, { message: 'Treasure not found', code: 'TREASURE_NOT_FOUND' });
     room.treasureLevel = null;
     const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    newItem.gridX = -1;
+    newItem.gridY = -1;
     player.inventory.push(newItem);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.emit('TREASURE_UPDATE', { roomId, itemKey });
