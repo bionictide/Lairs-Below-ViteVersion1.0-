@@ -19,6 +19,9 @@ function _create_class(Constructor, protoProps, staticProps) {
 }
 import Phaser from 'https://esm.sh/phaser@3.60.0'; // For EventEmitter
 import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT, getMagicBonusFromINT, getMagicDefenseFromINT } from './StatDefinitions.js';
+import io from 'socket.io-client';
+const socket = io();
+
 export var PlayerStats = /*#__PURE__*/ function() {
     "use strict";
     function PlayerStats(scene, playerId, statBlock) {
@@ -252,5 +255,28 @@ export var PlayerStats = /*#__PURE__*/ function() {
             }
         }
     ]);
+
+    // Listen for authoritative stat and health updates from server
+    socket.on('PLAYER_STATS_UPDATE', ({ playerId, statBlock }) => {
+        if (playerId === this.playerId) {
+            this.statBlock = statBlock;
+            // Update derived stats as needed
+            this._maxHealth = getHealthFromVIT(statBlock.vit);
+            this._currentHealth = Math.min(this._currentHealth, this._maxHealth);
+            this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
+            this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100;
+            this._defenseRating = getDefenseFromVIT(statBlock.vit);
+            // Re-render UI or emit events as needed
+            this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+        }
+    });
+
+    socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
+        if (playerId === this.playerId) {
+            this._currentHealth = health;
+            this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+        }
+    });
+
     return PlayerStats;
 }();

@@ -260,6 +260,77 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
   });
 
+  // --- INVENTORY & LOOT BAG SERVER-AUTHORITATIVE HANDLERS ---
+
+  // Add item to inventory (e.g., from loot, pickup)
+  socket.on('INVENTORY_ADD_ITEM', ({ playerId, itemKey }) => {
+    const player = players.get(playerId);
+    if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
+    // TODO: Validate itemKey against allowed items (use shared itemData)
+    // For now, just add to inventory
+    const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    player.inventory.push(newItem);
+    // TODO: Recalculate stats here if needed
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_ADD_ITEM', success: true, message: `Added ${itemKey}` });
+    // TODO: Sync to Supabase at key points
+  });
+
+  // Remove item from inventory (drop or use)
+  socket.on('INVENTORY_REMOVE_ITEM', ({ playerId, instanceId }) => {
+    const player = players.get(playerId);
+    if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
+    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
+    const [removed] = player.inventory.splice(idx, 1);
+    // TODO: Recalculate stats here if needed
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_REMOVE_ITEM', success: true, message: `Removed ${removed.itemKey}` });
+    // TODO: Sync to Supabase at key points
+  });
+
+  // Use item from inventory
+  socket.on('INVENTORY_USE_ITEM', ({ playerId, instanceId }) => {
+    const player = players.get(playerId);
+    if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
+    const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
+    if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
+    const item = player.inventory[idx];
+    // TODO: Validate and apply item effect (healing, etc.)
+    // For now, just remove item and send success
+    player.inventory.splice(idx, 1);
+    // TODO: Recalculate stats here if needed
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_USE_ITEM', success: true, message: `Used ${item.itemKey}` });
+    // TODO: Sync to Supabase at key points
+  });
+
+  // Drop loot bag (e.g., on death/disconnect)
+  socket.on('LOOT_BAG_DROP', ({ playerId, roomId, items }) => {
+    const bagId = `bag-${playerId}-${Date.now()}`;
+    bags.set(bagId, { roomId, items });
+    io.to(roomId).emit('LOOT_BAG_UPDATE', { bagId, items });
+    io.to(playerId).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_DROP', success: true, message: 'Dropped loot bag', data: { bagId } });
+    // TODO: Sync to Supabase at key points
+  });
+
+  // Pick up a specific item from a loot bag
+  socket.on('LOOT_BAG_PICKUP', ({ playerId, bagId, itemKey }) => {
+    const bag = bags.get(bagId);
+    const player = players.get(playerId);
+    if (!bag || !player) return socket.emit(EVENTS.ERROR, { message: 'Bag or player not found', code: 'BAG_OR_PLAYER_NOT_FOUND' });
+    const idx = bag.items.findIndex(i => i.itemKey === itemKey);
+    if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found in bag', code: 'ITEM_NOT_FOUND_IN_BAG' });
+    const [item] = bag.items.splice(idx, 1);
+    player.inventory.push(item);
+    // If bag is empty, remove it
+    if (bag.items.length === 0) bags.delete(bagId);
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${itemKey}` });
+    io.to(player.roomId).emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
+    // TODO: Sync to Supabase at key points
+  });
+
   // DISCONNECT (remove player entity, drop loot if alive)
   socket.on('disconnect', () => {
     for (const [playerId, player] of players.entries()) {

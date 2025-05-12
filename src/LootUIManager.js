@@ -20,6 +20,9 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 // Import itemData to get asset info (consider moving itemData to a shared file later)
 import { itemData } from './BagManager.js'; // Assuming itemData is exported from BagManager
+import io from 'socket.io-client';
+const socket = io();
+
 export var LootUIManager = /*#__PURE__*/ function() {
     "use strict";
     function LootUIManager(scene, npcLootManager, bagManager) {
@@ -296,6 +299,47 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 } else {
                     console.log("[LootUIManager] Failed to transfer ".concat(itemKey, ". Bag likely full."));
                 // Prompt already handled by BagManager.addItem on failure
+                }
+            }
+        },
+        {
+            /**
+     * Example: Refactor pickupItem to emit to server
+     * @param {string} bagId - The ID of the bag.
+     * @param {string} itemKey - The key of the item to pick up.
+     */ key: "pickupItem",
+            value: function pickupItem(bagId, itemKey) {
+                socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
+            }
+        },
+        {
+            /**
+     * Example: Refactor dropBag to emit to server
+     * @param {string} roomId - The ID of the room.
+     * @param {string[]} items - An array of item keys to drop.
+     */ key: "dropBag",
+            value: function dropBag(roomId, items) {
+                socket.emit('LOOT_BAG_DROP', { playerId: this.playerId, roomId, items });
+            }
+        },
+        {
+            /**
+     * Listen for authoritative loot bag updates from server
+     * @param {object} data - The data received from the server.
+     */ key: "updateLootBagUI",
+            value: function updateLootBagUI(data) {
+                // Update UI to reflect current loot bag state
+                this.updateLootBagUI(data.bagId, data.items);
+            }
+        },
+        {
+            /**
+     * Listen for inventory updates from server
+     * @param {object} data - The data received from the server.
+     */ key: "updateInventoryUI",
+            value: function updateInventoryUI(data) {
+                if (data.playerId === this.playerId) {
+                    this.updateInventoryUI(data.inventory);
                 }
             }
         }
