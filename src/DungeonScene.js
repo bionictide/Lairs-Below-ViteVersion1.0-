@@ -329,7 +329,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 
                 // Then managers that depend on bagManager
                 this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
-                this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager);
+                this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);

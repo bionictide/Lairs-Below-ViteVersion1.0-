@@ -25,11 +25,12 @@ const socket = io();
 
 export var LootUIManager = /*#__PURE__*/ function() {
     "use strict";
-    function LootUIManager(scene, npcLootManager, bagManager) {
+    function LootUIManager(scene, npcLootManager, bagManager, playerId) {
         _class_call_check(this, LootUIManager);
         this.scene = scene;
         this.npcLootManager = npcLootManager;
         this.bagManager = bagManager;
+        this.playerId = playerId;
         this.isOpen = false;
         this.lootContainer = null;
         this.currentLootItems = []; // Array of item keys
