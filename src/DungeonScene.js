@@ -344,9 +344,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
                 this.puzzleManager = new PuzzleManager(this);
-                this.treasureManager = new TreasureManager(this);
+                this.treasureManager = new TreasureManager(this, socket);
                 this.hintManager = new HintManager(this);
-                this.shelfManager = new ShelfManager(this);
+                this.shelfManager = new ShelfManager(this, socket);
 
                 this.debugHelper.setVisibility(false); // Start with debug off
                 // Listen for keydown event globally

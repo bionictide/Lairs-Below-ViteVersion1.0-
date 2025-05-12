@@ -20,17 +20,18 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 export var ShelfManager = /*#__PURE__*/ function() {
     "use strict";
-    function ShelfManager(scene) {
+    function ShelfManager(scene, socket) {
         _class_call_check(this, ShelfManager);
         this.scene = scene;
+        this.socket = socket;
         this.shelves = new Map(); // roomId: {empty: sprite, gem/potion: sprite}
         this.shelfWallDirections = new Map(); // roomId: facing direction
-        this.scene.socket.on('SHELF_UPDATE', (data) => {
+        this.socket.on('SHELF_UPDATE', (data) => {
             // Update shelf UI based on authoritative state from server
             // (e.g., hide shelf sprite if item is gone)
             this.updateAllShelvesVisibility(this.scene.dungeonService.getRoomById(data.roomId));
         });
-        this.scene.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+        this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
                 // Optionally trigger a UI update if needed
             }
@@ -119,7 +120,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 gemKey = 'RawRuby';
                             }
                             // Add socket event for shelf pickup
-                            _this.scene.socket.emit('SHELF_PICKUP_REQUEST', {
+                            _this.socket.emit('SHELF_PICKUP_REQUEST', {
                                 playerId: _this.scene.playerId,
                                 roomId: room.id,
                                 itemKey: gemKey
@@ -147,7 +148,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                                 return;
                             }
                             // Add socket event for shelf pickup
-                            _this.scene.socket.emit('SHELF_PICKUP_REQUEST', {
+                            _this.socket.emit('SHELF_PICKUP_REQUEST', {
                                 playerId: _this.scene.playerId,
                                 roomId: room.id,
                                 itemKey: 'Potion1(red)'

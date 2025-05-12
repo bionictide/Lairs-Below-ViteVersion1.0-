@@ -20,17 +20,18 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 export var TreasureManager = /*#__PURE__*/ function() {
     "use strict";
-    function TreasureManager(scene) {
+    function TreasureManager(scene, socket) {
         _class_call_check(this, TreasureManager);
         this.scene = scene;
+        this.socket = socket;
         this.treasures = new Map();
         this.treasureWallDirections = new Map(); // roomId: facing direction
-        this.scene.socket.on('TREASURE_UPDATE', (data) => {
+        this.socket.on('TREASURE_UPDATE', (data) => {
             // Update treasure UI based on authoritative state from server
             // (e.g., hide treasure sprite if item is gone)
             this.updateSpriteVisibility(this.treasures.get(data.roomId), this.scene.dungeonService.getRoomById(data.roomId));
         });
-        this.scene.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+        this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
                 // Optionally trigger a UI update if needed
             }
@@ -123,7 +124,7 @@ export var TreasureManager = /*#__PURE__*/ function() {
                         // Emit event only if an itemKey was determined
                         if (itemKey) {
                             // Emit BEFORE destroying sprite or modifying room data
-                            _this.scene.socket.emit('TREASURE_PICKUP_REQUEST', {
+                            _this.socket.emit('TREASURE_PICKUP_REQUEST', {
                                 playerId: _this.scene.playerId,
                                 roomId: room.id,
                                 itemKey: itemKey
