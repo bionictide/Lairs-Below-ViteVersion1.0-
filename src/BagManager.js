@@ -141,6 +141,7 @@ export var BagManager = /*#__PURE__*/ function() {
                         }
                     }
                 });
+                console.log('[BagManager] Inventory after grid assignment:', JSON.stringify(inventory));
                 this.inventory = inventory;
                 // Re-render UI as needed
                 if (this.isOpen) this.openBagUI();
@@ -375,6 +376,7 @@ export var BagManager = /*#__PURE__*/ function() {
             key: "renderItems",
             value: function renderItems(gridStartX, gridStartY) {
                 var _this = this;
+                console.log('[BagManager] Rendering items:', JSON.stringify(this.inventory));
                 // Clear previously rendered item sprites if any (simple approach)
                 // A more robust approach might track sprites individually
                 this.bagContainer.list.forEach(function(child) {
