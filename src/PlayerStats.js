@@ -54,6 +54,26 @@ export var PlayerStats = /*#__PURE__*/ function() {
                 defense: 0.10
             }
         };
+        // Listen for authoritative stat and health updates from server
+        this.socket.on('PLAYER_STATS_UPDATE', ({ playerId, statBlock }) => {
+            if (playerId === this.playerId) {
+                this.statBlock = statBlock;
+                // Update derived stats as needed
+                this._maxHealth = getHealthFromVIT(statBlock.vit);
+                this._currentHealth = Math.min(this._currentHealth, this._maxHealth);
+                this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
+                this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100;
+                this._defenseRating = getDefenseFromVIT(statBlock.vit);
+                // Re-render UI or emit events as needed
+                this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+            }
+        });
+        this.socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
+            if (playerId === this.playerId) {
+                this._currentHealth = health;
+                this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+            }
+        });
     }
     _create_class(PlayerStats, [
         {
@@ -254,28 +274,6 @@ export var PlayerStats = /*#__PURE__*/ function() {
             }
         }
     ]);
-
-    // Listen for authoritative stat and health updates from server
-    this.socket.on('PLAYER_STATS_UPDATE', ({ playerId, statBlock }) => {
-        if (playerId === this.playerId) {
-            this.statBlock = statBlock;
-            // Update derived stats as needed
-            this._maxHealth = getHealthFromVIT(statBlock.vit);
-            this._currentHealth = Math.min(this._currentHealth, this._maxHealth);
-            this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
-            this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100;
-            this._defenseRating = getDefenseFromVIT(statBlock.vit);
-            // Re-render UI or emit events as needed
-            this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
-        }
-    });
-
-    this.socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
-        if (playerId === this.playerId) {
-            this._currentHealth = health;
-            this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
-        }
-    });
 
     return PlayerStats;
 }();
