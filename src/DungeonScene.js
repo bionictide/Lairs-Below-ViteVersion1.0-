@@ -335,7 +335,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.npcLootManager = new NPCLootManager(this);
 
                 // Then managers that depend on itemManager and playerStats
-                this.bagManager = new BagManager(this, this.playerStats, this.itemManager, socket);
+                this.bagManager = new BagManager(this, this.playerStats, this.itemManager, socket, this.playerId);
                 
                 // Then managers that depend on bagManager
                 this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);

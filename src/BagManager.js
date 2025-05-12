@@ -88,12 +88,13 @@ var itemData = {
 export { itemData };
 export var BagManager = /*#__PURE__*/ function() {
     "use strict";
-    function BagManager(scene, playerStats, itemManager, socket) {
+    function BagManager(scene, playerStats, itemManager, socket, playerId) {
         _class_call_check(this, BagManager);
         this.scene = scene;
         this.playerStats = playerStats; // Store playerStats
         this.itemManager = itemManager; // Store itemManager
         this.socket = socket;
+        this.playerId = playerId; // <-- Set the playerId (characterId) here
         this.isOpen = false;
         this.gridCols = 10; // Grid dimensions based on Bag2.png layout
         this.gridRows = 7;
