@@ -130,6 +130,7 @@ export var BagManager = /*#__PURE__*/ function() {
                 inventory.forEach(item => {
                     const def = itemData[item.itemKey] || {};
                     Object.assign(item, def);
+                    // Only assign grid if missing or invalid
                     if (typeof item.gridX !== 'number' || typeof item.gridY !== 'number' || item.gridX < 0 || item.gridY < 0) {
                         const slot = this.findFirstAvailableSlot(def.width || 1, def.height || 1);
                         if (slot) {
@@ -140,6 +141,9 @@ export var BagManager = /*#__PURE__*/ function() {
                             item.gridX = -1;
                             item.gridY = -1;
                         }
+                    } else {
+                        // Mark existing grid position as occupied
+                        this.markGridOccupancy(item.gridX, item.gridY, def.width || 1, def.height || 1, item.instanceId);
                     }
                 });
                 console.log('[BagManager] Inventory after grid assignment:', JSON.stringify(inventory));
@@ -662,24 +666,13 @@ export var BagManager = /*#__PURE__*/ function() {
         {
             key: "handleContextMenuAction",
             value: function handleContextMenuAction(itemInstance, action) {
-                console.log("[BagManager] Context Action: ".concat(action, " on ").concat(itemInstance.name));
-                // Implement actual logic for 'use', 'drop', etc.
                 if (action === 'use') {
-                    // Use ItemManager to handle the 'use' action
-                    var useResult = this.itemManager.useItem(itemInstance, this.playerStats);
-                    // Show result message
-                    this.scene.events.emit('showActionPrompt', useResult.message);
-                    // Consume item if ItemManager indicates it should be
-                    if (useResult.consumed) {
-                        this.removeItem(itemInstance.instanceId);
-                    }
+                    this.useItem(itemInstance.instanceId);
+                    this.closeContextMenu();
                 } else if (action === 'drop') {
-                    // Dropping just removes it, stats will update via removeItem
                     this.removeItem(itemInstance.instanceId);
-                    this.scene.events.emit('showActionPrompt', "Dropped ".concat(itemInstance.name));
+                    this.closeContextMenu();
                 }
-            // Close the menu after action - Now handled by the button's pointerdown directly
-            // this.closeContextMenu(); // Removed from here
             }
         },
         {

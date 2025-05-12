@@ -269,6 +269,7 @@ io.on('connection', (socket) => {
 
   // Add item to inventory (e.g., from loot, pickup)
   socket.on('INVENTORY_ADD_ITEM', ({ playerId, itemKey }) => {
+    console.log('[SERVER] INVENTORY_ADD_ITEM received:', { playerId, itemKey });
     const player = players.get(playerId);
     if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
     // TODO: Validate itemKey against allowed items (use shared itemData)
@@ -321,7 +322,7 @@ io.on('connection', (socket) => {
 
   // Pick up a specific item from a loot bag
   socket.on('LOOT_BAG_PICKUP', ({ playerId, bagId, itemKey }) => {
-    console.log('[SERVER] Received LOOT_BAG_PICKUP', { playerId, bagId, itemKey });
+    console.log('[SERVER] LOOT_BAG_PICKUP received:', { playerId, bagId, itemKey });
     const bag = bags.get(bagId);
     const player = players.get(playerId);
     if (!bag || !player) return socket.emit(EVENTS.ERROR, { message: 'Bag or player not found', code: 'BAG_OR_PLAYER_NOT_FOUND' });
