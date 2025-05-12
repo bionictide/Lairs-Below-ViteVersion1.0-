@@ -45,6 +45,30 @@ export var LootUIManager = /*#__PURE__*/ function() {
         this.gridStartX = 0;
         this.gridStartY = 0;
         console.log("[LootUIManager] Initialized.");
+
+        // --- Add socket event listeners for server-authoritative updates ---
+        socket.on('LOOT_BAG_UPDATE', (data) => {
+            // Only update if the loot UI is open and matches the current bag
+            if (this.isOpen && data.bagId === this.currentSourceEntityId) {
+                this.currentLootItems = data.items;
+                this._renderLootItems(this.gridStartX, this.gridStartY);
+                // If the bag is now empty, close the UI
+                if (data.items.length === 0) {
+                    this.closeLootUI();
+                }
+            }
+        });
+        socket.on('INVENTORY_UPDATE', (data) => {
+            if (data.playerId === this.playerId) {
+                // Notify BagManager to update inventory and re-render
+                if (this.bagManager && typeof this.bagManager.inventory !== 'undefined') {
+                    this.bagManager.inventory = data.inventory;
+                    if (this.bagManager.isOpen) {
+                        this.bagManager.renderItems(this.bagManager.gridStartX, this.bagManager.gridStartY);
+                    }
+                }
+            }
+        });
     }
     _create_class(LootUIManager, [
         {
@@ -55,6 +79,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
      * @param {string[]} lootItems - An array of item keys representing the loot.
      */ key: "registerNpcLoot",
             value: function registerNpcLoot(entityId, lootItems) {
+                // lootItems is now an array of objects: { itemKey, instanceId }
                 console.log("[LootUIManager] Registering loot for ".concat(entityId, ":"), lootItems);
                 this.registeredLoot.set(entityId, lootItems);
             }
@@ -75,7 +100,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 this.isOpen = true;
                 this.currentSourceEntityId = deceasedEntityId;
                 this.sourceBagSprite = bagSprite; // Store reference to the bag sprite
-                // Retrieve pre-registered loot
+                // Retrieve pre-registered loot (array of objects)
                 this.currentLootItems = this.registeredLoot.get(deceasedEntityId) || [];
                 if (!this.registeredLoot.has(deceasedEntityId)) {
                     console.warn("[LootUIManager] No pre-registered loot found for ".concat(deceasedEntityId, ". Showing empty loot window."));
@@ -116,25 +141,18 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 closeButtonBg.on('pointerout', function() {
                     return closeButtonBg.setFillStyle(0x333333);
                 });
-                // --- Add elements to container ---
-                // Note: The close button is added directly to the scene, not the lootContainer,
-                // so it stays fixed while the container might move (if we added dragging later).
-                // However, we need to manage its lifecycle within open/closeLootUI.
-                // Let's store references to destroy them properly.
                 this.closeButtonBg = closeButtonBg;
                 this.closeButtonText = closeButtonText;
                 this.lootContainer.add([
                     lootBg,
                     title
-                ]); // Add only bg and title to the container
-                // --- Calculate Grid Position ---
+                ]);
                 var totalGridWidth = this.gridCols * this.cellSize;
                 var totalGridHeight = this.gridRows * this.cellSize;
                 this.gridStartX = centerX - totalGridWidth / 2;
                 this.gridStartY = centerY - totalGridHeight / 2 + 30; // Match BagManager offset
                 // Render items from this.currentLootItems
                 this._renderLootItems(this.gridStartX, this.gridStartY);
-                // Block background interactions
                 this.setInteractionBlocking(true);
             }
         },
@@ -221,55 +239,45 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 });
                 var currentGridX = 0;
                 var currentGridY = 0;
-                this.currentLootItems.forEach(function(itemKey) {
+                this.currentLootItems.forEach(function(itemObj) {
+                    var itemKey = itemObj.itemKey;
                     var baseItem = itemData[itemKey];
                     if (!baseItem || !baseItem.asset) {
                         console.warn("[LootUIManager] No asset found for item key: ".concat(itemKey));
                         return; // Skip if no asset defined
                     }
                     // --- Basic sequential placement ---
-                    // For simplicity, place items one after another in the first row.
-                    // A more robust solution would handle multi-cell items and grid wrapping.
                     var itemGridX = currentGridX;
                     var itemGridY = currentGridY;
-                    // Move to next slot for the next item
                     currentGridX++;
                     if (currentGridX >= _this.gridCols) {
                         currentGridX = 0;
                         currentGridY++;
                     }
-                    // If we run out of grid space, stop rendering more items
                     if (currentGridY >= _this.gridRows) {
                         console.warn("[LootUIManager] Ran out of grid space displaying loot items.");
-                        return; // Early exit from forEach loop's current iteration
+                        return;
                     }
-                    // Use item dimensions from itemData if available, default to 1x1
                     var itemWidth = baseItem.width || 1;
                     var itemHeight = baseItem.height || 1;
-                    // Calculate pixel position
                     var itemCenterX = gridStartX + itemGridX * _this.cellSize + itemWidth * _this.cellSize / 2;
                     var itemCenterY = gridStartY + itemGridY * _this.cellSize + itemHeight * _this.cellSize / 2;
-                    // Calculate max allowed dimensions within the grid cell(s)
                     var maxItemWidth = itemWidth * _this.cellSize - _this.gridPadding * 2;
                     var maxItemHeight = itemHeight * _this.cellSize - _this.gridPadding * 2;
-                    // Create and scale the item sprite
                     var itemSprite = _this.scene.add.image(itemCenterX, itemCenterY, baseItem.asset).setInteractive({
                         useHandCursor: true
-                    }).setDepth(93); // Loot UI Items layer (inside container)
-                    // Scale the item sprite to fit, maintaining aspect ratio, then increase like in BagManager
+                    }).setDepth(93);
                     var baseScale = Math.min(maxItemWidth / itemSprite.width, maxItemHeight / itemSprite.height);
-                    itemSprite.scale = baseScale * 1.375; // Match BagManager scale increase
-                    // Store item key and mark as a loot item
+                    itemSprite.scale = baseScale * 1.375;
                     itemSprite.setData('itemKey', itemKey);
                     itemSprite.setData('isLootItem', true);
-                    // Add click listener (placeholder for transfer logic)
-                    // Correct signature: (pointer, localX, localY, event)
+                    itemSprite.setData('instanceId', itemObj.instanceId);
                     itemSprite.on('pointerdown', function(pointer, localX, localY, event) {
-                        event.stopPropagation(); // Call on the DOM event object
+                        event.stopPropagation();
                         _this._handleLootItemClick(itemSprite);
                     });
                     _this.lootContainer.add(itemSprite);
-                    console.log("[LootUIManager] Rendered loot item ".concat(itemKey, " at grid [").concat(itemGridX, ", ").concat(itemGridY, "]"));
+                    console.log(`[LootUIManager] Rendered loot item ${itemKey} at grid [${itemGridX}, ${itemGridY}]`);
                 });
             }
         },

@@ -805,18 +805,18 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         var targetLoot = target.instanceLoot;
                         if (!targetLoot || targetLoot.length === 0) {
                             stealMessage1 += "fails! (Nothing left to steal!)";
-                            console.log("[DEBUG] Player steal failed against ".concat(targetName, " (").concat(targetId, "): Instance loot empty."));
+                            console.log(`[DEBUG] Player steal failed against ${targetName} (${targetId}): Instance loot empty.`);
                             success = false;
                         } else {
                             if (success) {
                                 var randomLootIndex = Phaser.Math.Between(0, targetLoot.length - 1);
-                                var lootItemKey = targetLoot[randomLootIndex];
-                                if (!lootItemKey) {
+                                var lootObj = targetLoot[randomLootIndex];
+                                if (!lootObj) {
                                     stealMessage1 += "fails!";
-                                    console.error("[ERROR] Player steal failed against ".concat(targetName, " (").concat(targetId, "): Could not select item from non-empty instanceLoot."));
+                                    console.error(`[ERROR] Player steal failed against ${targetName} (${targetId}): Could not select item from non-empty instanceLoot.`);
                                     success = false;
                                 } else {
-                                    var added = this.scene.bagManager.addItem(lootItemKey); // Add to Player's bag
+                                    var added = this.scene.bagManager.addItem(lootObj.itemKey); // Add to Player's bag
                                     if (added) {
                                         var _itemData_lootItemKey;
                                         var itemName = ((_itemData_lootItemKey = itemData[lootItemKey]) === null || _itemData_lootItemKey === void 0 ? void 0 : _itemData_lootItemKey.name) || lootItemKey;
@@ -1438,23 +1438,21 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     console.log("[DEBUG] Defeat: Type cooldown started for ".concat(entityType, " at ").concat(this.lastEncounterTime[entityType], " (Duration: ").concat(this.defeatCooldowns[entityType] / 1000, "s)"));
                     // --- Prepare Loot using instanceLoot ---
                     // The final loot is simply whatever is currently in the entity's instanceLoot.
-                    var finalLootItems = entity.instanceLoot ? _to_consumable_array(entity.instanceLoot) : []; // Use spread to create a copy
-                    // REMOVED: Old logic fetching standard loot, filtering stolenItems, and adding gnome's stolenItem.
+                    var finalLootItems = entity.instanceLoot ? _to_consumable_array(entity.instanceLoot) : [];
+                    // Convert all item keys to objects with itemKey and instanceId
+                    var finalLootObjects = finalLootItems.map(itemKey => ({ itemKey, instanceId: `${itemKey}-${Date.now()}-${Math.floor(Math.random()*10000)}` }));
                     console.log("[DEBUG] Loot for defeated ".concat(entityId, " directly from instanceLoot: [").concat(finalLootItems.join(', '), "]"));
                     // --- Register Loot and Create Bag (always) ---
-                    // REMOVED: Loot check `if (finalLootItems.length > 0)` to ensure bags always drop.
                     console.log("[DEBUG] Final loot for defeated ".concat(entityId, " from instanceLoot: [").concat(finalLootItems.join(', '), "]")); // Log the final list (even if empty)
                     // Register the actual loot list to be retrieved by LootUIManager later (can be empty)
-                    this.scene.lootUIManager.registerNpcLoot(entityId, finalLootItems);
+                    this.scene.lootUIManager.registerNpcLoot(entityId, finalLootObjects);
                     // Get room and direction info needed for bag creation
                     var currentRoomId = this.scene.roomManager.currentRoomId; // Should match entity.roomId, but use current for safety
                     var playerFacing = this.scene.playerDirection;
                     // Create the visual bag sprite regardless of loot content
-                    this.scene.bagManager.createBagForNPC(entityId, currentRoomId, 'player', playerFacing);
-                    console.log("[DEBUG] Loot bag created for ".concat(entityId, " in room ").concat(currentRoomId, " (Loot count: ").concat(finalLootItems.length, ")."));
-                    // Removed the 'else' block that logged "No loot generated..."
+                    this.scene.bagManager.createBagForNPC(entityId, currentRoomId, 'player', playerFacing, finalLootObjects);
+                    console.log("[DEBUG] Loot bag created for ".concat(entityId, " in room ").concat(currentRoomId, " (Loot count: ").concat(finalLootObjects.length, ")."));
                     // Remove entity immediately after handling loot registration/bag creation
-                    // Removed healthBar destruction logic
                     this.entities.delete(entityId);
                     console.log("[DEBUG] Defeat: Removed entity ".concat(entityId, " (").concat(entityType, ") from room ").concat(roomId, "."));
                     // Start the room cooldown *after* removing the entity
