@@ -317,19 +317,20 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 console.log("[DungeonScene] Generated Player ID: ".concat(this.playerId));
 
                 // --- Initialize Managers in Dependency Order ---
-                this.itemManager = new ItemManager(this);
+                const socket = window.socket;
+                this.itemManager = new ItemManager(this, socket);
                 // Use the statBlock from init
                 var statBlock = this.statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 };
-                this.playerStats = new PlayerStats(this, this.playerId, statBlock);
+                this.playerStats = new PlayerStats(this, this.playerId, statBlock, socket);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
 
                 // Then managers that depend on itemManager and playerStats
-                this.bagManager = new BagManager(this, this.playerStats, this.itemManager);
+                this.bagManager = new BagManager(this, this.playerStats, this.itemManager, socket);
                 
                 // Then managers that depend on bagManager
                 this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
-                this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId);
+                this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId, socket);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);

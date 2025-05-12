@@ -19,15 +19,14 @@ function _create_class(Constructor, protoProps, staticProps) {
 }
 import Phaser from 'https://esm.sh/phaser@3.60.0'; // For EventEmitter
 import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT, getMagicBonusFromINT, getMagicDefenseFromINT } from './StatDefinitions.js';
-import io from 'socket.io-client';
-const socket = io();
 
 export var PlayerStats = /*#__PURE__*/ function() {
     "use strict";
-    function PlayerStats(scene, playerId, statBlock) {
+    function PlayerStats(scene, playerId, statBlock, socket) {
         _class_call_check(this, PlayerStats);
         this.scene = scene; // Store the scene reference
         this.playerId = playerId; // Store the unique player ID
+        this.socket = socket;
         // --- Stat Block Initialization ---
         // statBlock: { vit, str, int, dex, mnd, spd }
         statBlock = statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 }; // fallback defaults
@@ -257,7 +256,7 @@ export var PlayerStats = /*#__PURE__*/ function() {
     ]);
 
     // Listen for authoritative stat and health updates from server
-    socket.on('PLAYER_STATS_UPDATE', ({ playerId, statBlock }) => {
+    this.socket.on('PLAYER_STATS_UPDATE', ({ playerId, statBlock }) => {
         if (playerId === this.playerId) {
             this.statBlock = statBlock;
             // Update derived stats as needed
@@ -271,7 +270,7 @@ export var PlayerStats = /*#__PURE__*/ function() {
         }
     });
 
-    socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
+    this.socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
         if (playerId === this.playerId) {
             this._currentHealth = health;
             this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());

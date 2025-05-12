@@ -20,17 +20,16 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 // Import itemData to get asset info (consider moving itemData to a shared file later)
 import { itemData } from './BagManager.js'; // Assuming itemData is exported from BagManager
-import io from 'socket.io-client';
-const socket = io();
 
 export var LootUIManager = /*#__PURE__*/ function() {
     "use strict";
-    function LootUIManager(scene, npcLootManager, bagManager, playerId) {
+    function LootUIManager(scene, npcLootManager, bagManager, playerId, socket) {
         _class_call_check(this, LootUIManager);
         this.scene = scene;
         this.npcLootManager = npcLootManager;
         this.bagManager = bagManager;
         this.playerId = playerId;
+        this.socket = socket;
         this.isOpen = false;
         this.lootContainer = null;
         this.currentLootItems = []; // Array of item keys
@@ -47,7 +46,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
         console.log("[LootUIManager] Initialized.");
 
         // --- Add socket event listeners for server-authoritative updates ---
-        socket.on('LOOT_BAG_UPDATE', (data) => {
+        this.socket.on('LOOT_BAG_UPDATE', (data) => {
             // Only update if the loot UI is open and matches the current bag
             if (this.isOpen && data.bagId === this.currentSourceEntityId) {
                 this.currentLootItems = data.items;
@@ -58,7 +57,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
                 }
             }
         });
-        socket.on('INVENTORY_UPDATE', (data) => {
+        this.socket.on('INVENTORY_UPDATE', (data) => {
             if (data.playerId === this.playerId) {
                 // Notify BagManager to update inventory and re-render
                 if (this.bagManager && typeof this.bagManager.inventory !== 'undefined') {
@@ -304,7 +303,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
      */ key: "pickupItem",
             value: function pickupItem(bagId, itemKey) {
                 console.log('[LootUIManager] Emitting LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
-                socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
+                this.socket.emit('LOOT_BAG_PICKUP', { playerId: this.playerId, bagId, itemKey });
             }
         },
         {
@@ -314,7 +313,7 @@ export var LootUIManager = /*#__PURE__*/ function() {
      * @param {string[]} items - An array of item keys to drop.
      */ key: "dropBag",
             value: function dropBag(roomId, items) {
-                socket.emit('LOOT_BAG_DROP', { playerId: this.playerId, roomId, items });
+                this.socket.emit('LOOT_BAG_DROP', { playerId: this.playerId, roomId, items });
             }
         },
         {

@@ -92,6 +92,11 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
 io.on('connection', (socket) => {
   console.log('[SOCKET] Client connected:', socket.id, 'User:', socket.user?.id || '[no user]');
 
+  // --- DEBUG: Catch-all event logger ---
+  socket.onAny((event, ...args) => {
+    console.log('[SOCKET] Received event:', event, args);
+  });
+
   // PLAYER JOIN
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     // Fetch and validate player data from Supabase

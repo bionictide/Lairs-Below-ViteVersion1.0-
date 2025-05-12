@@ -1,6 +1,4 @@
 // Handles the logic for using items
-import io from 'socket.io-client';
-const socket = io();
 
 function _class_call_check(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
@@ -23,9 +21,10 @@ function _create_class(Constructor, protoProps, staticProps) {
 }
 export var ItemManager = /*#__PURE__*/ function() {
     "use strict";
-    function ItemManager(scene) {
+    function ItemManager(scene, socket) {
         _class_call_check(this, ItemManager);
         this.scene = scene;
+        this.socket = socket;
         console.log("[ItemManager] Initialized.");
         // Define item effects here or load from config
         this.itemEffects = {
@@ -45,7 +44,7 @@ export var ItemManager = /*#__PURE__*/ function() {
             key: "useItem",
             value: function useItem(itemInstance, targetStats) {
                 // Only emit intent to server, do not apply effect locally
-                socket.emit('INVENTORY_USE_ITEM', { playerId: targetStats.playerId, instanceId: itemInstance.instanceId });
+                this.socket.emit('INVENTORY_USE_ITEM', { playerId: targetStats.playerId, instanceId: itemInstance.instanceId });
             }
         }
     ]);
