@@ -126,25 +126,10 @@ export var BagManager = /*#__PURE__*/ function() {
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             console.log('[BagManager] Received INVENTORY_UPDATE:', { playerId, inventory, thisPlayer: this.playerId });
             if (playerId === this.playerId) {
-                // Only mark grid slots as occupied, do not reassign unless missing/invalid
-                this.initializeGridOccupancy();
+                // Do not assign or reassign grid slots; just update inventory and re-render
                 inventory.forEach(item => {
                     const def = itemData[item.itemKey] || {};
                     Object.assign(item, def);
-                    if (typeof item.gridX !== 'number' || typeof item.gridY !== 'number' || item.gridX < 0 || item.gridY < 0 || !this.canPlaceItemAt(item.gridX, item.gridY, def.width || 1, def.height || 1)) {
-                        // Only assign if missing/invalid
-                        const slot = this.findFirstAvailableSlot(def.width || 1, def.height || 1);
-                        if (slot) {
-                            item.gridX = slot.x;
-                            item.gridY = slot.y;
-                            this.markGridOccupancy(slot.x, slot.y, def.width || 1, def.height || 1, item.instanceId);
-                        } else {
-                            item.gridX = -1;
-                            item.gridY = -1;
-                        }
-                    } else {
-                        this.markGridOccupancy(item.gridX, item.gridY, def.width || 1, def.height || 1, item.instanceId);
-                    }
                 });
                 this.inventory = inventory;
                 if (this.isOpen) this.openBagUI();
