@@ -27,9 +27,17 @@ export var ShelfManager = /*#__PURE__*/ function() {
         this.shelves = new Map(); // roomId: {empty: sprite, gem/potion: sprite}
         this.shelfWallDirections = new Map(); // roomId: facing direction
         this.socket.on('SHELF_UPDATE', (data) => {
-            // Update shelf UI based on authoritative state from server
-            // (e.g., hide shelf sprite if item is gone)
-            this.updateAllShelvesVisibility(this.scene.dungeonService.getRoomById(data.roomId));
+            // On authoritative update, destroy shelf sprite and remove from map
+            const room = this.scene.dungeonService.getRoomById(data.roomId);
+            if (!room || !this.shelves.has(room.id)) return;
+            const shelfData = this.shelves.get(room.id);
+            // Destroy all shelf sprites for this room
+            Object.values(shelfData).forEach(sprite => {
+                if (sprite && sprite.scene) {
+                    sprite.destroy();
+                }
+            });
+            this.shelves.delete(room.id);
         });
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
@@ -99,11 +107,14 @@ export var ShelfManager = /*#__PURE__*/ function() {
                         .setScale(0.35).setData('baseTexture', room.gemType);
                         // Set up click handler for gem shelf
                         gemShelf.on('pointerdown', function() {
-                            // Prevent pickup during encounter
                             if (_this.scene.isInEncounter) {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
+                            // Prevent double-looting: set pending flag and disable interactivity
+                            if (gemShelf.getData('pendingLoot')) return;
+                            gemShelf.setData('pendingLoot', true);
+                            gemShelf.disableInteractive();
                             // Get the gem name based on the shelf type
                             var gemName, gemKey;
                             if (room.gemType === 'ShelfEmerald') {
@@ -142,12 +153,14 @@ export var ShelfManager = /*#__PURE__*/ function() {
                         .setScale(0.35).setData('baseTexture', 'Shelf2Potion');
                         // Set up click handler for potion shelf
                         potionShelf.on('pointerdown', function() {
-                            // Prevent pickup during encounter
                             if (_this.scene.isInEncounter) {
                                 _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                                 return;
                             }
-                            // Add socket event for shelf pickup
+                            // Prevent double-looting: set pending flag and disable interactivity
+                            if (potionShelf.getData('pendingLoot')) return;
+                            potionShelf.setData('pendingLoot', true);
+                            potionShelf.disableInteractive();
                             _this.socket.emit('SHELF_PICKUP_REQUEST', {
                                 playerId: _this.scene.playerId,
                                 roomId: room.id,
