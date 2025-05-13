@@ -141,7 +141,7 @@ import { HintManager } from './HintManager.js';
 import { ShelfManager } from './ShelfManager.js';
 import { BagManager } from './BagManager.js';
 import { HealthBar } from './HealthBar.js'; // Import the new HealthBar class
-import { NPCLootManager } from './NPCLootManager.js'; // Import the new NPCLootManager
+import { NPCLootManager } from './NpcLootManager.js'; // Import the new NPCLootManager
 import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIManager
 import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
@@ -338,12 +338,12 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager, socket, this.playerId);
                 
                 // Then managers that depend on bagManager
-                this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals);
+                this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals, socket);
                 this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId, socket);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
-                this.puzzleManager = new PuzzleManager(this);
+                this.puzzleManager = new PuzzleManager(this, socket);
                 this.treasureManager = new TreasureManager(this, socket);
                 this.hintManager = new HintManager(this);
                 this.shelfManager = new ShelfManager(this, socket);
