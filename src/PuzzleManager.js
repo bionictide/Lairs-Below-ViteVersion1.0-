@@ -20,11 +20,20 @@ function _create_class(Constructor, protoProps, staticProps) {
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 export var PuzzleManager = /*#__PURE__*/ function() {
     "use strict";
-    function PuzzleManager(scene) {
+    function PuzzleManager(scene, socket) {
         _class_call_check(this, PuzzleManager);
         this.scene = scene;
+        this.socket = socket;
         this.puzzles = new Map();
         this.keyWallDirections = new Map(); // roomId: facing direction
+        this.socket.on('PUZZLE_UPDATE', (data) => {
+            // On authoritative update, destroy the puzzle sprite and remove from tracking
+            const sprite = this.puzzles.get(data.roomId);
+            if (sprite && sprite.scene) {
+                sprite.destroy();
+                this.puzzles.delete(data.roomId);
+            }
+        });
     }
     _create_class(PuzzleManager, [
         {
@@ -78,35 +87,29 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                 sprite.on('pointerdown', function() {
                     // Prevent pickup during encounter
                     if (_this.scene.isInEncounter) {
-                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!'); // Updated message
+                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                         return;
                     }
-                    // Get the room data from DungeonService
+                    // Prevent double-looting: set pending flag and disable interactivity
+                    if (sprite.getData('pendingLoot')) return;
+                    sprite.setData('pendingLoot', true);
+                    sprite.disableInteractive();
+                    // Only emit intent to server; do NOT mutate local state or destroy sprite
                     var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                    // Determine item key BEFORE modifying roomData
                     var itemKey;
-                    var originalPuzzleType = roomData ? roomData.puzzleType : null; // Store original type
+                    var originalPuzzleType = roomData ? roomData.puzzleType : null;
                     if (originalPuzzleType === 'key') {
-                        itemKey = 'Key1'; // Use capitalized 'Key1' for consistency
+                        itemKey = 'Key1';
                     }
-                    // Emit event only if an itemKey was determined
                     if (itemKey) {
-                        // Emit BEFORE destroying sprite or modifying room data
-                        _this.scene.events.emit('addToInventory', itemKey);
+                        _this.socket.emit('PUZZLE_PICKUP_REQUEST', {
+                            playerId: _this.scene.playerId,
+                            roomId: room.id,
+                            itemKey: itemKey
+                        });
                     } else {
-                        // Log if no valid item key could be determined
-                        console.warn("[PuzzleManager] Clicked puzzle in room ".concat(room.id, ", but original puzzleType (").concat(originalPuzzleType, ") didn't map to a known itemKey."));
+                        console.warn(`[PuzzleManager] Clicked puzzle in room ${room.id}, but original puzzleType (${originalPuzzleType}) didn't map to a known itemKey.`);
                     }
-                    // Now, mark the puzzle (key) as collected in the room data
-                    if (roomData) {
-                        roomData.puzzleType = null; // Mark as permanently collected
-                        console.log("[DEBUG] Permanently marked key as collected in room ".concat(room.id, "."));
-                    } else {
-                        console.error("[ERROR] Could not find room data for ".concat(room.id, " to mark key collected."));
-                    }
-                    // Finally, destroy the sprite and remove from tracking
-                    sprite.destroy();
-                    _this.puzzles.delete(room.id);
                 });
                 this.puzzles.set(room.id, sprite);
                 this.updateSpriteVisibility(sprite, room); // Renamed and removed facing

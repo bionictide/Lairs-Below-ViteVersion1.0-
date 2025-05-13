@@ -27,9 +27,12 @@ export var TreasureManager = /*#__PURE__*/ function() {
         this.treasures = new Map();
         this.treasureWallDirections = new Map(); // roomId: facing direction
         this.socket.on('TREASURE_UPDATE', (data) => {
-            // Update treasure UI based on authoritative state from server
-            // (e.g., hide treasure sprite if item is gone)
-            this.updateSpriteVisibility(this.treasures.get(data.roomId), this.scene.dungeonService.getRoomById(data.roomId));
+            // On authoritative update, destroy the treasure sprite and remove from tracking
+            const sprite = this.treasures.get(data.roomId);
+            if (sprite && sprite.scene) {
+                sprite.destroy();
+                this.treasures.delete(data.roomId);
+            }
         });
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
@@ -108,43 +111,29 @@ export var TreasureManager = /*#__PURE__*/ function() {
                 sprite.on('pointerdown', function() {
                     // Prevent pickup during encounter
                     if (_this.scene.isInEncounter) {
-                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!'); // Updated message
+                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
                         return;
                     }
-                    // Get the room data from DungeonService
+                    // Prevent double-looting: set pending flag and disable interactivity
+                    if (sprite.getData('pendingLoot')) return;
+                    sprite.setData('pendingLoot', true);
+                    sprite.disableInteractive();
+                    // Only emit intent to server; do NOT mutate local state or destroy sprite
                     var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                    if (roomData) {
-                        // Determine item key BEFORE modifying roomData
-                        var itemKey;
-                        var originalTreasureLevel = roomData ? roomData.treasureLevel : null; // Store original level
-                        // Use standardized keys for adding to inventory
-                        if (originalTreasureLevel === 'sword1') itemKey = 'sword1';
-                        else if (originalTreasureLevel === 'helm1') itemKey = 'helm1';
-                        else if (originalTreasureLevel === 'Potion1(red)') itemKey = 'Potion1(red)';
-                        // Emit event only if an itemKey was determined
-                        if (itemKey) {
-                            // Emit BEFORE destroying sprite or modifying room data
-                            _this.socket.emit('TREASURE_PICKUP_REQUEST', {
-                                playerId: _this.scene.playerId,
-                                roomId: room.id,
-                                itemKey: itemKey
-                            });
-                        } else {
-                            // Log if no valid item key could be determined from the original level
-                            console.warn("[TreasureManager] Clicked treasure in room ".concat(room.id, ", but original treasureLevel (").concat(originalTreasureLevel, ") didn't map to a known itemKey."));
-                        }
-                        // Now, mark the treasure as collected in the room data
-                        if (roomData) {
-                            roomData.treasureLevel = null;
-                            console.log("[DEBUG] Permanently marked treasure as collected in room ".concat(room.id, "."));
-                        } else {
-                            console.error("[ERROR] Could not find room data for ".concat(room.id, " to mark treasure collected."));
-                        }
-                        // Finally, destroy the sprite and remove from tracking
-                        sprite.destroy();
-                        _this.treasures.delete(room.id) // Removed semicolon
-                        ;
-                    } // <-- ADDED MISSING BRACE for the 'if (roomData)' block starting on line 35
+                    var itemKey;
+                    var originalTreasureLevel = roomData ? roomData.treasureLevel : null;
+                    if (originalTreasureLevel === 'sword1') itemKey = 'sword1';
+                    else if (originalTreasureLevel === 'helm1') itemKey = 'helm1';
+                    else if (originalTreasureLevel === 'Potion1(red)') itemKey = 'Potion1(red)';
+                    if (itemKey) {
+                        _this.socket.emit('TREASURE_PICKUP_REQUEST', {
+                            playerId: _this.scene.playerId,
+                            roomId: room.id,
+                            itemKey: itemKey
+                        });
+                    } else {
+                        console.warn(`[TreasureManager] Clicked treasure in room ${room.id}, but original treasureLevel (${originalTreasureLevel}) didn't map to a known itemKey.`);
+                    }
                 });
                 this.treasures.set(room.id, sprite);
                 this.updateSpriteVisibility(sprite, room); // Renamed and removed facing

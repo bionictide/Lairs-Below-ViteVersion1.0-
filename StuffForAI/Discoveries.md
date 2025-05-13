@@ -196,6 +196,12 @@ inventory.forEach(item => {
 - **Never mutate inventory or UI state locally in response to clicks.** Only update in response to server events.
 - **Never destroy or recreate sprites except in response to server events** (`SHELF_UPDATE`, `TREASURE_UPDATE`, etc.).
 
+### Crucial Race-Condition Prevention (Double-Click Guard)
+- **Always check for encounter (`isInEncounter`) BEFORE setting the pendingLoot flag or disabling interactivity.**
+- **Set a local `pendingLoot` flag and disable interactivity on the sprite immediately after passing the encounter check and before emitting the pickup request.**
+- **Do NOT clear the flag or re-enable interactivity until the server responds (and the sprite is destroyed).**
+- This prevents double-clicks or rapid requests from causing double-looting or race conditions, even if the server is slow to respond.
+
 ### Troubleshooting Checklist
 - If a looted item does not appear in the bag:
   - Check that the server emits `INVENTORY_UPDATE` with the new item.

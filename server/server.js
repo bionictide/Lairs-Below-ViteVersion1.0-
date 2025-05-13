@@ -434,6 +434,26 @@ io.on('connection', (socket) => {
     io.emit('TREASURE_UPDATE', { roomId, itemKey });
   });
 
+  // PUZZLE_PICKUP_REQUEST
+  socket.on('PUZZLE_PICKUP_REQUEST', ({ playerId, roomId, itemKey }) => {
+    const player = players.get(playerId);
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
+    // Only allow pickup if puzzle is present
+    if (room.puzzleType !== 'key' || itemKey !== 'Key1') {
+      return socket.emit(EVENTS.ERROR, { message: 'Puzzle not found', code: 'PUZZLE_NOT_FOUND' });
+    }
+    // Remove the puzzle from the room
+    room.puzzleType = null;
+    // Add item to inventory
+    const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
+    newItem.gridX = -1;
+    newItem.gridY = -1;
+    player.inventory.push(newItem);
+    io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    io.emit('PUZZLE_UPDATE', { roomId, itemKey });
+  });
+
   // --- Add more event handlers as needed ---
 });
 
