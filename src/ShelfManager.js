@@ -27,17 +27,22 @@ export var ShelfManager = /*#__PURE__*/ function() {
         this.shelves = new Map(); // roomId: {empty: sprite, gem/potion: sprite}
         this.shelfWallDirections = new Map(); // roomId: facing direction
         this.socket.on('SHELF_UPDATE', (data) => {
-            // On authoritative update, destroy shelf sprite and remove from map
+            // On authoritative update, destroy only the looted item shelf, not the base shelf
             const room = this.scene.dungeonService.getRoomById(data.roomId);
             if (!room || !this.shelves.has(room.id)) return;
             const shelfData = this.shelves.get(room.id);
-            // Destroy all shelf sprites for this room
-            Object.values(shelfData).forEach(sprite => {
-                if (sprite && sprite.scene) {
-                    sprite.destroy();
+            // Remove only the looted item shelf
+            if (data.itemKey && shelfData) {
+                if (shelfData.gemShelf && data.itemKey !== 'Potion1(red)' && shelfData.gemShelf.scene) {
+                    shelfData.gemShelf.destroy();
+                    delete shelfData.gemShelf;
                 }
-            });
-            this.shelves.delete(room.id);
+                if (shelfData.potionShelf && data.itemKey === 'Potion1(red)' && shelfData.potionShelf.scene) {
+                    shelfData.potionShelf.destroy();
+                    delete shelfData.potionShelf;
+                }
+            }
+            // Do NOT destroy the base shelf (emptyShelf/emptyShelf2) or delete the shelfData entry
         });
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
