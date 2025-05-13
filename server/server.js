@@ -289,7 +289,9 @@ io.on('connection', (socket) => {
     if (!player) return socket.emit(EVENTS.ERROR, { message: 'Player not found', code: 'PLAYER_NOT_FOUND' });
     const idx = player.inventory.findIndex(i => i.instanceId === instanceId);
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
+    // Remove the item, but do NOT mutate or reset gridX/gridY for remaining items
     const [removed] = player.inventory.splice(idx, 1);
+    // Send inventory as-is, preserving gridX/gridY for all remaining items
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_REMOVE_ITEM', success: true, message: `Removed ${removed.itemKey}` });
   });
@@ -302,6 +304,7 @@ io.on('connection', (socket) => {
     if (idx === -1) return socket.emit(EVENTS.ERROR, { message: 'Item not found', code: 'ITEM_NOT_FOUND' });
     const item = player.inventory[idx];
     player.inventory.splice(idx, 1);
+    // Send inventory as-is, preserving gridX/gridY for all remaining items
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'INVENTORY_USE_ITEM', success: true, message: `Used ${item.itemKey}` });
   });
@@ -329,7 +332,6 @@ io.on('connection', (socket) => {
     player.inventory.push(item);
     if (bag.items.length === 0) bags.delete(bagId);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
-    io.to(player.socket.id).emit(EVENTS.ACTION_RESULT, { action: 'LOOT_BAG_PICKUP', success: true, message: `Picked up ${item.itemKey}` });
     io.emit('LOOT_BAG_UPDATE', { bagId, items: bag.items });
   });
 
