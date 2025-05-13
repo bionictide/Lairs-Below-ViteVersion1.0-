@@ -154,6 +154,7 @@ export var TreasureManager = /*#__PURE__*/ function() {
             // Updated function to show treasure only in a specific direction
             key: "updateSpriteVisibility",
             value: function updateSpriteVisibility(sprite, room) {
+                if (!sprite) return; // Guard: do nothing if sprite is undefined
                 // Get player's current facing direction
                 var currentFacing = this.scene.playerPosition.facing;
                 // Get the pre-determined wall direction for this room

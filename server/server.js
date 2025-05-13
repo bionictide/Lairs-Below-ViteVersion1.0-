@@ -417,13 +417,18 @@ io.on('connection', (socket) => {
     const player = players.get(playerId);
     const room = dungeon.rooms.find(r => r.id === roomId);
     if (!player || !room) return socket.emit(EVENTS.ERROR, { message: 'Player or room not found', code: 'NOT_FOUND' });
-    if (room.treasureLevel !== itemKey) return socket.emit(EVENTS.ERROR, { message: 'Treasure not found', code: 'TREASURE_NOT_FOUND' });
-    room.treasureLevel = null;
+    // Prevent double-looting: only allow if treasureLevel is present and matches
+    if (!room.treasureLevel || room.treasureLevel !== itemKey) {
+      return socket.emit(EVENTS.ERROR, { message: 'Treasure not found', code: 'TREASURE_NOT_FOUND' });
+    }
+    // Add item to inventory first
     const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
     newItem.gridX = -1;
     newItem.gridY = -1;
     player.inventory.push(newItem);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+    // Now remove the treasure from the room and emit update to all clients
+    room.treasureLevel = null;
     io.emit('TREASURE_UPDATE', { roomId, itemKey });
   });
 
