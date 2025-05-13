@@ -36,10 +36,12 @@ export var ShelfManager = /*#__PURE__*/ function() {
                 if (shelfData.gemShelf && data.itemKey !== 'Potion1(red)' && shelfData.gemShelf.scene) {
                     shelfData.gemShelf.destroy();
                     delete shelfData.gemShelf;
+                    room.gemType = null; // Update local state
                 }
                 if (shelfData.potionShelf && data.itemKey === 'Potion1(red)' && shelfData.potionShelf.scene) {
                     shelfData.potionShelf.destroy();
                     delete shelfData.potionShelf;
+                    room.hasPotion = false; // Update local state
                 }
             }
             // Do NOT destroy the base shelf (emptyShelf/emptyShelf2) or delete the shelfData entry

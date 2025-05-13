@@ -131,6 +131,25 @@ export var BagManager = /*#__PURE__*/ function() {
                     const def = itemData[item.itemKey] || {};
                     Object.assign(item, def);
                 });
+                // Place any new items (gridX or gridY === -1) in the first available slot
+                this.initializeGridOccupancy();
+                // Mark grid for all items that already have a valid position
+                inventory.forEach(item => {
+                    if (item.gridX !== -1 && item.gridY !== -1) {
+                        this.markGridOccupancy(item.gridX, item.gridY, item.width, item.height, item.instanceId);
+                    }
+                });
+                // Now assign slots to new items
+                inventory.forEach(item => {
+                    if (item.gridX === -1 || item.gridY === -1) {
+                        const slot = this.findFirstAvailableSlot(item.width, item.height);
+                        if (slot) {
+                            item.gridX = slot.x;
+                            item.gridY = slot.y;
+                            this.markGridOccupancy(slot.x, slot.y, item.width, item.height, item.instanceId);
+                        }
+                    }
+                });
                 this.inventory = inventory;
                 if (this.isOpen) this.openBagUI();
             }
