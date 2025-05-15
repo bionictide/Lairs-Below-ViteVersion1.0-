@@ -181,6 +181,56 @@ export var CombatVisuals = /*#__PURE__*/ function() {
                     }
                 });
             }
+        },
+        {
+            /**
+     * Debug: Cycle through spell animations on key press ('i') when debug is active.
+     * Shows the animation centered with its name above.
+     */
+            setupSpellDebugPreview() {
+                if (!this.scene || !this.scene.input || !this.scene.anims) return;
+                // List of spell animation keys (should match those registered in DungeonScene)
+                this._spellDebugKeys = [
+                    'ASIce_01_Cast1',
+                    'ASIce_02_Cast2',
+                    'ASIce_03_Frost',
+                    'ASIce_04_Chill',
+                    'ASIce_05_Icicle',
+                    'ASIce_06_Spike',
+                    'ASIce_07_Shatter',
+                    'ASIce_08_Freeze',
+                    'ASIce_09_Blizzard',
+                    'ASIce_10_HailA',
+                    'ASIce_10_HailB',
+                ];
+                this._spellDebugIndex = 0;
+                this._spellDebugSprite = null;
+                this._spellDebugText = null;
+                this.scene.input.keyboard.on('keydown-I', () => {
+                    if (!this.scene.debugHelper || !this.scene.debugHelper.visible) return;
+                    this._showNextSpellDebug();
+                });
+            },
+            _showNextSpellDebug() {
+                // Remove previous sprite/text if any
+                if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
+                if (this._spellDebugText) { this._spellDebugText.destroy(); this._spellDebugText = null; }
+                // Cycle index
+                this._spellDebugIndex = (this._spellDebugIndex + 1) % this._spellDebugKeys.length;
+                const key = this._spellDebugKeys[this._spellDebugIndex];
+                // Add sprite centered
+                const x = this.scene.game.config.width / 2;
+                const y = this.scene.game.config.height / 2;
+                this._spellDebugSprite = this.scene.add.sprite(x, y, key).setDepth(999).setScale(2);
+                this._spellDebugSprite.play(key);
+                // Add label above
+                this._spellDebugText = this.scene.add.text(x, y - 180, key, { fontSize: '32px', color: '#00ffff', backgroundColor: '#222', padding: { x: 10, y: 4 } }).setOrigin(0.5).setDepth(1000);
+                // Remove sprite/text when animation completes
+                this._spellDebugSprite.on('animationcomplete', () => {
+                    if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
+                    if (this._spellDebugText) { this._spellDebugText.destroy(); this._spellDebugText = null; }
+                });
+            }
         }
     ]);
     return CombatVisuals;

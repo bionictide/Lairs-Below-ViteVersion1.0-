@@ -295,6 +295,19 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.load.image('GlassBroke3', './Assets/GlassBroke3.png');
                 this.load.image('GlassBroke4', './Assets/GlassBroke4.png');
                 this.load.image('GlassBroke5', './Assets/GlassBroke5.png');
+                // --- Preload 60 FPS Ice Spell Sprite Sheets ---
+                // NOTE: Adjust frameWidth and frameHeight to match your actual sprite sheet frame size
+                this.load.spritesheet('ASIce_01_Cast1', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_01_Cast1.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
+                this.load.spritesheet('ASIce_02_Cast2', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_02_Cast2.png', { frameWidth: 256, frameHeight: 256, endFrame: 44 });
+                this.load.spritesheet('ASIce_03_Frost', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_03_Frost.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
+                this.load.spritesheet('ASIce_04_Chill', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_04_Chill.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
+                this.load.spritesheet('ASIce_05_Icicle', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_05_Icicle.png', { frameWidth: 256, frameHeight: 256, endFrame: 59 });
+                this.load.spritesheet('ASIce_06_Spike', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_06_Spike.png', { frameWidth: 256, frameHeight: 256, endFrame: 59 });
+                this.load.spritesheet('ASIce_07_Shatter', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_07_Shatter.png', { frameWidth: 256, frameHeight: 256, endFrame: 74 });
+                this.load.spritesheet('ASIce_08_Freeze', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_08_Freeze.png', { frameWidth: 256, frameHeight: 256, endFrame: 89 });
+                this.load.spritesheet('ASIce_09_Blizzard', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_09_Blizzard.png', { frameWidth: 256, frameHeight: 256, endFrame: 89 });
+                this.load.spritesheet('ASIce_10_HailA', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailA.png', { frameWidth: 256, frameHeight: 256, endFrame: 179 });
+                this.load.spritesheet('ASIce_10_HailB', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailB.png', { frameWidth: 256, frameHeight: 256, endFrame: 179 });
                 this.add.text(gameConfig.width / 2, gameConfig.height / 2, 'Loading Dungeon...', {
                     fontSize: '32px',
                     fill: '#ffffff'
@@ -333,6 +346,34 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock, socket);
                 this.combatVisuals = new CombatVisuals(this);
                 this.npcLootManager = new NPCLootManager(this);
+                // Enable debug spell animation preview
+                this.combatVisuals.setupSpellDebugPreview();
+
+                // --- Register 60 FPS Ice Spell Animations ---
+                // NOTE: Adjust frameRate if you want to play slower/faster than 60 FPS
+                const spellAnims = [
+                    { key: 'ASIce_01_Cast1', frames: 30 },
+                    { key: 'ASIce_02_Cast2', frames: 45 },
+                    { key: 'ASIce_03_Frost', frames: 30 },
+                    { key: 'ASIce_04_Chill', frames: 30 },
+                    { key: 'ASIce_05_Icicle', frames: 60 },
+                    { key: 'ASIce_06_Spike', frames: 60 },
+                    { key: 'ASIce_07_Shatter', frames: 75 },
+                    { key: 'ASIce_08_Freeze', frames: 90 },
+                    { key: 'ASIce_09_Blizzard', frames: 90 },
+                    { key: 'ASIce_10_HailA', frames: 180 },
+                    { key: 'ASIce_10_HailB', frames: 180 },
+                ];
+                spellAnims.forEach(anim => {
+                    if (!this.anims.exists(anim.key)) {
+                        this.anims.create({
+                            key: anim.key,
+                            frames: this.anims.generateFrameNumbers(anim.key, { start: 0, end: anim.frames - 1 }),
+                            frameRate: 60,
+                            repeat: 0
+                        });
+                    }
+                });
 
                 // Then managers that depend on itemManager and playerStats
                 this.bagManager = new BagManager(this, this.playerStats, this.itemManager, socket, this.playerId);
