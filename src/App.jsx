@@ -443,19 +443,19 @@ function CharacterSelectScreen({ onSelect, error }) {
             transform: statVisibilities[0] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[0] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Health: {char.stats?.vit || 0}</div>
+          }}>Health: {char.type === 'dwarf' ? 750 : char.type === 'gnome' ? 400 : char.type === 'elvaan' ? 500 : 0}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[1] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[1] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Attack: {char.stats?.str || 0}</div>
+          }}>Attack: {char.type === 'dwarf' ? 60 : char.type === 'gnome' ? 40 : char.type === 'elvaan' ? 80 : 0}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[2] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[2] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Defense: {char.stats?.vit || 0}</div>
+          }}>Defense: {char.type === 'dwarf' ? 7.5 : char.type === 'gnome' ? 4 : char.type === 'elvaan' ? 5 : 0}</div>
           <div style={{
             marginTop: 8,
             transform: statVisibilities[3] ? 'translateX(0)' : 'translateX(-600px)',
