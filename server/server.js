@@ -77,6 +77,9 @@ const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
 const bags = new Map();    // bagId -> { roomId, items }
 const visitedRooms = new Map(); // playerId -> Set of visited roomIds
 
+// Add global entities map for NPCs/monsters
+const entities = new Map(); // entityId -> { character, roomId, inventory, health, ... }
+
 // --- Dungeon World (Persistent, Server-Authoritative) ---
 // All dungeon generation and mutation logic is imported from DungeonCore.js and must be performed here.
 // No client should ever mutate dungeon state. All mutations must be requested via events and validated/applied here.
@@ -87,6 +90,16 @@ console.log('[DUNGEON] Dungeon generated at startup:', {
   grid: dungeon.grid.length
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
+
+// Helper: Get combatant (player or entity) by ID
+function getCombatant(id) {
+  return players.get(id) || entities.get(id);
+}
+
+// Helper: Is this a player?
+function isPlayer(id) {
+  return players.has(id);
+}
 
 // --- Socket.io Event Handlers ---
 io.on('connection', (socket) => {
@@ -454,76 +467,114 @@ io.on('connection', (socket) => {
     io.emit('PUZZLE_UPDATE', { roomId, itemKey });
   });
 
-  socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName }) => {
-    // Validate turn and action (simplified for now)
-    const attacker = players.get(initiatorId);
-    const defender = players.get(targetId);
-    if (!attacker || !defender) return;
+  // --- Encounter Start: Create and register NPCs ---
+  // Add a new socket event for encounter start (from client or auto-triggered)
+  socket.on(EVENTS.ENCOUNTER_START, ({ entityType, roomId }) => {
+    // Generate unique entityId
+    const entityId = `entity-${entityType}-${Date.now()}-${Math.floor(Math.random()*10000)}`;
+    // Get base stats from CharacterTypes (import if needed)
+    const baseStats = require('../src/CharacterTypes.js').characterDefinitions[entityType];
+    if (!baseStats) return;
+    // Create entity object
+    const entity = {
+      character: {
+        ...baseStats.stats,
+        name: baseStats.name,
+        type: entityType,
+        maxHealth: 100, // TODO: Use stat formula
+        health: 100,    // TODO: Use stat formula
+        vit: baseStats.stats.vit,
+        str: baseStats.stats.str,
+        int: baseStats.stats.int,
+        dex: baseStats.stats.dex,
+        mnd: baseStats.stats.mnd,
+        spd: baseStats.stats.spd
+      },
+      roomId,
+      inventory: [],
+      alive: true
+    };
+    entities.set(entityId, entity);
+    // Add to room
+    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
+    rooms.get(roomId).entities.push(entityId);
+    // Notify clients
+    io.to(roomId).emit(EVENTS.ENCOUNTER_START, { entityId, entityType, roomId });
+  });
 
+  // --- Update attack_intent handler ---
+  socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName }) => {
+    // Get combatants (player or entity)
+    const attacker = getCombatant(initiatorId);
+    const defender = getCombatant(targetId);
+    if (!attacker || !defender) return;
     // Get stat blocks
     const attackerStats = attacker.character;
     const defenderStats = defender.character;
-
     // Calculate damage (physical or spell)
     let rawDamage = 0;
     let prompt = '';
     if (attackType === 'physical') {
-      // Use getPhysicalAttackFromSTR and item multipliers
       let baseDamage = 10 * (attackerStats.str || 0);
-      // TODO: Apply item multipliers, sword count, etc. as in PlayerStats.js
-      // TODO: Apply debug mode if needed
-      // Apply defense
-      let defense = 0.5 * (defenderStats.vit || 0); // getDefenseFromVIT
-      let mitigation = Math.min(0.9, defense * 0.01); // 1 DEF = 1% mitigation, cap 90%
+      let defense = 0.5 * (defenderStats.vit || 0);
+      let mitigation = Math.min(0.9, defense * 0.01);
       let finalDamage = Math.max(0, Math.floor(baseDamage * (1 - mitigation)));
       rawDamage = finalDamage;
       prompt = `${attackerStats.name || initiatorId} attacks ${defenderStats.name || targetId} for ${finalDamage} damage!`;
     } else if (attackType === 'spell') {
-      // Use INT, spell data, and modifiers (simplified for now)
-      let baseMagic = 0.10 * (attackerStats.int || 0) * 100; // getMagicBonusFromINT
-      // TODO: Use spellName, spellData, and all modifiers as in SpellManager/PlayerStats
-      let magicDefense = 0.5 * (defenderStats.int || 0); // getMagicDefenseFromINT
+      let baseMagic = 0.10 * (attackerStats.int || 0) * 100;
+      let magicDefense = 0.5 * (defenderStats.int || 0);
       let mitigation = Math.min(0.9, magicDefense * 0.01);
       let finalDamage = Math.max(0, Math.floor(baseMagic * (1 - mitigation)));
       rawDamage = finalDamage;
       prompt = `${attackerStats.name || initiatorId} casts ${spellName} on ${defenderStats.name || targetId} for ${finalDamage} damage!`;
     }
-
     // Update defender health
     defenderStats.health = Math.max(0, (defenderStats.health || defenderStats.maxHealth || 100) - rawDamage);
-    // Emit results
-    io.to(defender.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
-    io.to(defender.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
-    io.to(attacker.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
-    io.to(attacker.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    // Emit results to both clients (if player) or to all in room (if entity)
+    if (isPlayer(targetId)) {
+      io.to(defender.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+      io.to(defender.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    }
+    if (isPlayer(initiatorId)) {
+      io.to(attacker.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+      io.to(attacker.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    }
+    // For entities, broadcast to room
+    if (!isPlayer(targetId)) {
+      io.to(defender.roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+      io.to(defender.roomId).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    }
     // Handle death
     if (defenderStats.health <= 0) {
+      if (!isPlayer(targetId)) {
+        entities.delete(targetId);
+        // Remove from room
+        const room = rooms.get(defender.roomId);
+        if (room) room.entities = room.entities.filter(eid => eid !== targetId);
+      }
       io.emit('entity_died', { entityId: targetId, attackerId: initiatorId });
       // TODO: Handle loot, end encounter, etc.
     }
   });
 
-  // --- Steal Action: Server-Authoritative ---
+  // --- Update steal_intent handler ---
   socket.on('steal_intent', ({ initiatorId, targetId }) => {
-    const initiator = players.get(initiatorId);
-    const target = players.get(targetId);
+    const initiator = getCombatant(initiatorId);
+    const target = getCombatant(targetId);
     if (!initiator || !target) return;
     // Must be in the same room
     if (initiator.roomId !== target.roomId) return;
-    // Calculate base success rate
-    let baseSuccessRate = 0.5; // 50%
-    // Get DEX-based bonus (use StatDefinitions.js logic)
+    let baseSuccessRate = 0.5;
     let initiatorDex = initiator.character.dex || 0;
     let targetDex = target.character.dex || 0;
-    let initiatorStealBonus = 0.02 * initiatorDex; // 2% per DEX
-    let targetProtectionPenalty = 0.02 * targetDex; // 2% per DEX (placeholder for protection)
-    // TODO: Add equipment/buff bonuses if needed
+    let initiatorStealBonus = 0.02 * initiatorDex;
+    let targetProtectionPenalty = 0.02 * targetDex;
     let finalSuccessRate = Math.max(0.05, Math.min(0.95, baseSuccessRate + initiatorStealBonus - targetProtectionPenalty));
     let success = Math.random() < finalSuccessRate;
     let prompt = '';
     let itemTransferred = null;
     if (success && target.inventory && target.inventory.length > 0) {
-      // Steal a random item
       const idx = Math.floor(Math.random() * target.inventory.length);
       itemTransferred = target.inventory.splice(idx, 1)[0];
       initiator.inventory.push(itemTransferred);
@@ -533,26 +584,14 @@ io.on('connection', (socket) => {
     } else {
       prompt = `${initiator.character.name || initiatorId} fails to steal from ${target.character.name || targetId}.`;
     }
-    // Emit results to both clients
-    io.to(initiator.socket.id).emit('steal_result', {
-      initiatorId,
-      targetId,
-      success,
-      item: itemTransferred,
-      prompt,
-      inventory: initiator.inventory
-    });
-    io.to(target.socket.id).emit('steal_result', {
-      initiatorId,
-      targetId,
-      success,
-      item: itemTransferred,
-      prompt,
-      inventory: target.inventory
-    });
+    // Emit results
+    if (isPlayer(initiatorId)) io.to(initiator.socket.id).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
+    if (isPlayer(targetId)) io.to(target.socket.id).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: target.inventory });
+    if (!isPlayer(initiatorId)) io.to(initiator.roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
+    if (!isPlayer(targetId)) io.to(target.roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: target.inventory });
     // Optionally, emit inventory updates
-    io.to(initiator.socket.id).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
-    io.to(target.socket.id).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
+    if (isPlayer(initiatorId)) io.to(initiator.socket.id).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
+    if (isPlayer(targetId)) io.to(target.socket.id).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
   });
 
   // --- Add more event handlers as needed ---
