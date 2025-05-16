@@ -425,6 +425,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
 
                 // --- Initialize Managers in Dependency Order ---
                 const socket = window.socket;
+                this.socket = socket; // Ensure scene.socket is set
                 this.itemManager = new ItemManager(this, socket);
                 var statBlock = this.statBlock;
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock, socket);
@@ -551,7 +552,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId, socket);
 
                 // Finally, managers that depend on multiple other managers
-                this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals, socket);
+                this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
                 this.puzzleManager = new PuzzleManager(this, socket);
                 this.treasureManager = new TreasureManager(this, socket);
                 this.hintManager = new HintManager(this);
