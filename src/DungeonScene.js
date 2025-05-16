@@ -596,6 +596,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Add keepTimer as the fourth parameter
                 this.events.on('showActionMenu', function(actions, isPlayer) {
                     var isSubMenu = arguments.length > 2 && arguments[2] !== void 0 ? arguments[2] : false, keepTimer = arguments.length > 3 && arguments[3] !== void 0 ? arguments[3] : false;
+                    console.log('[DEBUG] DungeonScene.showActionMenu event received:', {actions, isPlayer, isSubMenu, keepTimer});
                     // Decide whether to keep the existing timer - based *only* on keepTimer flag
                     var keepExistingTimer = keepTimer && _this1.actionMenuTimer && _this1.actionMenuTimer.getRemaining() > 0;
                     // Decide whether to keep the existing timer and its graphics (Removed duplicate declaration)
@@ -763,6 +764,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                             }
                         }
                     }
+                    console.log('[DEBUG] DungeonScene.actionMenu created:', _this1.actionMenu);
                 });
                 console.log("Action menu timer expired!");
                 this.actionMenuTimer = null; // Clear timer event reference

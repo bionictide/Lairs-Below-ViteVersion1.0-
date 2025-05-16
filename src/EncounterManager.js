@@ -408,6 +408,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     page: 1
                 }, keepTimer = arguments.length > 4 && arguments[4] !== void 0 ? arguments[4] : false;
                 var target = this.entities.get(targetId);
+                console.log('[DEBUG] EncounterManager.showActionMenu called:', {initiatorId, targetId, roomId, menuContext});
                 if (!target) {
                     console.error("[ERROR] showActionMenu: Target entity ".concat(targetId, " not found!"));
                     this.endTurn(initiatorId); // End turn if target invalid
@@ -604,8 +605,8 @@ export var EncounterManager = /*#__PURE__*/ function() {
                             }
                         ];
                 }
-                // Emit 'showActionMenu' with appropriate isSubMenu and keepTimer flags
-                // Pass the actions array that now includes disabled property for spells
+                // After actions are built:
+                console.log('[DEBUG] EncounterManager.showActionMenu actions:', actions);
                 this.scene.events.emit('showActionMenu', actions, isPlayerTurn, isSubMenu, keepTimer);
             }
         },
