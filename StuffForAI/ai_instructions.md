@@ -246,7 +246,6 @@ These rules are absolute and must be followed for all future development and mig
 - No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
 - All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
 - Any deviation from these flows is a bug and must be corrected immediately.
-- All PlayerStats—including evasion—are always individual. Party or group members do not share stats or modifiers; each entity (player or AI) uses only their own stats for all calculations (damage, defense, evasion, etc.), regardless of party or group membership.
 
 ### PvP Encounter Flow
 - PvP encounters follow the same turn-based pattern as PvE, but both sides are player-controlled.
@@ -286,4 +285,23 @@ These rules are absolute and must be followed for all future development and mig
 - All of the above logic must be implemented server-side, with the client acting only as a renderer and intent emitter/listener.
 - No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
 - All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
-- Any deviation from these flows is a bug and must be corrected immediately. 
+- Any deviation from these flows is a bug and must be corrected immediately.
+
+---
+
+## 2024-06 Audit Clarifications (Post-Migration)
+
+### Group Encounter Enemy Count Logic
+- The number of enemies in a group encounter is determined by a 10% chain chance per extra enemy (up to 3 total), and is not based on the number of players or party members present. Any combination (1v1, 1v2, 1v3, 2v1, 2v2, 2v3, 3v1, 3v2, 3v3) is possible.
+
+### Event Naming and Payload Consistency
+- All client-to-server action events must use the canonical event names and payloads as defined in events.md/events.js. No legacy or ad-hoc event names should remain. All action results must be returned via `action_result`, `spell_result`, or the appropriate canonical event.
+
+### No Client-Side Fallback or Guessing (Except Perspective Rendering)
+- All local state mutation, fallback logic, or UI updates in response to user actions must be removed from the client. The client only emits intent and updates UI in response to server events. The only exception is perspective rendering logic (e.g., loot bag position/angle), which is purely visual and does not affect gameplay or security.
+
+### Group Targeting and Evasion
+- All attack, spell, and steal actions must always present a target selection submenu, even if there is only one valid target. Evasion (SPD-based dodge) is always checked server-side for every attack, spell, or steal, and the result is included in the action result payload.
+
+### Audit and QA Process
+- After any major migration, bug fix, or refactor, a full audit of the codebase and StuffForAI folder must be performed to ensure all flows, events, and state changes are fully documented and consistent. 

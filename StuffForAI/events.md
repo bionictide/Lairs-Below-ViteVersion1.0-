@@ -1,5 +1,10 @@
 # Socket.io Event Specification
 
+> **2024-06 Audit Clarifications:**
+> - All client-to-server action events must use the canonical event names and payloads as defined here and in events.js. No legacy or ad-hoc event names should remain. All action results must be returned via `action_result`, `spell_result`, or the appropriate canonical event.
+> - All attack, spell, and steal actions must always present a target selection submenu, even if there is only one valid target. Evasion (SPD-based dodge) is always checked server-side for every attack, spell, or steal, and the result is included in the action result payload (`evaded`, `prompt`, etc.).
+> - See ai_instructions.md for the full 2024-06 Audit Clarifications section.
+
 ## player_join
 - Direction: client → server
 - Payload:
