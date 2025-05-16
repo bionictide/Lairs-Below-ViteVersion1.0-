@@ -1,6 +1,6 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { getCharacterDefinition } from './CharacterTypes.js';
+import { getCharacterDisplayData } from './CharacterTypes.js';
 import {
   getHealthFromVIT,
   getPhysicalAttackFromSTR,
@@ -259,7 +259,7 @@ function CharacterSelectScreen({ onSelect, error }) {
   // Use CharacterTypes.js for stat blocks
   const characterTypes = ['dwarf', 'elvaan', 'gnome'];
   const characters = characterTypes.map(typeKey => {
-    const def = getCharacterDefinition(typeKey);
+    const def = getCharacterDisplayData(typeKey);
     return {
       name: def.name,
       img: `./Assets/${def.assetPrefix}1.png`,
@@ -967,7 +967,7 @@ function App() {
       return;
     }
     // Get the stat block from CharacterTypes.js for the selected type
-    const def = getCharacterDefinition(charData.type?.toLowerCase());
+    const def = getCharacterDisplayData(charData.type?.toLowerCase());
     const stats = def?.stats || { vit: 0, str: 0, int: 0, dex: 0, mnd: 0, spd: 0 };
     // Insert character into Supabase
     const { data, error } = await supabase
