@@ -43,3 +43,11 @@
    - Ensure group targeting (target selection submenu for attacks/spells/steal) and evasion (SPD-based dodge, evasion prompt, and event payloads) are fully documented in ai_instructions.md and events.md.
    - Confirm that all relevant event payloads include targetId, evaded, and prompt fields as needed.
    - This is a required QA step before any code changes or migration.
+
+10. **Verify Party/Group Leader-Only Encounter Triggers and Shared State:**
+   - Only party/group leaders can trigger encounters (door click or dynamic/random); non-leaders never trigger or affect encounter chance.
+   - All encounter, combat, and loot events are based on a single shared encounter state per room, and all participants receive the same updates.
+   - Loot is always handled individually, even in parties or groups—never shared or split.
+   - Navigation/encounter restrictions only apply to initiating actions, not to following or being included in group flows.
+   - All new requirements and clarifications are reflected in ai_instructions.md and events.md before any code changes or migration.
+   - This is a required QA step before any code changes or migration.

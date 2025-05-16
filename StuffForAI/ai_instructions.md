@@ -269,4 +269,21 @@ These rules are absolute and must be followed for all future development and mig
 - All of the above logic must be implemented server-side, with the client acting only as a renderer and intent emitter/listener.
 - No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
 - All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
+- Any deviation from these flows is a bug and must be corrected immediately.
+
+### Party/Group Leader-Only Encounter Triggers
+- Only party/group leaders (player or AI) can trigger any encounter (door click or dynamic/random). Non-leader members never trigger or receive encounters and do not affect encounter chance. This applies to both player and AI groups.
+- Non-leader party/group members are flagged (canNavigate: false, canTriggerEncounter: false) and cannot initiate navigation, doors, or encounters, but always follow the leader, join the leader's encounters, and are included in all combat, loot, and events as part of the group.
+- Navigation/encounter restrictions only apply to initiating actions, not to following or being included in group flows. All party/group members always follow the leader and are included in all relevant events.
+
+### Individual Loot Handling
+- Loot is always handled individually, even in parties or groups. Each player or AI has their own inventory, loot drops, and loot bag on death. There is no shared or split loot—first to click an item claims it, and all loot flows are per-entity.
+
+### Single Shared Encounter State
+- There is only one authoritative encounter state per room, shared by all participants. All actions (attacks, spells, steals, etc.) update the same shared state. Health, death, and loot are synchronized for all party/group members and AI. No duplicate or desynced encounter states for different party/group members. All combat, health, loot, and death flows are synchronized and authoritative for everyone in the encounter.
+
+### Migration and Implementation Notes
+- All of the above logic must be implemented server-side, with the client acting only as a renderer and intent emitter/listener.
+- No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
+- All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
 - Any deviation from these flows is a bug and must be corrected immediately. 

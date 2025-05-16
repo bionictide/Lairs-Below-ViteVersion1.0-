@@ -80,8 +80,9 @@ const visitedRooms = new Map(); // playerId -> Set of visited roomIds
 // Add global entities map for NPCs/monsters
 const entities = new Map(); // entityId -> { character, roomId, inventory, health, ... }
 
-// Add global encounter state
-const encounters = new Map(); // roomId -> { turnQueue: [id, id], currentTurn, entityId, playerId }
+// New encounter state: supports multiple players and entities per encounter
+// Each encounter: { roomId, participants: [ { id, type: 'player'|'entity', partyId, isLeader } ], turnQueue: [id], currentTurn: id, parties: { [partyId]: { leaderId, members: [id] } }, aiGroups: { [groupId]: [entityId] } }
+const encounters = new Map(); // roomId -> encounter object
 
 // --- Dungeon World (Persistent, Server-Authoritative) ---
 // All dungeon generation and mutation logic is imported from DungeonCore.js and must be performed here.
@@ -470,50 +471,74 @@ io.on('connection', (socket) => {
     io.emit('PUZZLE_UPDATE', { roomId, itemKey });
   });
 
-  // --- Encounter Start: Create and register NPCs ---
-  // Add a new socket event for encounter start (from client or auto-triggered)
-  socket.on(EVENTS.ENCOUNTER_START, ({ entityType, roomId }) => {
-    // Generate unique entityId
-    const entityId = `entity-${entityType}-${Date.now()}-${Math.floor(Math.random()*10000)}`;
-    // Get base stats from CharacterTypes (import if needed)
-    const baseStats = require('../src/CharacterTypes.js').characterDefinitions[entityType];
-    if (!baseStats) return;
-    // Create entity object
-    const entity = {
-      character: {
-        ...baseStats.stats,
-        name: baseStats.name,
-        type: entityType,
-        maxHealth: 100, // TODO: Use stat formula
-        health: 100,    // TODO: Use stat formula
-        vit: baseStats.stats.vit,
-        str: baseStats.stats.str,
-        int: baseStats.stats.int,
-        dex: baseStats.stats.dex,
-        mnd: baseStats.stats.mnd,
-        spd: baseStats.stats.spd
-      },
+  // --- Encounter Start: Create and register NPCs and start multi-entity encounter ---
+  socket.on(EVENTS.ENCOUNTER_START, ({ participantIds, roomId }) => {
+    // participantIds: array of all player and entity IDs in the encounter (party, AI group, etc.)
+    // Create encounter with all participants
+    const encounter = createEncounter(roomId, participantIds);
+    // Notify clients of encounter start, including all participants
+    io.to(roomId).emit(EVENTS.ENCOUNTER_START, {
       roomId,
-      inventory: [],
-      alive: true
-    };
-    entities.set(entityId, entity);
-    // Add to room
-    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
-    rooms.get(roomId).entities.push(entityId);
-    // Notify clients
-    io.to(roomId).emit(EVENTS.ENCOUNTER_START, { entityId, entityType, roomId });
+      participants: encounter.participants,
+      turnQueue: encounter.turnQueue,
+      currentTurn: encounter.currentTurn,
+      parties: encounter.parties,
+      aiGroups: encounter.aiGroups
+    });
+    // Start first turn
+    runNextTurn(roomId);
   });
 
-  // --- Update attack_intent handler ---
-  socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName }) => {
-    // Get combatants (player or entity)
+  // Helper: Run the next turn in the encounter
+  function runNextTurn(roomId) {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    encounter.currentTurn = encounter.turnQueue[0];
+    const current = encounter.participants.find(p => p.id === encounter.currentTurn);
+    if (!current) return;
+    // If player, show action menu (with leader/member context)
+    if (current.type === 'player') {
+      const isLeader = current.isLeader;
+      io.to(roomId).emit('showActionMenu', {
+        initiatorId: current.id,
+        roomId,
+        isLeader,
+        participants: encounter.participants,
+        turnQueue: encounter.turnQueue
+      });
+    } else {
+      // AI turn: run AI logic (to be expanded)
+      runNpcTurn(roomId, current.id);
+    }
+  }
+
+  // Helper: End turn and rotate to next participant
+  function endTurn(roomId) {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    encounter.turnQueue.push(encounter.turnQueue.shift());
+    runNextTurn(roomId);
+  }
+
+  // --- Update attack_intent handler for group targeting and evasion ---
+  socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName, roomId }) => {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    // Only allow if it's the current turn
+    if (encounter.currentTurn !== initiatorId) return;
     const attacker = getCombatant(initiatorId);
     const defender = getCombatant(targetId);
     if (!attacker || !defender) return;
-    // Get stat blocks
     const attackerStats = attacker.character;
     const defenderStats = defender.character;
+    // Evasion: Each 1 SPD = 1% evasion
+    const evasionChance = Math.min(100, defenderStats.spd || 0);
+    if (Math.random() * 100 < evasionChance) {
+      const prompt = `${defenderStats.name || targetId} dodges the attack!`;
+      io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: 0, prompt, attackType, spellName, evaded: true });
+      endTurn(roomId);
+      return;
+    }
     // Calculate damage (physical or spell)
     let rawDamage = 0;
     let prompt = '';
@@ -532,33 +557,26 @@ io.on('connection', (socket) => {
       rawDamage = finalDamage;
       prompt = `${attackerStats.name || initiatorId} casts ${spellName} on ${defenderStats.name || targetId} for ${finalDamage} damage!`;
     }
-    // Update defender health
     defenderStats.health = Math.max(0, (defenderStats.health || defenderStats.maxHealth || 100) - rawDamage);
-    // Emit results to both clients (if player) or to all in room (if entity)
-    if (isPlayer(targetId)) {
-      io.to(defender.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
-      io.to(defender.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
-    }
-    if (isPlayer(initiatorId)) {
-      io.to(attacker.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
-      io.to(attacker.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
-    }
-    // For entities, broadcast to room
-    if (!isPlayer(targetId)) {
-      io.to(defender.roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
-      io.to(defender.roomId).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
-    }
-    // Handle death
+    io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName, evaded: false });
+    io.to(roomId).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
     if (defenderStats.health <= 0) {
-      if (!isPlayer(targetId)) {
-        entities.delete(targetId);
-        // Remove from room
-        const room = rooms.get(defender.roomId);
-        if (room) room.entities = room.entities.filter(eid => eid !== targetId);
+      io.to(roomId).emit('entity_died', { entityId: targetId, attackerId: initiatorId });
+      // Remove from encounter participants and turnQueue
+      encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+      // Remove from entities/players
+      if (players.has(targetId)) players.delete(targetId);
+      if (entities.has(targetId)) entities.delete(targetId);
+      // If only one team remains, end encounter
+      const remainingTeams = new Set(encounter.participants.map(p => p.partyId || p.id));
+      if (remainingTeams.size <= 1) {
+        encounters.delete(roomId);
+        io.to(roomId).emit('encounter_end', { roomId });
+        return;
       }
-      io.emit('entity_died', { entityId: targetId, attackerId: initiatorId });
-      // TODO: Handle loot, end encounter, etc.
     }
+    endTurn(roomId);
   });
 
   // --- Update steal_intent handler ---
@@ -757,4 +775,63 @@ function performSteal(initiatorId, targetId, roomId) {
   io.to(roomId).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
   // Rotate turn
   endTurn(roomId);
+}
+
+// Helper: Create a new encounter (enforce max party/group size 3)
+function createEncounter(roomId, participantIds) {
+  // participantIds: array of player/entity IDs (players, party members, AI group members)
+  // Enforce max size for each party/group
+  const participants = [];
+  const partyMap = new Map(); // partyId -> [ids]
+  const aiGroupMap = new Map(); // groupId -> [ids]
+  for (const id of participantIds) {
+    const isPlayer = players.has(id);
+    let partyId = null;
+    let groupId = null;
+    if (isPlayer && players.get(id).partyId) partyId = players.get(id).partyId;
+    if (!isPlayer && entities.get(id)?.groupId) groupId = entities.get(id).groupId;
+    if (partyId) {
+      if (!partyMap.has(partyId)) partyMap.set(partyId, []);
+      if (partyMap.get(partyId).length < 3) partyMap.get(partyId).push(id);
+    } else if (groupId) {
+      if (!aiGroupMap.has(groupId)) aiGroupMap.set(groupId, []);
+      if (aiGroupMap.get(groupId).length < 3) aiGroupMap.get(groupId).push(id);
+    } else {
+      participants.push({ id, type: isPlayer ? 'player' : 'entity', partyId: partyId || null, isLeader: false });
+    }
+  }
+  // Add parties and AI groups, enforcing structure Leader > Member 1 > Member 2
+  const parties = {};
+  for (const [partyId, ids] of partyMap.entries()) {
+    parties[partyId] = { leaderId: ids[0], members: ids };
+    ids.forEach((id, idx) => {
+      participants.push({ id, type: 'player', partyId, isLeader: idx === 0 });
+    });
+  }
+  const aiGroups = {};
+  for (const [groupId, ids] of aiGroupMap.entries()) {
+    aiGroups[groupId] = ids;
+    ids.forEach((id, idx) => {
+      participants.push({ id, type: 'entity', partyId: null, isLeader: idx === 0 });
+    });
+  }
+  // Initial turn queue: all participants, order can be customized
+  const turnQueue = [...participants.map(p => p.id)];
+  const currentTurn = turnQueue[0];
+  const encounter = { roomId, participants, turnQueue, currentTurn, parties, aiGroups };
+  encounters.set(roomId, encounter);
+  return encounter;
+}
+
+// --- Movement and Encounter Trigger Logic: Only leaders can trigger encounters ---
+function canTriggerEncounter(playerId) {
+  // Only allow if player is not in a party, or is the party leader
+  const player = players.get(playerId);
+  if (!player) return false;
+  if (!player.partyId) return true;
+  // Check if leader
+  const encounterRoom = Array.from(encounters.values()).find(e => e.parties && e.parties[player.partyId]);
+  if (encounterRoom && encounterRoom.parties[player.partyId].leaderId === playerId) return true;
+  // If not in an encounter, check party leader
+  return player.partyId && player.partyId in player && player.partyId.leaderId === playerId;
 } 

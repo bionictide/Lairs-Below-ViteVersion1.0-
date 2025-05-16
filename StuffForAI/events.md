@@ -47,10 +47,14 @@
   ```json
   {
     "roomId": "string",
-    "entityId": "string",
-    "entityType": "string"
+    "participants": [ /* array of participant objects */ ],
+    "turnQueue": ["string"],
+    "currentTurn": "string",
+    "parties": { /* partyId: { leaderId, members } */ },
+    "aiGroups": { /* groupId: [entityIds] */ }
   }
   ```
+- Notes: Only party/group leaders can trigger encounter events (door click or dynamic/random). Non-leader members never trigger or affect encounter chance. All participants receive the same encounter state and updates.
 
 ## encounter_end
 - Direction: server → client
@@ -220,6 +224,18 @@
   { "roomId": "string", "turnQueue": ["string"], "currentTurn": "string" }
   ```
 - Notes: Sent at the start of each turn or when the turn order changes. Only the party leader can use flee; party members' flee option is disabled (greyed out in UI).
+
+## attack_result, spell_result, steal_result, health_update, entity_died
+- Direction: server → client
+- Notes: All combat and event flows are based on a single shared encounter state per room. All participants receive the same updates. Health, death, and loot are synchronized for all party/group members and AI. No duplicate or desynced encounter states.
+
+## loot_bag_drop, loot_bag_pickup, inventory_update
+- Direction: server → client
+- Notes: Loot is always handled individually, even in parties or groups. Each player or AI has their own inventory, loot drops, and loot bag on death. There is no shared or split loot—first to click an item claims it, and all loot flows are per-entity.
+
+## showActionMenu
+- Direction: server → client
+- Notes: Only leaders can navigate/flee. Members always follow the leader and are included in all group events, but cannot initiate navigation or encounters themselves.
 
 ---
 
