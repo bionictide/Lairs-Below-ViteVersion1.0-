@@ -473,7 +473,8 @@ export var EncounterManager = /*#__PURE__*/ function() {
                                     _this.socket.emit('attack_intent', {
                                         initiatorId: _this.playerId,
                                         targetId,
-                                        attackType: 'physical'
+                                        attackType: 'physical',
+                                        roomId
                                     });
                                     // Optionally, close menu or show waiting UI
                                 }
@@ -666,7 +667,9 @@ export var EncounterManager = /*#__PURE__*/ function() {
             // REMOVED handleSpells - Logic moved into showActionMenu 'spells' case
             key: "handleSteal",
             value: function handleSteal(initiatorId, targetId) {
-                this.socket.emit('steal_intent', { initiatorId, targetId });
+                // Add roomId to payload
+                const roomId = this.entities.get(targetId)?.roomId;
+                this.socket.emit('steal_intent', { initiatorId, targetId, roomId });
                 // Optionally, show waiting UI or close menu
                 if (this.scene.actionMenu) {
                     this.scene.actionMenu.destroy();
@@ -1296,11 +1299,14 @@ export var EncounterManager = /*#__PURE__*/ function() {
             key: "handleSpellCast",
             value: function handleSpellCast(initiatorId, targetId, spellName) {
                 if (initiatorId === this.playerId) {
+                    // Add roomId to payload
+                    const roomId = this.entities.get(targetId)?.roomId;
                     this.socket.emit('attack_intent', {
                         initiatorId: this.playerId,
                         targetId,
                         attackType: 'spell',
-                        spellName
+                        spellName,
+                        roomId
                     });
                     return;
                 }
