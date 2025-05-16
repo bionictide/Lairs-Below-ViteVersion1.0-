@@ -257,11 +257,49 @@ io.on('connection', (socket) => {
     }
   });
 
-  // SPELL CAST
-  socket.on(EVENTS.SPELL_CAST, ({ playerId, spellName, targetId }) => {
-    // TODO: Implement spell logic, mana check, etc.
-    // Broadcast result
-    socket.emit(EVENTS.SPELL_RESULT, { result: 'success', damage: 0, effects: [] });
+  // --- Update spell_cast handler for group targeting and evasion ---
+  socket.on(EVENTS.SPELL_CAST, ({ playerId, spellName, targetId, roomId }) => {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    // Only allow if it's the current turn
+    if (encounter.currentTurn !== playerId) return;
+    const caster = getCombatant(playerId);
+    const target = getCombatant(targetId);
+    if (!caster || !target) return;
+    // Evasion: Each 1 SPD = 1% evasion
+    const evasionChance = Math.min(100, target.character.spd || 0);
+    if (Math.random() * 100 < evasionChance) {
+      const prompt = `${target.character.name || targetId} dodges the spell!`;
+      io.to(roomId).emit('spell_result', { result: 'evaded', damage: 0, effects: [], targetId, evaded: true, prompt: prompt });
+      endTurn(roomId);
+      return;
+    }
+    // Calculate spell damage (simple placeholder, replace with real logic)
+    let baseMagic = 0.10 * (caster.character.int || 0) * 100;
+    let magicDefense = 0.5 * (target.character.int || 0);
+    let mitigation = Math.min(0.9, magicDefense * 0.01);
+    let finalDamage = Math.max(0, Math.floor(baseMagic * (1 - mitigation)));
+    target.character.health = Math.max(0, (target.character.health || target.character.maxHealth || 100) - finalDamage);
+    const prompt = `${caster.character.name || playerId} casts ${spellName} on ${target.character.name || targetId} for ${finalDamage} damage!`;
+    io.to(roomId).emit('spell_result', { result: 'success', damage: finalDamage, effects: [], targetId, evaded: false, prompt: prompt });
+    io.to(roomId).emit('health_update', { playerId: targetId, health: target.character.health, maxHealth: target.character.maxHealth || 100 });
+    if (target.character.health <= 0) {
+      io.to(roomId).emit('entity_died', { entityId: targetId, attackerId: playerId });
+      // Remove from encounter participants and turnQueue
+      encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+      // Remove from entities/players
+      if (players.has(targetId)) players.delete(targetId);
+      if (entities.has(targetId)) entities.delete(targetId);
+      // If only one team remains, end encounter
+      const remainingTeams = new Set(encounter.participants.map(p => p.partyId || p.id));
+      if (remainingTeams.size <= 1) {
+        encounters.delete(roomId);
+        io.to(roomId).emit('encounter_end', { roomId });
+        return;
+      }
+    }
+    endTurn(roomId);
   });
 
   // TRADE REQUEST (placeholder)
@@ -270,16 +308,62 @@ io.on('connection', (socket) => {
     socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.TRADE_REQUEST, success: false, message: 'Trading not implemented yet' });
   });
 
-  // PARTY INVITE (placeholder)
-  socket.on(EVENTS.PARTY_INVITE, (payload) => {
-    // TODO: Implement party logic
-    socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.PARTY_INVITE, success: false, message: 'Party system not implemented yet' });
+  // --- Party invite, update, and leave flows ---
+  socket.on(EVENTS.PARTY_INVITE, ({ fromPlayerId, toPlayerId }) => {
+    // Only allow if both are in a PvP encounter and not already in a party
+    const fromPlayer = players.get(fromPlayerId);
+    const toPlayer = players.get(toPlayerId);
+    if (!fromPlayer || !toPlayer) return;
+    if (fromPlayer.partyId || toPlayer.partyId) {
+      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.PARTY_INVITE, success: false, message: 'Already in a party' });
+      return;
+    }
+    // Mark invite as pending (simple in-memory, could be extended)
+    fromPlayer.pendingPartyInvite = toPlayerId;
+    toPlayer.pendingPartyInvite = fromPlayerId;
+    // Notify both players (client will show accept button for toPlayer)
+    io.to(toPlayer.socket.id).emit(EVENTS.PARTY_UPDATE, { partyId: null, leaderId: fromPlayerId, members: [fromPlayerId, toPlayerId], roomId: fromPlayer.roomId });
   });
 
-  // STAT ALLOCATION (placeholder)
-  socket.on(EVENTS.STAT_ALLOCATION, (payload) => {
-    // TODO: Implement stat allocation logic
-    socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.STAT_ALLOCATION, success: false, message: 'Stat allocation not implemented yet' });
+  socket.on(EVENTS.PARTY_UPDATE, ({ partyId, leaderId, members, roomId }) => {
+    // Accept party invite: both players must have pending invites for each other
+    if (!partyId && members.length === 2) {
+      const [p1, p2] = members;
+      const player1 = players.get(p1);
+      const player2 = players.get(p2);
+      if (!player1 || !player2) return;
+      if (player1.pendingPartyInvite !== p2 || player2.pendingPartyInvite !== p1) return;
+      // Form party
+      const newPartyId = `party-${p1}-${p2}-${Date.now()}`;
+      player1.partyId = newPartyId;
+      player2.partyId = newPartyId;
+      player1.isPartyLeader = true;
+      player2.isPartyLeader = false;
+      delete player1.pendingPartyInvite;
+      delete player2.pendingPartyInvite;
+      // Sync both to leader's room
+      player2.roomId = player1.roomId;
+      io.to(player1.socket.id).emit(EVENTS.PARTY_UPDATE, { partyId: newPartyId, leaderId: p1, members: [p1, p2], roomId: player1.roomId });
+      io.to(player2.socket.id).emit(EVENTS.PARTY_UPDATE, { partyId: newPartyId, leaderId: p1, members: [p1, p2], roomId: player1.roomId });
+    }
+  });
+
+  socket.on(EVENTS.PARTY_LEAVE, ({ playerId, partyId }) => {
+    const player = players.get(playerId);
+    if (!player || player.partyId !== partyId) return;
+    // Move player to previous room and break alliance
+    player.partyId = null;
+    player.isPartyLeader = false;
+    // TODO: Move to previous room (if tracked)
+    io.to(player.socket.id).emit(EVENTS.PARTY_UPDATE, { partyId: null, leaderId: null, members: [playerId], roomId: player.roomId });
+    // If only one member remains, dissolve party
+    const partyMembers = Array.from(players.values()).filter(p => p.partyId === partyId);
+    if (partyMembers.length === 1) {
+      const lastMember = partyMembers[0];
+      lastMember.partyId = null;
+      lastMember.isPartyLeader = false;
+      io.to(lastMember.socket.id).emit(EVENTS.PARTY_UPDATE, { partyId: null, leaderId: null, members: [lastMember.id], roomId: lastMember.roomId });
+    }
   });
 
   // --- INVENTORY & LOOT BAG SERVER-AUTHORITATIVE HANDLERS ---
@@ -579,13 +663,23 @@ io.on('connection', (socket) => {
     endTurn(roomId);
   });
 
-  // --- Update steal_intent handler ---
-  socket.on('steal_intent', ({ initiatorId, targetId }) => {
+  // --- Update steal_intent handler for group targeting and evasion ---
+  socket.on('steal_intent', ({ initiatorId, targetId, roomId }) => {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    // Only allow if it's the current turn
+    if (encounter.currentTurn !== initiatorId) return;
     const initiator = getCombatant(initiatorId);
     const target = getCombatant(targetId);
     if (!initiator || !target) return;
-    // Must be in the same room
-    if (initiator.roomId !== target.roomId) return;
+    // Evasion: Each 1 SPD = 1% evasion
+    const evasionChance = Math.min(100, target.character.spd || 0);
+    if (Math.random() * 100 < evasionChance) {
+      const prompt = `${target.character.name || targetId} dodges the steal attempt!`;
+      io.to(roomId).emit('steal_result', { initiatorId, targetId, success: false, item: null, prompt, evaded: true, inventory: initiator.inventory });
+      endTurn(roomId);
+      return;
+    }
     let baseSuccessRate = 0.5;
     let initiatorDex = initiator.character.dex || 0;
     let targetDex = target.character.dex || 0;
@@ -605,14 +699,56 @@ io.on('connection', (socket) => {
     } else {
       prompt = `${initiator.character.name || initiatorId} fails to steal from ${target.character.name || targetId}.`;
     }
-    // Emit results
-    if (isPlayer(initiatorId)) io.to(initiator.socket.id).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
-    if (isPlayer(targetId)) io.to(target.socket.id).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: target.inventory });
-    if (!isPlayer(initiatorId)) io.to(initiator.roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
-    if (!isPlayer(targetId)) io.to(target.roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: target.inventory });
-    // Optionally, emit inventory updates
-    if (isPlayer(initiatorId)) io.to(initiator.socket.id).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
-    if (isPlayer(targetId)) io.to(target.socket.id).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
+    io.to(roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, evaded: false, inventory: initiator.inventory });
+    io.to(roomId).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
+    io.to(roomId).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
+    endTurn(roomId);
+  });
+
+  // --- Navigation and Flee: Only leader can initiate, all members follow ---
+  socket.on('NAVIGATE', ({ playerId, direction, roomId }) => {
+    const player = players.get(playerId);
+    if (!player) return;
+    // Only allow if not in a party or is the party leader
+    if (player.partyId && !player.isPartyLeader) return;
+    // Move leader and all party members
+    const partyMembers = player.partyId ? Array.from(players.values()).filter(p => p.partyId === player.partyId) : [player];
+    for (const member of partyMembers) {
+      member.roomId = roomId;
+      io.to(member.socket.id).emit('ROOM_UPDATE', {
+        roomId,
+        players: Array.from(rooms.get(roomId)?.players || []),
+        entities: rooms.get(roomId)?.entities || [],
+        visited: Array.from(visitedRooms.get(member.id) || [])
+      });
+      // Join socket room
+      member.socket.join(roomId);
+    }
+  });
+
+  socket.on('FLEE', ({ playerId, roomId }) => {
+    const player = players.get(playerId);
+    if (!player) return;
+    // Only allow if not in a party or is the party leader
+    if (player.partyId && !player.isPartyLeader) return;
+    // Flee logic: move leader and all party members to previous room
+    const partyMembers = player.partyId ? Array.from(players.values()).filter(p => p.partyId === player.partyId) : [player];
+    for (const member of partyMembers) {
+      // Move to previous room if tracked
+      if (member.lastKnownRoom) {
+        member.roomId = member.lastKnownRoom;
+        io.to(member.socket.id).emit('ROOM_UPDATE', {
+          roomId: member.lastKnownRoom,
+          players: Array.from(rooms.get(member.lastKnownRoom)?.players || []),
+          entities: rooms.get(member.lastKnownRoom)?.entities || [],
+          visited: Array.from(visitedRooms.get(member.id) || [])
+        });
+        member.socket.join(member.lastKnownRoom);
+      }
+    }
+    // End encounter for all
+    encounters.delete(roomId);
+    io.to(roomId).emit('encounter_end', { roomId });
   });
 
   // --- Add more event handlers as needed ---
@@ -684,37 +820,41 @@ function endTurn(roomId) {
   }
 }
 
-// Helper: Run NPC AI action (basic: always attack for now)
-function runNpcTurn(roomId) {
+// --- Update AI turn logic for group targeting and evasion ---
+function runNpcTurn(roomId, npcId) {
   const encounter = encounters.get(roomId);
   if (!encounter) return;
-  const entity = entities.get(encounter.entityId);
-  if (!entity) return;
-  // TODO: Port full AI logic from client (use CharacterTypes.js aiBehavior)
-  // For now, always attempt to steal if gnome, else attack
-  const entityType = entity.character.type;
-  if (entityType === 'gnome') {
-    // 70% chance to steal, else attack
-    if (Math.random() < 0.7) {
-      io.to(roomId).emit('npcAction', { type: 'steal', initiatorId: encounter.entityId, targetId: encounter.playerId });
-      // Actually perform steal
-      // (reuse steal_intent logic, but call directly)
-      performSteal(encounter.entityId, encounter.playerId, roomId);
-      return;
-    }
-  }
-  // Default: attack
-  io.to(roomId).emit('npcAction', { type: 'attack', initiatorId: encounter.entityId, targetId: encounter.playerId });
-  performAttack(encounter.entityId, encounter.playerId, 'physical', null, roomId);
+  // Find AI participant
+  const npc = getCombatant(npcId);
+  if (!npc) return;
+  // Choose a random valid target from the opposing team
+  const npcPartyId = npc.partyId || npc.id;
+  const targets = encounter.participants.filter(p => (p.partyId || p.id) !== npcPartyId);
+  if (targets.length === 0) return;
+  const target = targets[Math.floor(Math.random() * targets.length)];
+  // For now, always attack (expand for spells/AI later)
+  performAttack(npcId, target.id, 'physical', null, roomId);
 }
 
-// Helper: Perform attack (same as attack_intent, but for AI)
 function performAttack(initiatorId, targetId, attackType, spellName, roomId) {
+  const encounter = encounters.get(roomId);
+  if (!encounter) return;
+  // Only allow if it's the current turn
+  if (encounter.currentTurn !== initiatorId) return;
   const attacker = getCombatant(initiatorId);
   const defender = getCombatant(targetId);
   if (!attacker || !defender) return;
   const attackerStats = attacker.character;
   const defenderStats = defender.character;
+  // Evasion: Each 1 SPD = 1% evasion
+  const evasionChance = Math.min(100, defenderStats.spd || 0);
+  if (Math.random() * 100 < evasionChance) {
+    const prompt = `${defenderStats.name || targetId} dodges the attack!`;
+    io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: 0, prompt, attackType, spellName, evaded: true });
+    endTurn(roomId);
+    return;
+  }
+  // Calculate damage (physical or spell)
   let rawDamage = 0;
   let prompt = '';
   if (attackType === 'physical') {
@@ -733,24 +873,43 @@ function performAttack(initiatorId, targetId, attackType, spellName, roomId) {
     prompt = `${attackerStats.name || initiatorId} casts ${spellName} on ${defenderStats.name || targetId} for ${finalDamage} damage!`;
   }
   defenderStats.health = Math.max(0, (defenderStats.health || defenderStats.maxHealth || 100) - rawDamage);
-  io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+  io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName, evaded: false });
   io.to(roomId).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
   if (defenderStats.health <= 0) {
     io.to(roomId).emit('entity_died', { entityId: targetId, attackerId: initiatorId });
-    // End encounter
-    encounters.delete(roomId);
-    return;
+    // Remove from encounter participants and turnQueue
+    encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+    encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+    // Remove from entities/players
+    if (players.has(targetId)) players.delete(targetId);
+    if (entities.has(targetId)) entities.delete(targetId);
+    // If only one team remains, end encounter
+    const remainingTeams = new Set(encounter.participants.map(p => p.partyId || p.id));
+    if (remainingTeams.size <= 1) {
+      encounters.delete(roomId);
+      io.to(roomId).emit('encounter_end', { roomId });
+      return;
+    }
   }
-  // Rotate turn
   endTurn(roomId);
 }
 
-// Helper: Perform steal (same as steal_intent, but for AI)
 function performSteal(initiatorId, targetId, roomId) {
+  const encounter = encounters.get(roomId);
+  if (!encounter) return;
+  // Only allow if it's the current turn
+  if (encounter.currentTurn !== initiatorId) return;
   const initiator = getCombatant(initiatorId);
   const target = getCombatant(targetId);
   if (!initiator || !target) return;
-  if (initiator.roomId !== target.roomId) return;
+  // Evasion: Each 1 SPD = 1% evasion
+  const evasionChance = Math.min(100, target.character.spd || 0);
+  if (Math.random() * 100 < evasionChance) {
+    const prompt = `${target.character.name || targetId} dodges the steal attempt!`;
+    io.to(roomId).emit('steal_result', { initiatorId, targetId, success: false, item: null, prompt, evaded: true, inventory: initiator.inventory });
+    endTurn(roomId);
+    return;
+  }
   let baseSuccessRate = 0.5;
   let initiatorDex = initiator.character.dex || 0;
   let targetDex = target.character.dex || 0;
@@ -770,10 +929,9 @@ function performSteal(initiatorId, targetId, roomId) {
   } else {
     prompt = `${initiator.character.name || initiatorId} fails to steal from ${target.character.name || targetId}.`;
   }
-  io.to(roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
+  io.to(roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, evaded: false, inventory: initiator.inventory });
   io.to(roomId).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
   io.to(roomId).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
-  // Rotate turn
   endTurn(roomId);
 }
 
