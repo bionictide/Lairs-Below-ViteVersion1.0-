@@ -5,6 +5,8 @@
 // Ensure socket.io-client is loaded via CDN in index.html or dynamically
 // <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 
+console.log('[DEBUG][MODULE] socket.js loaded');
+
 let socket = null;
 
 export function connectSocket(token) {
