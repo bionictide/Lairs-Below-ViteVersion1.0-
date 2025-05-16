@@ -295,19 +295,103 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.load.image('GlassBroke3', './Assets/GlassBroke3.png');
                 this.load.image('GlassBroke4', './Assets/GlassBroke4.png');
                 this.load.image('GlassBroke5', './Assets/GlassBroke5.png');
-                // --- Preload 60 FPS Ice Spell Sprite Sheets ---
-                // NOTE: Adjust frameWidth and frameHeight to match your actual sprite sheet frame size
-                this.load.spritesheet('ASIce_01_Cast1', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_01_Cast1.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
-                this.load.spritesheet('ASIce_02_Cast2', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_02_Cast2.png', { frameWidth: 256, frameHeight: 256, endFrame: 44 });
-                this.load.spritesheet('ASIce_03_Frost', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_03_Frost.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
-                this.load.spritesheet('ASIce_04_Chill', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_04_Chill.png', { frameWidth: 256, frameHeight: 256, endFrame: 29 });
-                this.load.spritesheet('ASIce_05_Icicle', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_05_Icicle.png', { frameWidth: 256, frameHeight: 256, endFrame: 59 });
-                this.load.spritesheet('ASIce_06_Spike', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_06_Spike.png', { frameWidth: 256, frameHeight: 256, endFrame: 59 });
-                this.load.spritesheet('ASIce_07_Shatter', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_07_Shatter.png', { frameWidth: 256, frameHeight: 256, endFrame: 74 });
-                this.load.spritesheet('ASIce_08_Freeze', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_08_Freeze.png', { frameWidth: 256, frameHeight: 256, endFrame: 89 });
-                this.load.spritesheet('ASIce_09_Blizzard', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_09_Blizzard.png', { frameWidth: 256, frameHeight: 256, endFrame: 89 });
-                this.load.spritesheet('ASIce_10_HailA', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailA.png', { frameWidth: 256, frameHeight: 256, endFrame: 179 });
-                this.load.spritesheet('ASIce_10_HailB', './Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailB.png', { frameWidth: 256, frameHeight: 256, endFrame: 179 });
+                // --- Preload 60 FPS Spell Sprite Sheets for ALL Elements with ACTUAL FRAME COUNTS ---
+                // ICE
+                this.load.spritesheet('ASIce_01_Cast1', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_01_Cast1.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30 frames
+                this.load.spritesheet('ASIce_02_Cast2', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45 frames
+                this.load.spritesheet('ASIce_03_Frost', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_03_Frost.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30 frames
+                this.load.spritesheet('ASIce_04_Chill', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_04_Chill.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30 frames
+                this.load.spritesheet('ASIce_05_Icicle', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_05_Icicle.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60 frames
+                this.load.spritesheet('ASIce_06_Spike', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_06_Spike.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60 frames
+                this.load.spritesheet('ASIce_07_Shatter', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_07_Shatter.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75 frames
+                this.load.spritesheet('ASIce_08_Freeze', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_08_Freeze.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90 frames
+                this.load.spritesheet('ASIce_09_Blizzard', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_09_Blizzard.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90 frames
+                this.load.spritesheet('ASIce_10_HailA', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100 frames
+                this.load.spritesheet('ASIce_10_HailB', 'Assets/SpellSprites/ICE60FPS/60FPS_ASIce_10_HailB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80 frames
+                // WIND
+                this.load.spritesheet('ASWind_01_Cast', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_01_Cast.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWind_02_Cast2', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASWind_03_Whirlwind', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_03_Whirlwind.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWind_04_Breeze', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_04_Breeze.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWind_05_Twister', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_05_Twister.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASWind_06_Gust', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_06_Gust.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASWind_07_Vacuum', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_07_Vacuum.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASWind_08_Cyclone', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_08_Cyclone.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASWind_09_Updraft', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_09_Updraft.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASWind_10_TornadoA', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_10_TornadoA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASWind_10_TornadoB', 'Assets/SpellSprites/Wind60FPS/60FPS_ASWind_10_TornadoB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // WATER
+                this.load.spritesheet('ASWater_01_Cast1', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_01_Cast1.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWater_02_Cast2', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASWater_03_Drown', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_03_Drown.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWater_04_Geyser', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_04_Geyser.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASWater_05_Whirl', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_05_Whirl.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASWater_06_Wave', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_06_Wave.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASWater_07_Bubble', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_07_Bubble.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASWater_08_Spout', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_08_Spout.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASWater_09_Deluge', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_09_Deluge.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASWater_10_MaelstromA', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_10_MaelstromA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASWater_10_MaelstromB', 'Assets/SpellSprites/Water60FPS/60FPS_ASWater_10_MaelstromB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // THUNDER
+                this.load.spritesheet('ASThunder_01_Cast', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_01_Cast.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASThunder_02_Cast2', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASThunder_03_Spark', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_03_Spark.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASThunder_04_Thunderbolt', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_04_Thunderbolt.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASThunder_05_Shock', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_05_Shock.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASThunder_06_Current', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_06_Current.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASThunder_07_Crackle', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_07_Crackle.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASThunder_08_Dynamo', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_08_Dynamo.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASThunder_09_Voltage', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_09_Voltage.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASThunder_10_FulminationA', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_10_FulminationA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASThunder_10_FulminationB', 'Assets/SpellSprites/Thunder60FPS/60FPS_ASThunder_10_FulminationB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // LIGHT
+                this.load.spritesheet('ASLight_01_Cast', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_01_Cast.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASLight_02_Cast2', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASLight_03_Glare', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_03_Glare.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASLight_04_Ray', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_04_Ray.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASLight_05_Sparkle', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_05_Sparkle.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASLight_06_Scintillation', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_06_Scintillation.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASLight_07_Gleam', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_07_Gleam.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASLight_08_Twinkle', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_08_Twinkle.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASLight_09_Photon', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_09_Photon.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASLight_10_RadianceA', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_10_RadianceA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASLight_10_RadianceB', 'Assets/SpellSprites/Light60FPS/60FPS_ASLight_10_RadianceB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // FIRE
+                this.load.spritesheet('ASFire_01_Cast1', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_01_Cast1.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASFire_02_Cast2', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASFire_03_Fireball', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_03_Fireball.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASFire_04_Sear', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_04_Sear.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASFire_05_Combust', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_05_Combust.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASFire_06_Scorch', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_06_Scorch.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASFire_07_Flare', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_07_Flare.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASFire_08_Conflagration', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_08_Conflagration.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASFire_09_Prominence', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_09_Prominence.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASFire_10_EruptionA', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_10_EruptionA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASFire_10_EruptionB', 'Assets/SpellSprites/Fire60FPS/60FPS_ASFire_10_EruptionB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // EARTH
+                this.load.spritesheet('ASEarth_01_Cast', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_01_Cast.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASEarth_02_Cast2', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASEarth_03_Stone', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_03_Stone.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASEarth_04_Tremor', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_04_Tremor.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASEarth_05_Quicksand', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_05_Quicksand.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASEarth_06_Spire', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_06_Spire.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASEarth_07_Rupture', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_07_Rupture.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASEarth_08_Boulder', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_08_Boulder.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASEarth_09_Landslide', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_09_Landslide.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASEarth_10_CataclysmA', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_10_CataclysmA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASEarth_10_CataclysmB', 'Assets/SpellSprites/Earth60FPS/60FPS_ASEarth_10_CataclysmB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
+                // DARK
+                this.load.spritesheet('ASDark_01_Cast', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_01_Cast.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASDark_02_Cast2', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_02_Cast2.png', { frameWidth: 192, frameHeight: 192, endFrame: 44 }); // 45
+                this.load.spritesheet('ASDark_03_Chaos', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_03_Chaos.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASDark_04_Sting', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_04_Sting.png', { frameWidth: 192, frameHeight: 192, endFrame: 29 }); // 30
+                this.load.spritesheet('ASDark_05_Subdue', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_05_Subdue.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASDark_06_Gloom', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_06_Gloom.png', { frameWidth: 192, frameHeight: 192, endFrame: 59 }); // 60
+                this.load.spritesheet('ASDark_07_Umbra', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_07_Umbra.png', { frameWidth: 192, frameHeight: 192, endFrame: 74 }); // 75
+                this.load.spritesheet('ASDark_08_Oblivion', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_08_Oblivion.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASDark_09_Void', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_09_Void.png', { frameWidth: 192, frameHeight: 192, endFrame: 89 }); // 90
+                this.load.spritesheet('ASDark_10_CalamityA', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_10_CalamityA.png', { frameWidth: 192, frameHeight: 192, endFrame: 99 }); // 100
+                this.load.spritesheet('ASDark_10_CalamityB', 'Assets/SpellSprites/Dark60FPS/60FPS_ASDark_10_CalamityB.png', { frameWidth: 192, frameHeight: 192, endFrame: 79 }); // 80
                 this.add.text(gameConfig.width / 2, gameConfig.height / 2, 'Loading Dungeon...', {
                     fontSize: '32px',
                     fill: '#ffffff'
@@ -349,9 +433,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 // Enable debug spell animation preview
                 this.combatVisuals.setupSpellDebugPreview();
 
-                // --- Register 60 FPS Ice Spell Animations ---
-                // NOTE: Adjust frameRate if you want to play slower/faster than 60 FPS
+                // --- Register 60 FPS Spell Animations for ALL Elements with ACTUAL FRAME COUNTS ---
                 const spellAnims = [
+                    // ICE
                     { key: 'ASIce_01_Cast1', frames: 30 },
                     { key: 'ASIce_02_Cast2', frames: 45 },
                     { key: 'ASIce_03_Frost', frames: 30 },
@@ -361,8 +445,92 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     { key: 'ASIce_07_Shatter', frames: 75 },
                     { key: 'ASIce_08_Freeze', frames: 90 },
                     { key: 'ASIce_09_Blizzard', frames: 90 },
-                    { key: 'ASIce_10_HailA', frames: 180 },
-                    { key: 'ASIce_10_HailB', frames: 180 },
+                    { key: 'ASIce_10_HailA', frames: 100 },
+                    { key: 'ASIce_10_HailB', frames: 80 },
+                    // WIND
+                    { key: 'ASWind_01_Cast', frames: 30 },
+                    { key: 'ASWind_02_Cast2', frames: 45 },
+                    { key: 'ASWind_03_Whirlwind', frames: 30 },
+                    { key: 'ASWind_04_Breeze', frames: 30 },
+                    { key: 'ASWind_05_Twister', frames: 60 },
+                    { key: 'ASWind_06_Gust', frames: 60 },
+                    { key: 'ASWind_07_Vacuum', frames: 75 },
+                    { key: 'ASWind_08_Cyclone', frames: 90 },
+                    { key: 'ASWind_09_Updraft', frames: 90 },
+                    { key: 'ASWind_10_TornadoA', frames: 100 },
+                    { key: 'ASWind_10_TornadoB', frames: 80 },
+                    // WATER
+                    { key: 'ASWater_01_Cast1', frames: 30 },
+                    { key: 'ASWater_02_Cast2', frames: 45 },
+                    { key: 'ASWater_03_Drown', frames: 30 },
+                    { key: 'ASWater_04_Geyser', frames: 30 },
+                    { key: 'ASWater_05_Whirl', frames: 60 },
+                    { key: 'ASWater_06_Wave', frames: 60 },
+                    { key: 'ASWater_07_Bubble', frames: 75 },
+                    { key: 'ASWater_08_Spout', frames: 90 },
+                    { key: 'ASWater_09_Deluge', frames: 90 },
+                    { key: 'ASWater_10_MaelstromA', frames: 100 },
+                    { key: 'ASWater_10_MaelstromB', frames: 80 },
+                    // THUNDER
+                    { key: 'ASThunder_01_Cast', frames: 30 },
+                    { key: 'ASThunder_02_Cast2', frames: 45 },
+                    { key: 'ASThunder_03_Spark', frames: 30 },
+                    { key: 'ASThunder_04_Thunderbolt', frames: 30 },
+                    { key: 'ASThunder_05_Shock', frames: 60 },
+                    { key: 'ASThunder_06_Current', frames: 60 },
+                    { key: 'ASThunder_07_Crackle', frames: 75 },
+                    { key: 'ASThunder_08_Dynamo', frames: 90 },
+                    { key: 'ASThunder_09_Voltage', frames: 90 },
+                    { key: 'ASThunder_10_FulminationA', frames: 100 },
+                    { key: 'ASThunder_10_FulminationB', frames: 80 },
+                    // LIGHT
+                    { key: 'ASLight_01_Cast', frames: 30 },
+                    { key: 'ASLight_02_Cast2', frames: 45 },
+                    { key: 'ASLight_03_Glare', frames: 30 },
+                    { key: 'ASLight_04_Ray', frames: 30 },
+                    { key: 'ASLight_05_Sparkle', frames: 60 },
+                    { key: 'ASLight_06_Scintillation', frames: 60 },
+                    { key: 'ASLight_07_Gleam', frames: 75 },
+                    { key: 'ASLight_08_Twinkle', frames: 90 },
+                    { key: 'ASLight_09_Photon', frames: 90 },
+                    { key: 'ASLight_10_RadianceA', frames: 100 },
+                    { key: 'ASLight_10_RadianceB', frames: 80 },
+                    // FIRE
+                    { key: 'ASFire_01_Cast1', frames: 30 },
+                    { key: 'ASFire_02_Cast2', frames: 45 },
+                    { key: 'ASFire_03_Fireball', frames: 30 },
+                    { key: 'ASFire_04_Sear', frames: 30 },
+                    { key: 'ASFire_05_Combust', frames: 60 },
+                    { key: 'ASFire_06_Scorch', frames: 75 },
+                    { key: 'ASFire_07_Flare', frames: 60 },
+                    { key: 'ASFire_08_Conflagration', frames: 90 },
+                    { key: 'ASFire_09_Prominence', frames: 90 },
+                    { key: 'ASFire_10_EruptionA', frames: 100 },
+                    { key: 'ASFire_10_EruptionB', frames: 80 },
+                    // EARTH
+                    { key: 'ASEarth_01_Cast', frames: 30 },
+                    { key: 'ASEarth_02_Cast2', frames: 45 },
+                    { key: 'ASEarth_03_Stone', frames: 30 },
+                    { key: 'ASEarth_04_Tremor', frames: 30 },
+                    { key: 'ASEarth_05_Quicksand', frames: 60 },
+                    { key: 'ASEarth_06_Spire', frames: 60 },
+                    { key: 'ASEarth_07_Rupture', frames: 75 },
+                    { key: 'ASEarth_08_Boulder', frames: 90 },
+                    { key: 'ASEarth_09_Landslide', frames: 90 },
+                    { key: 'ASEarth_10_CataclysmA', frames: 100 },
+                    { key: 'ASEarth_10_CataclysmB', frames: 80 },
+                    // DARK
+                    { key: 'ASDark_01_Cast', frames: 30 },
+                    { key: 'ASDark_02_Cast2', frames: 45 },
+                    { key: 'ASDark_03_Chaos', frames: 30 },
+                    { key: 'ASDark_04_Sting', frames: 30 },
+                    { key: 'ASDark_05_Subdue', frames: 60 },
+                    { key: 'ASDark_06_Gloom', frames: 60 },
+                    { key: 'ASDark_07_Umbra', frames: 75 },
+                    { key: 'ASDark_08_Oblivion', frames: 90 },
+                    { key: 'ASDark_09_Void', frames: 90 },
+                    { key: 'ASDark_10_CalamityA', frames: 100 },
+                    { key: 'ASDark_10_CalamityB', frames: 80 },
                 ];
                 spellAnims.forEach(anim => {
                     if (!this.anims.exists(anim.key)) {

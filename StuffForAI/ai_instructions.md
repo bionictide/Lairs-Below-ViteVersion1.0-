@@ -183,4 +183,41 @@ These rules are absolute and must be followed for all future development and mig
   5. If successful, removes a random item from the defender's inventory and adds it to the attacker's.
   6. Server sends the result and updated inventories to both clients.
 - All calculations, rolls, and state changes are performed server-side. The client only displays results and never simulates, guesses, or modifies gameplay state.
-- All PVP event flows must be mapped in events.md and events.js, and all state changes must be documented in this folder. 
+- All PVP event flows must be mapped in events.md and events.js, and all state changes must be documented in this folder.
+
+---
+
+## 2024-06: Client as Dumb Renderer (Clarification)
+
+- The client is strictly a renderer, intent emitter, and listener. It does not store, mutate, or calculate any gameplay state (stats, inventory, encounters, room state, etc.).
+- The only logic allowed on the client is perspective/view logic (e.g., determining which wall or object to display based on the player's facing direction).
+- The client listens for server events and only performs rendering or UI updates in direct response to server-sent state/events.
+- All gameplay logic, state changes, and validation are performed server-side. The client only emits user intent (actions, requests) and renders the state/data sent by the server.
+- No fallback, guessing, or local state mutation is allowed on the client. If server data is missing, the client must show an error or loading state, never fill in the blanks.
+- This rule is absolute and must be followed for all future development and migration.
+
+---
+
+## 2024-06: PvP, Party, and Migration Lessons (User Directives)
+
+### PvP Flow (as per user design)
+- PvP encounters follow the same turn-based pattern as PvE, but both sides are player-controlled.
+- No AI turn phase; turns alternate between players. The player who enters the room goes first.
+- Attacks and spells use the same calculation pipeline as PvE: SpellManager and stats → PlayerStats (StatDefinitions) → modifiers → defender's stats → total → health.
+- Stealing: Roll chance vs. protection. On success, take one random item from the enemy and add to stealer's bag.
+- Fleeing: Works exactly as in NPC encounters.
+- Talking: Player uses turn to send a message; opponent can use their turn for any action.
+- Examine: 50/50 pass/fail. On fail: Themed, vague feedback. On success: Reveal one core stat (STR, DEX, INT, VIT, SPD, MND) with a qualitative comparison based on examiner's own stats.
+- Trade: Not implemented yet; defer until after migration.
+- Invite to Team: Sends invite; if accepted, inviter controls movement for both. Team combat: Leader, party, enemy leader, enemy party, repeat (or reversed if enemy entered last).
+- Sprite Display: Character type is shown to opponent as in NPC encounters. Party members are displayed left/right behind the leader.
+
+### Migration and Design Principles (User Directives)
+- Never guess, embellish, or deviate from existing flows or code. Always ask the user for clarification if unsure.
+- Do not omit or modify any mechanic or feature present in the code or user documentation.
+- Be methodical, surgical, and precise. Preserve all interconnected features as designed.
+- Both incremental and bulk migrations have risks; hybrid states are especially dangerous and should be minimized.
+- Single source of truth (e.g., lootMap) is a good end-state, but only after server-authoritative migration is stable.
+- Defer new features (like trade) until after migration. Implement examine, talking, and team invite exactly as described by the user.
+
+--- 

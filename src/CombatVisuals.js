@@ -187,48 +187,130 @@ export var CombatVisuals = /*#__PURE__*/ function() {
      * Debug: Cycle through spell animations on key press ('i') when debug is active.
      * Shows the animation centered with its name above.
      */
-            setupSpellDebugPreview() {
+            key: "setupSpellDebugPreview",
+            value: function setupSpellDebugPreview() {
                 if (!this.scene || !this.scene.input || !this.scene.anims) return;
-                // List of spell animation keys (should match those registered in DungeonScene)
-                this._spellDebugKeys = [
-                    'ASIce_01_Cast1',
-                    'ASIce_02_Cast2',
-                    'ASIce_03_Frost',
-                    'ASIce_04_Chill',
-                    'ASIce_05_Icicle',
-                    'ASIce_06_Spike',
-                    'ASIce_07_Shatter',
-                    'ASIce_08_Freeze',
-                    'ASIce_09_Blizzard',
-                    'ASIce_10_HailA',
-                    'ASIce_10_HailB',
+                // List of elements and their folders
+                this._spellElements = [
+                    { name: 'ICE', folder: 'ICE60FPS' },
+                    { name: 'WIND', folder: 'Wind60FPS' },
+                    { name: 'WATER', folder: 'Water60FPS' },
+                    { name: 'THUNDER', folder: 'Thunder60FPS' },
+                    { name: 'LIGHT', folder: 'Light60FPS' },
+                    { name: 'FIRE', folder: 'Fire60FPS' },
+                    { name: 'EARTH', folder: 'Earth60FPS' },
+                    { name: 'DARK', folder: 'Dark60FPS' },
                 ];
+                this._spellElementIndex = 0;
                 this._spellDebugIndex = 0;
                 this._spellDebugSprite = null;
                 this._spellDebugText = null;
-                this.scene.input.keyboard.on('keydown-I', () => {
-                    if (!this.scene.debugHelper || !this.scene.debugHelper.visible) return;
-                    this._showNextSpellDebug();
+                this._spellDebugKeysByElement = {
+                    'ICE60FPS': [
+                        'ASIce_01_Cast1','ASIce_02_Cast2','ASIce_03_Frost','ASIce_04_Chill','ASIce_05_Icicle','ASIce_06_Spike','ASIce_07_Shatter','ASIce_08_Freeze','ASIce_09_Blizzard','ASIce_10_HailA','ASIce_10_HailB',
+                    ],
+                    'Wind60FPS': [
+                        'ASWind_01_Cast','ASWind_02_Cast2','ASWind_03_Whirlwind','ASWind_04_Breeze','ASWind_05_Twister','ASWind_06_Gust','ASWind_07_Vacuum','ASWind_08_Cyclone','ASWind_09_Updraft','ASWind_10_TornadoA','ASWind_10_TornadoB',
+                    ],
+                    'Water60FPS': [
+                        'ASWater_01_Cast1','ASWater_02_Cast2','ASWater_03_Drown','ASWater_04_Geyser','ASWater_05_Whirl','ASWater_06_Wave','ASWater_07_Bubble','ASWater_08_Spout','ASWater_09_Deluge','ASWater_10_MaelstromA','ASWater_10_MaelstromB',
+                    ],
+                    'Thunder60FPS': [
+                        'ASThunder_01_Cast','ASThunder_02_Cast2','ASThunder_03_Spark','ASThunder_04_Thunderbolt','ASThunder_05_Shock','ASThunder_06_Current','ASThunder_07_Crackle','ASThunder_08_Dynamo','ASThunder_09_Voltage','ASThunder_10_FulminationA','ASThunder_10_FulminationB',
+                    ],
+                    'Light60FPS': [
+                        'ASLight_01_Cast','ASLight_02_Cast2','ASLight_03_Glare','ASLight_04_Ray','ASLight_05_Sparkle','ASLight_06_Scintillation','ASLight_07_Gleam','ASLight_08_Twinkle','ASLight_09_Photon','ASLight_10_RadianceA','ASLight_10_RadianceB',
+                    ],
+                    'Fire60FPS': [
+                        'ASFire_01_Cast1','ASFire_02_Cast2','ASFire_03_Fireball','ASFire_04_Sear','ASFire_05_Combust','ASFire_06_Scorch','ASFire_07_Flare','ASFire_08_Conflagration','ASFire_09_Prominence','ASFire_10_EruptionA','ASFire_10_EruptionB',
+                    ],
+                    'Earth60FPS': [
+                        'ASEarth_01_Cast','ASEarth_02_Cast2','ASEarth_03_Stone','ASEarth_04_Tremor','ASEarth_05_Quicksand','ASEarth_06_Spire','ASEarth_07_Rupture','ASEarth_08_Boulder','ASEarth_09_Landslide','ASEarth_10_CataclysmA','ASEarth_10_CataclysmB',
+                    ],
+                    'Dark60FPS': [
+                        'ASDark_01_Cast','ASDark_02_Cast2','ASDark_03_Chaos','ASDark_04_Sting','ASDark_05_Subdue','ASDark_06_Gloom','ASDark_07_Umbra','ASDark_08_Oblivion','ASDark_09_Void','ASDark_10_CalamityA','ASDark_10_CalamityB',
+                    ],
+                };
+                this._updateSpellDebugKeys();
+                var self = this;
+                this.scene.input.keyboard.on('keydown-I', function() {
+                    if (!self.scene.debugHelper || !self.scene.debugHelper.visible) return;
+                    self._playCurrentSpellDebug();
                 });
-            },
-            _showNextSpellDebug() {
-                // Remove previous sprite/text if any
+                this.scene.input.keyboard.on('keydown-J', function() {
+                    if (!self.scene.debugHelper || !self.scene.debugHelper.visible) return;
+                    self._selectSpellDebug(1);
+                });
+                this.scene.input.keyboard.on('keydown-K', function() {
+                    if (!self.scene.debugHelper || !self.scene.debugHelper.visible) return;
+                    self._selectSpellDebug(-1);
+                });
+                this.scene.input.keyboard.on('keydown-L', function() {
+                    if (!self.scene.debugHelper || !self.scene.debugHelper.visible) return;
+                    self._cycleSpellElement(1);
+                });
+                this._updateSpellDebugLabel();
+            }
+        },
+        {
+            key: "_updateSpellDebugKeys",
+            value: function _updateSpellDebugKeys() {
+                var element = this._spellElements[this._spellElementIndex];
+                this._spellDebugKeys = this._spellDebugKeysByElement[element.folder] || [];
+                this._spellDebugIndex = 0;
+            }
+        },
+        {
+            key: "_cycleSpellElement",
+            value: function _cycleSpellElement(direction) {
+                this._spellElementIndex = (this._spellElementIndex + direction + this._spellElements.length) % this._spellElements.length;
+                this._updateSpellDebugKeys();
                 if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
+                this._updateSpellDebugLabel();
+            }
+        },
+        {
+            key: "_selectSpellDebug",
+            value: function _selectSpellDebug(direction) {
+                if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
+                if (typeof direction === 'number') {
+                    this._spellDebugIndex = (this._spellDebugIndex + direction + this._spellDebugKeys.length) % this._spellDebugKeys.length;
+                }
+                this._updateSpellDebugLabel();
+            }
+        },
+        {
+            key: "_updateSpellDebugLabel",
+            value: function _updateSpellDebugLabel() {
                 if (this._spellDebugText) { this._spellDebugText.destroy(); this._spellDebugText = null; }
-                // Cycle index
-                this._spellDebugIndex = (this._spellDebugIndex + 1) % this._spellDebugKeys.length;
-                const key = this._spellDebugKeys[this._spellDebugIndex];
-                // Add sprite centered
-                const x = this.scene.game.config.width / 2;
-                const y = this.scene.game.config.height / 2;
-                this._spellDebugSprite = this.scene.add.sprite(x, y, key).setDepth(999).setScale(2);
+                if (!this.scene.debugHelper || !this.scene.debugHelper.visible) return;
+                var element = this._spellElements[this._spellElementIndex];
+                var key = this._spellDebugKeys[this._spellDebugIndex];
+                var x = this.scene.game.config.width / 2;
+                this._spellDebugText = this.scene.add.text(
+                    x,
+                    40,
+                    element.name + ' - ' + key,
+                    { fontSize: '32px', color: '#00ffff', backgroundColor: '#222', padding: { x: 10, y: 4 } }
+                ).setOrigin(0.5).setDepth(1000);
+            }
+        },
+        {
+            key: "_playCurrentSpellDebug",
+            value: function _playCurrentSpellDebug() {
+                if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
+                var key = this._spellDebugKeys[this._spellDebugIndex];
+                var x = this.scene.game.config.width / 2;
+                var y = this.scene.game.config.height / 2;
+                var scale = this.scene.game.config.width / 192;
+                this._spellDebugSprite = this.scene.add.sprite(x, y, key)
+                    .setOrigin(0.5, 0.5)
+                    .setDepth(999)
+                    .setScale(scale);
                 this._spellDebugSprite.play(key);
-                // Add label above
-                this._spellDebugText = this.scene.add.text(x, y - 180, key, { fontSize: '32px', color: '#00ffff', backgroundColor: '#222', padding: { x: 10, y: 4 } }).setOrigin(0.5).setDepth(1000);
-                // Remove sprite/text when animation completes
-                this._spellDebugSprite.on('animationcomplete', () => {
-                    if (this._spellDebugSprite) { this._spellDebugSprite.destroy(); this._spellDebugSprite = null; }
-                    if (this._spellDebugText) { this._spellDebugText.destroy(); this._spellDebugText = null; }
+                var self = this;
+                this._spellDebugSprite.on('animationcomplete', function() {
+                    if (self._spellDebugSprite) { self._spellDebugSprite.destroy(); self._spellDebugSprite = null; }
                 });
             }
         }

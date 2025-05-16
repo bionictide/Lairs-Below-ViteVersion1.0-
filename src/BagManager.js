@@ -921,7 +921,7 @@ export var BagManager = /*#__PURE__*/ function() {
         {
             key: "clearInventory",
             value: function clearInventory() {
-                var clearedItems = _to_consumable_array(this.inventory); // Return a copy of what was cleared
+                var clearedItems = [...this.inventory]; // Return a copy of what was cleared
                 this.inventory = []; // Empty the inventory array
                 this.initializeGridOccupancy(); // Reset the grid occupancy map
                 // If the bag UI is open, refresh it to show it's empty
