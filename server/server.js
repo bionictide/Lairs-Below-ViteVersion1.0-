@@ -10,6 +10,7 @@ import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
 import { generateDungeon } from '../src/shared/DungeonCore.js';
+import { characterDefinitions } from '../src/CharacterTypes.js';
 
 dotenv.config();
 
@@ -720,6 +721,80 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('encounter_end', { roomId });
   });
 
+  // --- AI/NPC Turn Logic (Server-Authoritative) ---
+  socket.on('AI_TURN', ({ playerId, roomId }) => {
+    const encounter = encounters.get(roomId);
+    if (!encounter) return;
+    const npc = getCombatant(playerId);
+    if (!npc) return;
+    const npcDef = characterDefinitions[npc.type];
+    if (!npcDef || !npcDef.aiBehavior) return;
+    const ai = npcDef.aiBehavior;
+    // Find valid targets (opposing team)
+    const npcPartyId = npc.partyId || npc.id;
+    const targets = encounter.participants.filter(p => (p.partyId || p.id) !== npcPartyId);
+    if (targets.length === 0) return;
+    const target = targets[Math.floor(Math.random() * targets.length)];
+    // --- AI Decision Tree ---
+    // 1. Low Health Action
+    const lowHealth = npc.health < (npc.maxHealth * ((ai.lowHealthAction && ai.lowHealthAction.fleeThreshold) || 0.2));
+    if (lowHealth && ai.lowHealthAction) {
+      if (ai.lowHealthAction.type === 'AttemptFlee' && Math.random() < (ai.lowHealthAction.chance || 0)) {
+        // Flee logic: remove NPC, emit prompt, end encounter
+        io.to(roomId).emit('showActionPrompt', `${npcDef.name} attempts to flee... succeeds!`);
+        // Remove from encounter
+        encounter.participants = encounter.participants.filter(p => p.id !== npcId);
+        encounter.turnQueue = encounter.turnQueue.filter(id => id !== npcId);
+        if (encounter.participants.length <= 1) {
+          encounters.delete(roomId);
+          io.to(roomId).emit('encounter_end', { roomId });
+          return;
+        }
+        endTurn(roomId);
+        return;
+      }
+      // Other low health actions (e.g., heal/stand firm) can be added here
+    }
+    // 2. Mood/Angry Action (not tracked server-side yet, fallback to standard)
+    // 3. Standard Action
+    let action = ai.standardAction;
+    if (ai.angryAction && npc.mood === 'angry') action = ai.angryAction;
+    // WeightedChoice for angryAction
+    if (action && action.type === 'WeightedChoice' && Array.isArray(action.choices)) {
+      // Weighted random selection
+      const totalWeight = action.choices.reduce((sum, c) => sum + (c.weight || 1), 0);
+      let r = Math.random() * totalWeight;
+      let chosen = action.choices[0];
+      for (const c of action.choices) {
+        if (r < (c.weight || 1)) { chosen = c; break; }
+        r -= (c.weight || 1);
+      }
+      action = chosen;
+    }
+    // Execute action
+    switch (action && action.type) {
+      case 'Attack':
+        performAttack(npcId, target.id, 'physical', null, roomId);
+        break;
+      case 'AttemptSteal':
+        if (!action.chance || Math.random() < action.chance) {
+          performSteal(npcId, target.id, roomId);
+        } else {
+          io.to(roomId).emit('showActionPrompt', `${npcDef.name} eyes your belongings but does nothing.`);
+          endTurn(roomId);
+        }
+        break;
+      case 'ShowPrompt':
+        io.to(roomId).emit('showActionPrompt', action.prompt.replace('{NAME}', npcDef.name));
+        endTurn(roomId);
+        break;
+      default:
+        // Fallback: always attack
+        performAttack(npcId, target.id, 'physical', null, roomId);
+        break;
+    }
+  });
+
   // --- Add more event handlers as needed ---
 });
 
@@ -818,16 +893,74 @@ function endTurn(roomId) {
 function runNpcTurn(roomId, npcId) {
   const encounter = encounters.get(roomId);
   if (!encounter) return;
-  // Find AI participant
   const npc = getCombatant(npcId);
   if (!npc) return;
-  // Choose a random valid target from the opposing team
+  const npcDef = characterDefinitions[npc.type];
+  if (!npcDef || !npcDef.aiBehavior) return;
+  const ai = npcDef.aiBehavior;
+  // Find valid targets (opposing team)
   const npcPartyId = npc.partyId || npc.id;
   const targets = encounter.participants.filter(p => (p.partyId || p.id) !== npcPartyId);
   if (targets.length === 0) return;
   const target = targets[Math.floor(Math.random() * targets.length)];
-  // For now, always attack (expand for spells/AI later)
-  performAttack(npcId, target.id, 'physical', null, roomId);
+  // --- AI Decision Tree ---
+  // 1. Low Health Action
+  const lowHealth = npc.health < (npc.maxHealth * ((ai.lowHealthAction && ai.lowHealthAction.fleeThreshold) || 0.2));
+  if (lowHealth && ai.lowHealthAction) {
+    if (ai.lowHealthAction.type === 'AttemptFlee' && Math.random() < (ai.lowHealthAction.chance || 0)) {
+      // Flee logic: remove NPC, emit prompt, end encounter
+      io.to(roomId).emit('showActionPrompt', `${npcDef.name} attempts to flee... succeeds!`);
+      // Remove from encounter
+      encounter.participants = encounter.participants.filter(p => p.id !== npcId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== npcId);
+      if (encounter.participants.length <= 1) {
+        encounters.delete(roomId);
+        io.to(roomId).emit('encounter_end', { roomId });
+        return;
+      }
+      endTurn(roomId);
+      return;
+    }
+    // Other low health actions (e.g., heal/stand firm) can be added here
+  }
+  // 2. Mood/Angry Action (not tracked server-side yet, fallback to standard)
+  // 3. Standard Action
+  let action = ai.standardAction;
+  if (ai.angryAction && npc.mood === 'angry') action = ai.angryAction;
+  // WeightedChoice for angryAction
+  if (action && action.type === 'WeightedChoice' && Array.isArray(action.choices)) {
+    // Weighted random selection
+    const totalWeight = action.choices.reduce((sum, c) => sum + (c.weight || 1), 0);
+    let r = Math.random() * totalWeight;
+    let chosen = action.choices[0];
+    for (const c of action.choices) {
+      if (r < (c.weight || 1)) { chosen = c; break; }
+      r -= (c.weight || 1);
+    }
+    action = chosen;
+  }
+  // Execute action
+  switch (action && action.type) {
+    case 'Attack':
+      performAttack(npcId, target.id, 'physical', null, roomId);
+      break;
+    case 'AttemptSteal':
+      if (!action.chance || Math.random() < action.chance) {
+        performSteal(npcId, target.id, roomId);
+      } else {
+        io.to(roomId).emit('showActionPrompt', `${npcDef.name} eyes your belongings but does nothing.`);
+        endTurn(roomId);
+      }
+      break;
+    case 'ShowPrompt':
+      io.to(roomId).emit('showActionPrompt', action.prompt.replace('{NAME}', npcDef.name));
+      endTurn(roomId);
+      break;
+    default:
+      // Fallback: always attack
+      performAttack(npcId, target.id, 'physical', null, roomId);
+      break;
+  }
 }
 
 function performAttack(initiatorId, targetId, attackType, spellName, roomId) {

@@ -657,20 +657,6 @@ export var EncounterManager = /*#__PURE__*/ function() {
             }
         },
         {
-            // Removed extra closing brace from previous line
-            key: "handleAttack",
-            value: function handleAttack(initiatorId, targetId) {
-                // Only allow local logic for AI/NPCs (if not yet migrated), otherwise emit to server
-                if (initiatorId === this.playerId) {
-                    // Already migrated: player attacks now emit to server
-                    return;
-                }
-                // TODO: Migrate AI/NPC attacks to server authority
-                // For now, keep legacy logic for AI/NPCs until migration is complete
-                // ... (existing AI/NPC attack logic, to be migrated next) ...
-            }
-        },
-        {
             // REMOVED handleSpells - Logic moved into showActionMenu 'spells' case
             key: "handleSteal",
             value: function handleSteal(initiatorId, targetId) {
@@ -845,248 +831,21 @@ export var EncounterManager = /*#__PURE__*/ function() {
         {
             key: "handleAIAction",
             value: function handleAIAction(initiatorId, targetId) {
-                var _entityDef_baseStats;
-                var entity = this.entities.get(initiatorId);
-                var entityDef = getCharacterDefinition(entity.type); // Get definition
-                var entityName = entityDef ? entityDef.name : entity.type; // Use name from definition
-                var aiBehavior = entityDef === null || entityDef === void 0 ? void 0 : entityDef.aiBehavior; // Get the AI behavior definition
-                var _entityDef_baseStats_fleeThreshold;
-                // Calculate dynamic flee threshold based on definition and max health
-                var fleeThresholdPercent = (_entityDef_baseStats_fleeThreshold = entityDef === null || entityDef === void 0 ? void 0 : (_entityDef_baseStats = entityDef.baseStats) === null || _entityDef_baseStats === void 0 ? void 0 : _entityDef_baseStats.fleeThreshold) !== null && _entityDef_baseStats_fleeThreshold !== void 0 ? _entityDef_baseStats_fleeThreshold : 0.2; // Default to 20% if undefined
-                var fleeHealthValue = entity.maxHealth * fleeThresholdPercent;
-                // REMOVED: const LOW_HEALTH_THRESHOLD_VALUE = 150;
-                // --- PRIORITY 1: Low Health Check (Guard Clause) ---
-                if (entity.health < fleeHealthValue) {
-                    console.log("[DEBUG] AI Action (".concat(entityName, ", health ").concat(entity.health, "/").concat(entity.maxHealth, "): Low health check vs threshold ").concat(fleeHealthValue.toFixed(0), " (").concat((fleeThresholdPercent * 100).toFixed(0), "%). (PRIORITY 1)."));
-                    // Check AI Behavior Definition for low health action
-                    var lowHealthDef = aiBehavior === null || aiBehavior === void 0 ? void 0 : aiBehavior.lowHealthAction;
-                    // Dwarf low health: Use definition if available and matches 'HealAndStand'
-                    if (entity.type === 'dwarf' && (lowHealthDef?.type) === 'HealAndStand') {
-                        // Only allow once per encounter if specified
-                        if (lowHealthDef.oncePerEncounter && entity.standFirmUsed) {
-                            // Already used, fall through to other logic
-                        } else {
-                            // Check chance if specified
-                            if (!lowHealthDef.chance || Math.random() < lowHealthDef.chance) {
-                                var healAmount = lowHealthDef.amount ?? 0;
-                                if (healAmount > 0) {
-                                    entity.health += healAmount;
-                                    entity.health = Math.min(entity.health, entity.maxHealth);
-                                    this.scene.events.emit('showActionPrompt', `The ${entityName} glares weakly, but stands firm. (Regains some health!)`);
-                                    console.log(`[DEBUG] AI Action (${entityName}, low health): Dwarf stands firm & heals ${healAmount} HP from definition (New HP: ${entity.health}).`);
-                                } else {
-                                    this.scene.events.emit('showActionPrompt', `The ${entityName} glares weakly, but stands firm.`);
-                                    console.log(`[DEBUG] AI Action (${entityName}, low health): Dwarf stands firm (no heal defined or amount 0).`);
-                                }
-                                if (lowHealthDef.oncePerEncounter) entity.standFirmUsed = true;
-                                this.endTurn(initiatorId);
-                                return;
-                            }
-                            // If chance fails, fall through to other low health logic
-                        }
-                    } else {
-                        // No specific 'AttemptFlee' defined OR lowHealthAction missing - Do nothing special here, proceed to other checks
-                        console.log("[DEBUG] AI Action (".concat(entityName, ", low health): No 'AttemptFlee' action defined. Proceeding to other checks."));
-                    }
-                // Fall through if flee wasn't attempted or failed
-                }
-                // --- PRIORITY 2: Check Mood (Guard Clause - runs if NOT low health OR low health flee attempt failed) ---
-                // Angry enemies use their defined angryAction if available, otherwise default to attack.
-                if (entity.mood === 'angry') {
-                    console.log("[DEBUG] AI Action (".concat(entityName, ", angry, health ").concat(entity.health, "): Mood is angry. Checking for defined angryAction (PRIORITY 2)."));
-                    var angryActionDef = aiBehavior === null || aiBehavior === void 0 ? void 0 : aiBehavior.angryAction;
-                    if (angryActionDef) {
-                        // --- Handle Defined Angry Action ---
-                        switch(angryActionDef.type){
-                            case 'WeightedChoice':
-                                if (angryActionDef.choices && angryActionDef.choices.length > 0) {
-                                    // Use existing weightedRandom helper function
-                                    var chosenActionType = weightedRandom(angryActionDef.choices); // Assumes choices have { type, weight }
-                                    console.log("[DEBUG] AI Action (".concat(entityName, ", angry): WeightedChoice selected '").concat(chosenActionType, "' based on angryAction definition."));
-                                    // Execute the chosen action
-                                    if (chosenActionType === 'Attack') {
-                                        this.handleAttack(initiatorId, targetId);
-                                    } else if (chosenActionType === 'AttemptSteal') {
-                                        // Note: The 'chance' inside the WeightedChoice definition (e.g., 1.0 for Gnome)
-                                        // applies to the steal *roll* itself IF 'AttemptSteal' is chosen by weight.
-                                        // We still call handleSteal which performs the actual success check.
-                                        this.handleSteal(initiatorId, targetId);
-                                    } else {
-                                        console.warn("[WARN] AI Action (".concat(entityName, ", angry): Unknown action type '").concat(chosenActionType, "' chosen from WeightedChoice."));
-                                        // Fallback to attack if chosen action is unknown
-                                        this.handleAttack(initiatorId, targetId);
-                                    }
-                                } else {
-                                    console.warn("[WARN] AI Action (".concat(entityName, ", angry): WeightedChoice defined but no choices found. Falling back to attack."));
-                                    this.handleAttack(initiatorId, targetId);
-                                }
-                                break; // End WeightedChoice
-                            case 'Attack':
-                                console.log("[DEBUG] AI Action (".concat(entityName, ", angry): Using defined angryAction: Attack."));
-                                this.handleAttack(initiatorId, targetId);
-                                break;
-                            case 'AttemptSteal':
-                                var _angryActionDef_chance;
-                                // Note: If 'AttemptSteal' is the direct angryAction, the 'chance' property within it applies.
-                                var stealChance = (_angryActionDef_chance = angryActionDef.chance) !== null && _angryActionDef_chance !== void 0 ? _angryActionDef_chance : 1.0; // Default to 100% chance *to attempt* if undefined
-                                console.log("[DEBUG] AI Action (".concat(entityName, ", angry): Using defined angryAction: AttemptSteal (Base attempt chance: ").concat(stealChance * 100, "%)."));
-                                if (Math.random() < stealChance) {
-                                    this.handleSteal(initiatorId, targetId);
-                                } else {
-                                    console.log("[DEBUG] AI Action (".concat(entityName, ", angry): Skipped AttemptSteal based on angryAction chance. Ending turn."));
-                                    this.endTurn(initiatorId); // Steal attempt itself was skipped
-                                }
-                                break;
-                            // Add cases for other potential angry actions here later (e.g., 'UseAbility')
-                            default:
-                                console.warn("[WARN] AI Action (".concat(entityName, ", angry): Unknown angryAction type '").concat(angryActionDef.type, "' defined. Falling back to attack."));
-                                this.handleAttack(initiatorId, targetId);
-                                break;
-                        }
-                    } else {
-                        // --- Default Angry Action (Attack if no definition) ---
-                        console.log("[DEBUG] AI Action (".concat(entityName, ", angry, health ").concat(entity.health, "): No specific angryAction defined. Defaulting to attack (PRIORITY 2 - Fallback)."));
-                        this.handleAttack(initiatorId, targetId); // targetId is player (or should be this.playerId)
-                    }
-                    return; // Stop processing further priorities if mood was angry
-                }
-                // --- PRIORITY 3: Pending Player Talk (Guard Clause - runs if NOT low health flee AND NOT angry) ---
-                // Check if the player sent a message intended for this entity.
-                var pendingPlayerTalk = this.pendingTalks.get(this.playerId); // Use player's unique ID as key
-                if (pendingPlayerTalk && pendingPlayerTalk.targetId === initiatorId) {
-                    var playerMessage = pendingPlayerTalk.message.toLowerCase();
-                    console.log("[DEBUG] AI Action (".concat(entityName, ", health ").concat(entity.health, ", mood ").concat(entity.mood, "): Handling pending player talk (from ").concat(this.playerId, '): "').concat(playerMessage, '" (PRIORITY 3).'));
-                    var responsePrompt = '';
-                    // REMOVED: handledBySpecificLogic flag
-                    var responseHandledByDefinition = false; // Track if a definition-based response was found
-                    // --- Priority 3a: Handle Talk via AI Behavior Definition ---
-                    if (aiBehavior === null || aiBehavior === void 0 ? void 0 : aiBehavior.talkResponses) {
-                        var _talkDef_default;
-                        var talkDef = aiBehavior.talkResponses;
-                        // Check keywords
-                        if (talkDef.keywords && Array.isArray(talkDef.keywords)) {
-                            var _iteratorNormalCompletion = true, _didIteratorError = false, _iteratorError = undefined;
-                            try {
-                                for(var _iterator = talkDef.keywords[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true){
-                                    var keywordDef = _step.value;
-                                    if (keywordDef.words && Array.isArray(keywordDef.words)) {
-                                        var matchFound = keywordDef.words.some(function(word) {
-                                            return playerMessage.includes(word.toLowerCase());
-                                        });
-                                        if (matchFound) {
-                                            // Format the prompt
-                                            responsePrompt = (keywordDef.prompt || '').replace(/{NAME}/g, entityName);
-                                            console.log("[DEBUG] Talk reaction (".concat(entityName, "): Found keyword match from definition: [").concat(keywordDef.words.join(', '), ']. Prompt: "').concat(responsePrompt, '"'));
-                                            // Handle defined action
-                                            if (keywordDef.action) {
-                                                switch(keywordDef.action.type){
-                                                    case 'SetMood':
-                                                        if (keywordDef.action.mood && entity.mood !== keywordDef.action.mood) {
-                                                            entity.mood = keywordDef.action.mood;
-                                                            console.log("[DEBUG] Talk action (".concat(entityName, "): Setting mood to '").concat(entity.mood, "' from definition."));
-                                                            this.scene.events.emit('enemyMoodChanged', initiatorId, entity.mood);
-                                                        }
-                                                        break;
-                                                    case 'FleeAndEndEncounter':
-                                                        console.log("[DEBUG] Talk action (".concat(entityName, "): Triggering FleeAndEndEncounter from definition."));
-                                                        this.scene.events.emit('showActionPrompt', responsePrompt); // Show prompt before ending
-                                                        this.pendingTalks.delete(this.playerId);
-                                                        this.endEncounter(initiatorId, true); // Flee like defeat
-                                                        return; // IMPORTANT: Stop all further processing
-                                                    // Add more action types here later (e.g., GiveItem, StartQuest)
-                                                    default:
-                                                        console.warn("[WARN] Talk action (".concat(entityName, "): Unknown action type in definition: ").concat(keywordDef.action.type));
-                                                }
-                                            }
-                                            responseHandledByDefinition = true;
-                                            break; // Stop checking keywords once a match is found
-                                        }
-                                    }
-                                }
-                            } catch (err) {
-                                _didIteratorError = true;
-                                _iteratorError = err;
-                            } finally{
-                                try {
-                                    if (!_iteratorNormalCompletion && _iterator.return != null) {
-                                        _iterator.return();
-                                    }
-                                } finally{
-                                    if (_didIteratorError) {
-                                        throw _iteratorError;
-                                    }
-                                }
-                            }
-                        }
-                        // Handle default response if no keyword matched
-                        if (!responseHandledByDefinition && ((_talkDef_default = talkDef.default) === null || _talkDef_default === void 0 ? void 0 : _talkDef_default.prompt)) {
-                            responsePrompt = talkDef.default.prompt.replace(/{NAME}/g, entityName).replace(/{MESSAGE}/g, pendingPlayerTalk.message); // Inject player message
-                            console.log("[DEBUG] Talk reaction (".concat(entityName, '): Using default response from definition: "').concat(responsePrompt, '"'));
-                            responseHandledByDefinition = true;
-                        }
-                    }
-                    // REMOVED: Priority 3b fallback block. Talk is now fully handled by definitions or defaults within Priority 3a.
-                    // --- Priority 3c: Process FINAL Talk Response and End Turn ---
-                    this.pendingTalks.delete(this.playerId); // Always clear the pending talk message using player ID *after* processing.
-                    // Show the final prompt (either from definition or fallback) if one exists
-                    if (responsePrompt) {
-                        this.scene.events.emit('showActionPrompt', responsePrompt);
-                        this.endTurn(initiatorId); // End turn after showing the response.
-                        return; // Stop further processing.
-                    }
-                    // --- If NO responsePrompt was generated AT ALL (by definition or fallback) ---
-                    // Execution automatically falls through to PRIORITY 4 below.
-                    console.log("[DEBUG] No talk response generated for ".concat(entityName, " at all. Proceeding to standard AI action (Priority 4)."));
-                } // End of PRIORITY 3 talk handling
-                // --- PRIORITY 4: Standard AI Action Logic (Fallback) ---
-                // This block executes only if:
-                // 1. Entity is NOT at low health OR the low-health flee attempt failed.
-                // 2. Entity mood is NOT 'angry'.
-                // 3. There was NO pending player talk OR the talk attempt did not generate/handle a specific response.
-                console.log("[DEBUG] AI Action (".concat(entityName, ", health ").concat(entity.health, ", mood ").concat(entity.mood, "): Performing standard action (PRIORITY 4 - Fallback)."));
-                // --- Priority 4a: Use Standard Action from Definition if available ---
-                if (aiBehavior === null || aiBehavior === void 0 ? void 0 : aiBehavior.standardAction) {
-                    var standardActionDef = aiBehavior.standardAction;
-                    switch(standardActionDef.type){
-                        case 'ShowPrompt':
-                            var prompt = (standardActionDef.prompt || 'The {NAME} stands there.').replace(/{NAME}/g, entityName);
-                            console.log("[DEBUG] AI Action (".concat(entityName, '): Standard action from definition: ShowPrompt "').concat(prompt, '"'));
-                            this.scene.events.emit('showActionPrompt', prompt);
-                            this.endTurn(initiatorId);
-                            return; // Handled by definition
-                        case 'AttemptSteal':
-                            var _standardActionDef_chance;
-                            var stealChance1 = (_standardActionDef_chance = standardActionDef.chance) !== null && _standardActionDef_chance !== void 0 ? _standardActionDef_chance : 0.0; // Default to 0 chance if undefined
-                            if (Math.random() < stealChance1) {
-                                console.log("[DEBUG] AI Action (".concat(entityName, "): Standard action from definition: AttemptSteal (Chance: ").concat(stealChance1 * 100, "%) - Success!"));
-                                this.handleSteal(initiatorId, targetId);
-                            } else {
-                                var failPrompt = (standardActionDef.failPrompt || 'The {NAME} eyes your belongings suspiciously.').replace(/{NAME}/g, entityName);
-                                console.log("[DEBUG] AI Action (".concat(entityName, "): Standard action from definition: AttemptSteal (Chance: ").concat(stealChance1 * 100, '%) - Failed roll. Prompt: "').concat(failPrompt, '"'));
-                                this.scene.events.emit('showActionPrompt', failPrompt);
-                                this.endTurn(initiatorId);
-                            }
-                            return; // Handled by definition (either steal or fail prompt)
-                        case 'Attack':
-                            console.log("[DEBUG] AI Action (".concat(entityName, "): Standard action from definition: Attack."));
-                            this.handleAttack(initiatorId, targetId);
-                            return; // Handled by definition
-                        // Add other standard action types here later (e.g., 'Patrol', 'UseAbility')
-                        default:
-                            console.warn("[WARN] AI Action (".concat(entityName, "): Unknown standard action type in definition: ").concat(standardActionDef.type));
-                    }
-                }
-                // --- Priority 4b: Ultimate Fallback Action ---
-                // This executes ONLY if Priority 1, 2, 3 didn't handle the turn, AND
-                // Priority 4a (standardAction definition) didn't handle the turn (e.g., no definition, or unknown type).
-                console.log("[DEBUG] AI Action (".concat(entityName, "): Reached ultimate fallback. Default menacing stance."));
-                this.scene.events.emit('showActionPrompt', "The ".concat(entityName, " stands there menacingly."));
-                this.endTurn(initiatorId);
-            // endTurn is now consistently called by the action that handles the turn, or this fallback.
+                // --- REMOVE ALL LOCAL AI/NPC ACTION EXECUTION ---
+                // handleAIAction, handleAttack (for NPCs), handleSteal (for NPCs), handleSpellCast (for NPCs) are now server-authoritative.
+                // Only emit player intents and handle server events.
+                // ... existing code ...
+                // Remove or disable:
+                // - handleAIAction
+                // - handleAttack (for NPCs)
+                // - handleSteal (for NPCs)
+                // - handleSpellCast (for NPCs)
+                // - Any local AI/NPC turn logic
+                // ... existing code ...
+                // Only keep UI and event handling for player actions.
             }
         },
         {
-            // REMOVED: _aiActionElvaan helper method. Logic is now handled by the aiBehavior definition.
             key: "endTurn",
             value: function endTurn(initiatorId) {
                 var _this = this;
