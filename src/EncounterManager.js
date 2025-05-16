@@ -529,7 +529,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                                 text: spellName,
                                 callback: function() {
                                     if (isValid) {
-                                        this.handleSpellCast(initiatorId, targetId, spellName);
+                                        _this.handleSpellCast(initiatorId, targetId, spellName);
                                     } else {
                                         console.log(`[DEBUG] Player clicked spell: ${spellName}, showing gem requirements`);
                                         this.scene.events.emit('showActionPrompt', `${spellName}: ${countText}${gemText}`);
