@@ -1,4 +1,4 @@
-import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT } from './StatDefinitions.js';
+import { getCharacterDisplayData } from './CharacterTypes.js'; // Import the client-safe helper
 
 function _array_like_to_array(arr, len) {
     if (len == null || len > arr.length) len = arr.length;
@@ -79,7 +79,6 @@ function _unsupported_iterable_to_array(o, minLen) {
 }
 import Phaser from 'https://esm.sh/phaser@3.60.0';
 import { itemData } from './BagManager.js'; // Import itemData directly
-import { getCharacterDefinition } from './CharacterTypes.js'; // Import the helper function
 // Helper function for weighted random selection
 function weightedRandom(items) {
     var totalWeight = items.reduce(function(sum, item) {
@@ -279,12 +278,12 @@ export var EncounterManager = /*#__PURE__*/ function() {
                 // 6. Create entity (Cooldown recording moved to endEncounter)
                 // REMOVED: this.lastEncounterTime[selectedType] = now;
                 // --- Set Initial Stats Based on Character Definition ---
-                var definition = getCharacterDefinition(selectedType);
+                var definition = getCharacterDisplayData(selectedType);
                 var stats = definition && definition.stats ? definition.stats : { vit: 6, str: 5, int: 0, dex: 5, mnd: 5, spd: 5 };
                 // Use StatDefinitions.js for derived stats
-                var maxHealth = getHealthFromVIT(stats.vit);
-                var physicalBaseDamage = getPhysicalAttackFromSTR(stats.str);
-                var defense = getDefenseFromVIT(stats.vit);
+                var maxHealth = stats.vit;
+                var physicalBaseDamage = stats.str;
+                var defense = stats.vit;
                 // Store stat block and derived stats in entity
                 this.entities.set(entityId1, {
                     type: selectedType,
@@ -306,7 +305,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
             key: "calculateInitialLoot",
             value: function calculateInitialLoot(entityType) {
                 var initialLoot = [];
-                var definition = getCharacterDefinition(entityType); // Get the full definition
+                var definition = getCharacterDisplayData(entityType); // Get the full definition
                 var lootTier = definition === null || definition === void 0 ? void 0 : definition.lootTier; // Get the loot tier from the definition
                 if (lootTier) {
                     // Assuming npcLootManager provides the loot table structure { itemKey: probability } based on tier
@@ -414,7 +413,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     this.endTurn(initiatorId); // End turn if target invalid
                     return;
                 }
-                var targetDef = getCharacterDefinition(target.type);
+                var targetDef = getCharacterDisplayData(target.type);
                 var targetName = targetDef ? targetDef.name : target.type;
                 var actions = [];
                 var isPlayerTurn = initiatorId === this.playerId;
@@ -643,7 +642,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     // AI Talk logic (receiving message) - remains the same for now
                     var talk = this.pendingTalks.get(targetId);
                     if (talk && talk.targetId === initiatorId) {
-                        var initiatorDef = getCharacterDefinition(this.entities.get(initiatorId).type); // Get definition
+                        var initiatorDef = getCharacterDisplayData(this.entities.get(initiatorId).type); // Get definition
                         var initiatorName = initiatorDef ? initiatorDef.name : initiatorId; // Use name from definition
                         this.scene.events.emit('showTalkMessage', "".concat(initiatorName, " says: ").concat(talk.message), function(message) {
                             _this.scene.events.emit('showActionPrompt', "You reply to the ".concat(initiatorName, ".")); // Player reply prompt
@@ -689,7 +688,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     // Turn was already ended if it was the player.
                     return;
                 }
-                var targetDef = getCharacterDefinition(target.type); // Get definition
+                var targetDef = getCharacterDisplayData(target.type); // Get definition
                 var targetName = targetDef ? targetDef.name : target.type; // Use name from definition
                 if (target.type === 'dwarf' && initiatorId === this.playerId) {
                     // Player initiates trade with dwarf.
@@ -735,7 +734,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     // Turn was already ended if it was the player.
                     return;
                 }
-                var targetDef = getCharacterDefinition(target.type); // Get definition
+                var targetDef = getCharacterDisplayData(target.type); // Get definition
                 var targetName = targetDef ? targetDef.name : target.type; // Use name from definition
                 // TODO: Enhance description using targetDef.baseStats etc. later?
                 var desc = {
@@ -768,7 +767,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                 // --- Check for flee success (Increased base chance) ---
                 // Note: Dwarf's talk-triggered flee bypasses this function entirely.
                 var success = Math.random() < 0.2; // 20% flee success chance
-                var initiatorDef = getCharacterDefinition((_this_entities_get = this.entities.get(initiatorId)) === null || _this_entities_get === void 0 ? void 0 : _this_entities_get.type); // Get definition
+                var initiatorDef = getCharacterDisplayData((_this_entities_get = this.entities.get(initiatorId)) === null || _this_entities_get === void 0 ? void 0 : _this_entities_get.type); // Get definition
                 var initiatorName = initiatorId === this.playerId ? 'You' : initiatorDef ? initiatorDef.name : initiatorId;
                 // Consistent failure message
                 var message = "".concat(initiatorName, " attempt").concat(initiatorId === this.playerId ? '' : 's', " to flee... ").concat(success ? 'succeeds!' : 'but failed!');
@@ -817,7 +816,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     // Turn already ended if player
                     return;
                 }
-                var targetDef = getCharacterDefinition(target.type); // Get definition
+                var targetDef = getCharacterDisplayData(target.type); // Get definition
                 var targetName = targetDef ? targetDef.name : target.type; // Use name from definition
                 var message = target.type === 'bat' ? "The ".concat(targetName, " screeches and cannot join your team!") : "You invited the ".concat(targetName, " to your team!");
                 this.scene.events.emit('showActionPrompt', message);
@@ -1033,7 +1032,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
                     return;
                 }
                 var target = this.entities.get(targetId);
-                var targetDef = getCharacterDefinition(target.type); // Get definition
+                var targetDef = getCharacterDisplayData(target.type); // Get definition
                 var targetName = targetDef ? targetDef.name : target.type; // Use name from definition
                 console.log('[DEBUG] submitTalk: Player submitting message "'.concat(message, '" to ').concat(targetId, " (").concat(targetName, ")."));
                 // 1. Stop the action menu timer in DungeonScene

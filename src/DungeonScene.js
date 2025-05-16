@@ -145,7 +145,7 @@ import { NPCLootManager } from './NpcLootManager.js'; // Import the new NPCLootM
 import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIManager
 import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
-import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js'; // Import definitions and helper
+import { characterDisplayData, getCharacterDisplayData } from './CharacterTypes.js'; // Import client-safe helpers
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
 import { SpellManager } from './SpellManager.js';
 // Define door configurations outside the class for clarity
@@ -244,8 +244,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 });
                 // --- Dynamically preload enemy assets based on CharacterTypes ---
                 console.log("[DEBUG] Preloading assets based on CharacterTypes...");
-                for(var typeKey in characterDefinitions){
-                    var definition = characterDefinitions[typeKey];
+                for(var typeKey in characterDisplayData){
+                    var definition = characterDisplayData[typeKey];
                     if (definition && definition.assetPrefix) {
                         var prefix = definition.assetPrefix;
                         var idleKey = `${prefix}1`;
@@ -964,7 +964,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     }
                     if (_this.enemySprite) _this.enemySprite.destroy();
                     // --- Use CharacterTypes definition to get the sprite key ---
-                    var definition = getCharacterDefinition(entityType);
+                    var definition = getCharacterDisplayData(entityType);
                     var spriteKey = definition ? _this.getEnemySpriteKey(entityType, 'idle') : null; // Get idle key using the refactored function
                     if (spriteKey && _this.textures.exists(spriteKey)) {
                         _this.enemySprite = _this.add.sprite(gameConfig.width / 2, gameConfig.height / 2, spriteKey).setDepth(60); // Depth 60
@@ -1321,7 +1321,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
             key: "getEnemySpriteKey",
             value: function getEnemySpriteKey(type) {
                 var mood = arguments.length > 1 && arguments[1] !== void 0 ? arguments[1] : 'idle';
-                var definition = getCharacterDefinition(type);
+                var definition = getCharacterDisplayData(type);
                 if (!definition || !definition.assetPrefix) {
                     console.warn("[WARN] getEnemySpriteKey: No definition or assetPrefix for type: ".concat(type, ". Falling back."));
                     // Fallback logic if definition or prefix is missing

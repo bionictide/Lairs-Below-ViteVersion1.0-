@@ -10,7 +10,7 @@ import dotenv from 'dotenv';
 import { EVENTS } from '../src/shared/events.js';
 import fetch from 'node-fetch';
 import { generateDungeon } from '../src/shared/DungeonCore.js';
-import { characterDefinitions } from '../src/CharacterTypes.js';
+import { characterDefinitions, getCharacterDefinition } from './CharacterTypes.js';
 
 dotenv.config();
 
