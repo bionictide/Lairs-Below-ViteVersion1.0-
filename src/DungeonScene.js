@@ -585,6 +585,18 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.events.on('playerKilledByNPC', this.handlePlayerKilledByNPC, this);
                 // Listen for loot bag clicks (emitted by HealthBar)
                 this.events.on('lootBagClicked', this.handleLootBagClick, this);
+                // Add this in DungeonScene.create or after encounterManager is initialized
+                this.socket.on('showActionMenu', (data) => {
+                    // Adapt to EncounterManager API
+                    // If data.targetId is missing, try to infer from participants/turnQueue if needed
+                    this.encounterManager.showActionMenu(
+                        data.initiatorId,
+                        data.targetId,
+                        data.roomId,
+                        data.menuContext || { type: './main.js', page: 1 },
+                        false // or data.keepTimer if provided
+                    );
+                });
             }
         },
         {

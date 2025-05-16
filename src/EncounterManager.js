@@ -476,7 +476,10 @@ export var EncounterManager = /*#__PURE__*/ function() {
                                         attackType: 'physical',
                                         roomId
                                     });
-                                    // Optionally, close menu or show waiting UI
+                                    if (_this.scene.actionMenu) {
+                                        _this.scene.actionMenu.destroy();
+                                        _this.scene.actionMenu = null;
+                                    }
                                 }
                             },
                             // Call showActionMenu with 'spells' context when Spells/Abilities is clicked
@@ -531,6 +534,10 @@ export var EncounterManager = /*#__PURE__*/ function() {
                                 callback: function() {
                                     if (isValid) {
                                         _this.handleSpellCast(initiatorId, targetId, spellName);
+                                        if (_this.scene.actionMenu) {
+                                            _this.scene.actionMenu.destroy();
+                                            _this.scene.actionMenu = null;
+                                        }
                                     } else {
                                         console.log(`[DEBUG] Player clicked spell: ${spellName}, showing gem requirements`);
                                         this.scene.events.emit('showActionPrompt', `${spellName}: ${countText}${gemText}`);
