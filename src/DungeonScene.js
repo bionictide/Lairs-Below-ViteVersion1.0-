@@ -551,7 +551,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId, socket);
 
                 // Finally, managers that depend on multiple other managers
-                this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
+                this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals, socket);
                 this.puzzleManager = new PuzzleManager(this, socket);
                 this.treasureManager = new TreasureManager(this, socket);
                 this.hintManager = new HintManager(this);
