@@ -33,3 +33,13 @@
 
 7. **Update documentation:**
    - Add notes to `
+
+8. **Verify PvP, Party, and AI Group Logic:**
+   - Ensure all PvP, party, and AI group flows, events, and payloads are fully documented in ai_instructions.md and events.md.
+   - Confirm that all new or changed logic is reflected in the canonical user directives and event specs.
+   - This is a required QA step before any code changes or migration.
+
+9. **Verify Group Targeting and Evasion Mechanics:**
+   - Ensure group targeting (target selection submenu for attacks/spells/steal) and evasion (SPD-based dodge, evasion prompt, and event payloads) are fully documented in ai_instructions.md and events.md.
+   - Confirm that all relevant event payloads include targetId, evaded, and prompt fields as needed.
+   - This is a required QA step before any code changes or migration.

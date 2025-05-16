@@ -220,4 +220,53 @@ These rules are absolute and must be followed for all future development and mig
 - Single source of truth (e.g., lootMap) is a good end-state, but only after server-authoritative migration is stable.
 - Defer new features (like trade) until after migration. Implement examine, talking, and team invite exactly as described by the user.
 
---- 
+---
+
+## 2024-06: PvP, Party, and AI Group Logic (Canonical User Directives)
+
+### Party Formation and Flow
+- Parties are formed when one player in a PvP encounter clicks the party invite button and the other player also clicks the party invite button (which becomes "Party Accept" after an invite is sent).
+- There is **no decline button**. If a player does not want to join, they simply do not accept and may use their turn for any other action (attack, steal, flee, etc.).
+- If the invite is accepted, the encounter ends immediately. Each player retains their own loot; there is no split loot.
+- The party leader (the inviter) controls all movement (doors, navigation) for the party. Party members follow automatically and cannot interact with doors until they leave the party.
+- All other interactions (loot bags, treasure, puzzle keys, shelves, etc.) remain available to all party members. The first to click an item receives it. No special logic for loot splitting.
+- In combat, the turn order is expanded to include all party members and enemies. Anyone who dies (player or NPC) drops a loot bag as before. The first to click loot in a bag claims it.
+- Each player has a "Leave Party" button (styled like "Open Bag") visible when in a party. Clicking it moves the player to the previous room and breaks the alliance. If unpartied players re-enter the same room, a new encounter is triggered as normal.
+- A solo player is a party leader of one. Party members are just extra turns and loot snatchers; no other special logic.
+- Flee is only allowed for the party leader and is greyed out for party members. On successful flee, the entire party is moved together, following the leader. Party members always go where the leader does, with the same view as the leader.
+
+### Group Targeting (PvP, Party, and AI Groups)
+- When attacking a group (party or AI group), after selecting an attack type (physical, spell, steal, etc.), a submenu appears listing all enemy team members as selectable targets. The player chooses which enemy to target. This applies to all attack, spell, and steal actions.
+
+### Evasion Mechanic
+- Each 1 SPD = 1% evasion. Evasion is a chance to completely dodge any attack (physical, spell, or steal). If evasion succeeds, show a prompt: "Name dodges the attack!" No damage or steal roll occurs. Evasion does not apply to examine or talk.
+
+### Migration and Implementation Notes
+- All of the above logic must be implemented server-side, with the client acting only as a renderer and intent emitter/listener.
+- No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
+- All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
+- Any deviation from these flows is a bug and must be corrected immediately.
+- All PlayerStats—including evasion—are always individual. Party or group members do not share stats or modifiers; each entity (player or AI) uses only their own stats for all calculations (damage, defense, evasion, etc.), regardless of party or group membership.
+
+### PvP Encounter Flow
+- PvP encounters follow the same turn-based pattern as PvE, but both sides are player-controlled.
+- The player who enters the room always goes first.
+- All attack, spell, steal, flee, examine, and talk actions follow the same calculation and event flow as PvE, using server-authoritative logic.
+- Party invite is a turn action. If not accepted, the turn flow continues as normal.
+- No new or special logic for loot, death, or combat in PvP vs. PvE.
+
+### AI Groups (Party-Like NPCs)
+- When an AI is created, it has a 10% chance to spawn a second AI as a partner. That partner has a 10% chance to spawn a third AI. The third AI always has a 0% chance to spawn a partner (max group size: 3).
+- AI groups function exactly like player parties: each AI is an entity in the encounter turn order, with their own loot, stats, and actions.
+- AI group turn order is always: AI 1, AI 2, AI 3 (if present), then players/party members in order.
+- Sprite display for AI groups:
+  - Party leader: normal size/position (unchanged from single combat)
+  - Party member 1: 10% smaller, 5% lower, 10% left, z-index 1 behind leader
+  - Party member 2: 10% smaller, 5% lower, 10% right, z-index 1 behind member 1
+- All AI group logic is server-authoritative and follows the same event and state flows as player parties.
+
+### Migration and Implementation Notes
+- All of the above logic must be implemented server-side, with the client acting only as a renderer and intent emitter/listener.
+- No client-side fallback, guessing, or omitted logic is allowed. All flows must be preserved exactly as described.
+- All event flows, payloads, and state changes must be mapped in events.md and events.js, and all state changes must be documented in this folder.
+- Any deviation from these flows is a bug and must be corrected immediately. 

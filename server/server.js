@@ -80,6 +80,9 @@ const visitedRooms = new Map(); // playerId -> Set of visited roomIds
 // Add global entities map for NPCs/monsters
 const entities = new Map(); // entityId -> { character, roomId, inventory, health, ... }
 
+// Add global encounter state
+const encounters = new Map(); // roomId -> { turnQueue: [id, id], currentTurn, entityId, playerId }
+
 // --- Dungeon World (Persistent, Server-Authoritative) ---
 // All dungeon generation and mutation logic is imported from DungeonCore.js and must be performed here.
 // No client should ever mutate dungeon state. All mutations must be requested via events and validated/applied here.
@@ -631,4 +634,127 @@ function handleNpcTurn(npcId, targetId) {
     // TODO: Handle loot, end encounter, etc.
   }
   // TODO: Advance turn/order for next action
+}
+
+// Helper: Start a new encounter (server-authoritative)
+function startEncounter(roomId, entityId, playerId, enemyStartsFirst) {
+  const turnQueue = enemyStartsFirst ? [entityId, playerId] : [playerId, entityId];
+  const currentTurn = turnQueue[0];
+  encounters.set(roomId, { turnQueue, currentTurn, entityId, playerId });
+  // Notify clients of encounter start (optional, for UI)
+  io.to(roomId).emit(EVENTS.ENCOUNTER_START, { entityId, roomId });
+  // Start first turn
+  if (currentTurn === entityId) {
+    runNpcTurn(roomId);
+  } else {
+    // Player's turn: tell client to show menu
+    io.to(roomId).emit('showActionMenu', { initiatorId: playerId, targetId: entityId, roomId });
+  }
+}
+
+// Helper: Rotate turn and run next action
+function endTurn(roomId) {
+  const encounter = encounters.get(roomId);
+  if (!encounter) return;
+  encounter.turnQueue.push(encounter.turnQueue.shift());
+  encounter.currentTurn = encounter.turnQueue[0];
+  // Next turn
+  if (encounter.currentTurn === encounter.playerId) {
+    io.to(roomId).emit('showActionMenu', { initiatorId: encounter.playerId, targetId: encounter.entityId, roomId });
+  } else {
+    setTimeout(() => runNpcTurn(roomId), 500); // Small delay for AI
+  }
+}
+
+// Helper: Run NPC AI action (basic: always attack for now)
+function runNpcTurn(roomId) {
+  const encounter = encounters.get(roomId);
+  if (!encounter) return;
+  const entity = entities.get(encounter.entityId);
+  if (!entity) return;
+  // TODO: Port full AI logic from client (use CharacterTypes.js aiBehavior)
+  // For now, always attempt to steal if gnome, else attack
+  const entityType = entity.character.type;
+  if (entityType === 'gnome') {
+    // 70% chance to steal, else attack
+    if (Math.random() < 0.7) {
+      io.to(roomId).emit('npcAction', { type: 'steal', initiatorId: encounter.entityId, targetId: encounter.playerId });
+      // Actually perform steal
+      // (reuse steal_intent logic, but call directly)
+      performSteal(encounter.entityId, encounter.playerId, roomId);
+      return;
+    }
+  }
+  // Default: attack
+  io.to(roomId).emit('npcAction', { type: 'attack', initiatorId: encounter.entityId, targetId: encounter.playerId });
+  performAttack(encounter.entityId, encounter.playerId, 'physical', null, roomId);
+}
+
+// Helper: Perform attack (same as attack_intent, but for AI)
+function performAttack(initiatorId, targetId, attackType, spellName, roomId) {
+  const attacker = getCombatant(initiatorId);
+  const defender = getCombatant(targetId);
+  if (!attacker || !defender) return;
+  const attackerStats = attacker.character;
+  const defenderStats = defender.character;
+  let rawDamage = 0;
+  let prompt = '';
+  if (attackType === 'physical') {
+    let baseDamage = 10 * (attackerStats.str || 0);
+    let defense = 0.5 * (defenderStats.vit || 0);
+    let mitigation = Math.min(0.9, defense * 0.01);
+    let finalDamage = Math.max(0, Math.floor(baseDamage * (1 - mitigation)));
+    rawDamage = finalDamage;
+    prompt = `${attackerStats.name || initiatorId} attacks ${defenderStats.name || targetId} for ${finalDamage} damage!`;
+  } else if (attackType === 'spell') {
+    let baseMagic = 0.10 * (attackerStats.int || 0) * 100;
+    let magicDefense = 0.5 * (defenderStats.int || 0);
+    let mitigation = Math.min(0.9, magicDefense * 0.01);
+    let finalDamage = Math.max(0, Math.floor(baseMagic * (1 - mitigation)));
+    rawDamage = finalDamage;
+    prompt = `${attackerStats.name || initiatorId} casts ${spellName} on ${defenderStats.name || targetId} for ${finalDamage} damage!`;
+  }
+  defenderStats.health = Math.max(0, (defenderStats.health || defenderStats.maxHealth || 100) - rawDamage);
+  io.to(roomId).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+  io.to(roomId).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+  if (defenderStats.health <= 0) {
+    io.to(roomId).emit('entity_died', { entityId: targetId, attackerId: initiatorId });
+    // End encounter
+    encounters.delete(roomId);
+    return;
+  }
+  // Rotate turn
+  endTurn(roomId);
+}
+
+// Helper: Perform steal (same as steal_intent, but for AI)
+function performSteal(initiatorId, targetId, roomId) {
+  const initiator = getCombatant(initiatorId);
+  const target = getCombatant(targetId);
+  if (!initiator || !target) return;
+  if (initiator.roomId !== target.roomId) return;
+  let baseSuccessRate = 0.5;
+  let initiatorDex = initiator.character.dex || 0;
+  let targetDex = target.character.dex || 0;
+  let initiatorStealBonus = 0.02 * initiatorDex;
+  let targetProtectionPenalty = 0.02 * targetDex;
+  let finalSuccessRate = Math.max(0.05, Math.min(0.95, baseSuccessRate + initiatorStealBonus - targetProtectionPenalty));
+  let success = Math.random() < finalSuccessRate;
+  let prompt = '';
+  let itemTransferred = null;
+  if (success && target.inventory && target.inventory.length > 0) {
+    const idx = Math.floor(Math.random() * target.inventory.length);
+    itemTransferred = target.inventory.splice(idx, 1)[0];
+    initiator.inventory.push(itemTransferred);
+    prompt = `${initiator.character.name || initiatorId} steals an item from ${target.character.name || targetId}!`;
+  } else if (success) {
+    prompt = `${initiator.character.name || initiatorId} tries to steal, but ${target.character.name || targetId} has nothing to steal!`;
+  } else {
+    prompt = `${initiator.character.name || initiatorId} fails to steal from ${target.character.name || targetId}.`;
+  }
+  io.to(roomId).emit('steal_result', { initiatorId, targetId, success, item: itemTransferred, prompt, inventory: initiator.inventory });
+  io.to(roomId).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
+  io.to(roomId).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
+  // Rotate turn
+  endTurn(roomId);
 } 

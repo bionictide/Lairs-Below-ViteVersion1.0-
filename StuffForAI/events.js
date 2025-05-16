@@ -27,4 +27,7 @@ export const EVENTS = {
   PLAYER_STATE_UPDATE: 'player_state_update',
   PLAYER_JOIN_NOTIFICATION: 'player_join_notification',
   PLAYER_LEAVE_NOTIFICATION: 'player_leave_notification',
+  PARTY_LEAVE: 'party_leave',
+  AI_GROUP_ENCOUNTER: 'ai_group_encounter',
+  ENCOUNTER_TURN_UPDATE: 'encounter_turn_update',
 }; 
