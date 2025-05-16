@@ -469,9 +469,9 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         actions = [
                             {
                                 text: 'Physical Attack',
-                                callback: () => {
-                                    this.socket.emit('attack_intent', {
-                                        initiatorId: this.playerId,
+                                callback: function() {
+                                    _this.socket.emit('attack_intent', {
+                                        initiatorId: _this.playerId,
                                         targetId,
                                         attackType: 'physical'
                                     });
@@ -527,7 +527,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
 
                             actions.push({
                                 text: spellName,
-                                callback: () => {
+                                callback: function() {
                                     if (isValid) {
                                         this.handleSpellCast(initiatorId, targetId, spellName);
                                     } else {
@@ -543,7 +543,9 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         if (page < totalPages) {
                             actions.push({
                                 text: 'Next Page',
-                                callback: () => this.showActionMenu(initiatorId, targetId, roomId, { type: 'spells', page: page + 1 }, true)
+                                callback: function() {
+                                    return _this.showActionMenu(initiatorId, targetId, roomId, { type: 'spells', page: page + 1 }, true);
+                                }
                             });
                         }
 
@@ -551,12 +553,16 @@ export var EncounterManager = /*#__PURE__*/ function() {
                         if (page > 1) {
                             actions.push({
                                 text: 'Back',
-                                callback: () => this.showActionMenu(initiatorId, targetId, roomId, { type: 'spells', page: page - 1 }, true)
+                                callback: function() {
+                                    return _this.showActionMenu(initiatorId, targetId, roomId, { type: 'spells', page: page - 1 }, true);
+                                }
                             });
                         } else {
                             actions.push({
                                 text: 'Back',
-                                callback: () => this.showActionMenu(initiatorId, targetId, roomId, { type: 'attack' }, true)
+                                callback: function() {
+                                    return _this.showActionMenu(initiatorId, targetId, roomId, { type: 'attack' }, true);
+                                }
                             });
                         }
                         break;
