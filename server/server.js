@@ -570,39 +570,8 @@ io.on('connection', (socket) => {
       aiGroups: encounter.aiGroups
     });
     // Start first turn
-    runNextTurn(roomId);
+    endTurn(roomId);
   });
-
-  // Helper: Run the next turn in the encounter
-  function runNextTurn(roomId) {
-    const encounter = encounters.get(roomId);
-    if (!encounter) return;
-    encounter.currentTurn = encounter.turnQueue[0];
-    const current = encounter.participants.find(p => p.id === encounter.currentTurn);
-    if (!current) return;
-    // If player, show action menu (with leader/member context)
-    if (current.type === 'player') {
-      const isLeader = current.isLeader;
-      io.to(roomId).emit('showActionMenu', {
-        initiatorId: current.id,
-        roomId,
-        isLeader,
-        participants: encounter.participants,
-        turnQueue: encounter.turnQueue
-      });
-    } else {
-      // AI turn: run AI logic (to be expanded)
-      runNpcTurn(roomId, current.id);
-    }
-  }
-
-  // Helper: End turn and rotate to next participant
-  function endTurn(roomId) {
-    const encounter = encounters.get(roomId);
-    if (!encounter) return;
-    encounter.turnQueue.push(encounter.turnQueue.shift());
-    runNextTurn(roomId);
-  }
 
   // --- Update attack_intent handler for group targeting and evasion ---
   socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName, roomId }) => {
@@ -806,17 +775,42 @@ function startEncounter(roomId, entityId, playerId, enemyStartsFirst) {
   }
 }
 
-// Helper: Rotate turn and run next action
+// Helper: End turn, rotate, and run next action (unified, robust)
 function endTurn(roomId) {
   const encounter = encounters.get(roomId);
   if (!encounter) return;
+  // Remove any dead/invalid participants from turnQueue and participants
+  encounter.turnQueue = encounter.turnQueue.filter(id => encounter.participants.some(p => p.id === id));
+  encounter.participants = encounter.participants.filter(p => encounter.turnQueue.includes(p.id));
+  // If only one team remains, end encounter
+  const remainingTeams = new Set(encounter.participants.map(p => p.partyId || p.id));
+  if (remainingTeams.size <= 1) {
+    encounters.delete(roomId);
+    io.to(roomId).emit('encounter_end', { roomId });
+    return;
+  }
+  // Rotate turnQueue
   encounter.turnQueue.push(encounter.turnQueue.shift());
   encounter.currentTurn = encounter.turnQueue[0];
-  // Next turn
-  if (encounter.currentTurn === encounter.playerId) {
-    io.to(roomId).emit('showActionMenu', { initiatorId: encounter.playerId, targetId: encounter.entityId, roomId });
+  const current = encounter.participants.find(p => p.id === encounter.currentTurn);
+  if (!current) {
+    // Defensive: If current is missing, skip turn
+    endTurn(roomId);
+    return;
+  }
+  // Player turn: emit showActionMenu
+  if (current.type === 'player') {
+    const isLeader = current.isLeader;
+    io.to(roomId).emit('showActionMenu', {
+      initiatorId: current.id,
+      roomId,
+      isLeader,
+      participants: encounter.participants,
+      turnQueue: encounter.turnQueue
+    });
   } else {
-    setTimeout(() => runNpcTurn(roomId), 500); // Small delay for AI
+    // AI turn: run AI logic (expand as needed)
+    setTimeout(() => runNpcTurn(roomId, current.id), 500);
   }
 }
 
