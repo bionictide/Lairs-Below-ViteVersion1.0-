@@ -454,6 +454,107 @@ io.on('connection', (socket) => {
     io.emit('PUZZLE_UPDATE', { roomId, itemKey });
   });
 
+  socket.on('attack_intent', ({ initiatorId, targetId, attackType, spellName }) => {
+    // Validate turn and action (simplified for now)
+    const attacker = players.get(initiatorId);
+    const defender = players.get(targetId);
+    if (!attacker || !defender) return;
+
+    // Get stat blocks
+    const attackerStats = attacker.character;
+    const defenderStats = defender.character;
+
+    // Calculate damage (physical or spell)
+    let rawDamage = 0;
+    let prompt = '';
+    if (attackType === 'physical') {
+      // Use getPhysicalAttackFromSTR and item multipliers
+      let baseDamage = 10 * (attackerStats.str || 0);
+      // TODO: Apply item multipliers, sword count, etc. as in PlayerStats.js
+      // TODO: Apply debug mode if needed
+      // Apply defense
+      let defense = 0.5 * (defenderStats.vit || 0); // getDefenseFromVIT
+      let mitigation = Math.min(0.9, defense * 0.01); // 1 DEF = 1% mitigation, cap 90%
+      let finalDamage = Math.max(0, Math.floor(baseDamage * (1 - mitigation)));
+      rawDamage = finalDamage;
+      prompt = `${attackerStats.name || initiatorId} attacks ${defenderStats.name || targetId} for ${finalDamage} damage!`;
+    } else if (attackType === 'spell') {
+      // Use INT, spell data, and modifiers (simplified for now)
+      let baseMagic = 0.10 * (attackerStats.int || 0) * 100; // getMagicBonusFromINT
+      // TODO: Use spellName, spellData, and all modifiers as in SpellManager/PlayerStats
+      let magicDefense = 0.5 * (defenderStats.int || 0); // getMagicDefenseFromINT
+      let mitigation = Math.min(0.9, magicDefense * 0.01);
+      let finalDamage = Math.max(0, Math.floor(baseMagic * (1 - mitigation)));
+      rawDamage = finalDamage;
+      prompt = `${attackerStats.name || initiatorId} casts ${spellName} on ${defenderStats.name || targetId} for ${finalDamage} damage!`;
+    }
+
+    // Update defender health
+    defenderStats.health = Math.max(0, (defenderStats.health || defenderStats.maxHealth || 100) - rawDamage);
+    // Emit results
+    io.to(defender.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+    io.to(defender.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    io.to(attacker.socket.id).emit('attack_result', { initiatorId, targetId, damage: rawDamage, prompt, attackType, spellName });
+    io.to(attacker.socket.id).emit('health_update', { playerId: targetId, health: defenderStats.health, maxHealth: defenderStats.maxHealth || 100 });
+    // Handle death
+    if (defenderStats.health <= 0) {
+      io.emit('entity_died', { entityId: targetId, attackerId: initiatorId });
+      // TODO: Handle loot, end encounter, etc.
+    }
+  });
+
+  // --- Steal Action: Server-Authoritative ---
+  socket.on('steal_intent', ({ initiatorId, targetId }) => {
+    const initiator = players.get(initiatorId);
+    const target = players.get(targetId);
+    if (!initiator || !target) return;
+    // Must be in the same room
+    if (initiator.roomId !== target.roomId) return;
+    // Calculate base success rate
+    let baseSuccessRate = 0.5; // 50%
+    // Get DEX-based bonus (use StatDefinitions.js logic)
+    let initiatorDex = initiator.character.dex || 0;
+    let targetDex = target.character.dex || 0;
+    let initiatorStealBonus = 0.02 * initiatorDex; // 2% per DEX
+    let targetProtectionPenalty = 0.02 * targetDex; // 2% per DEX (placeholder for protection)
+    // TODO: Add equipment/buff bonuses if needed
+    let finalSuccessRate = Math.max(0.05, Math.min(0.95, baseSuccessRate + initiatorStealBonus - targetProtectionPenalty));
+    let success = Math.random() < finalSuccessRate;
+    let prompt = '';
+    let itemTransferred = null;
+    if (success && target.inventory && target.inventory.length > 0) {
+      // Steal a random item
+      const idx = Math.floor(Math.random() * target.inventory.length);
+      itemTransferred = target.inventory.splice(idx, 1)[0];
+      initiator.inventory.push(itemTransferred);
+      prompt = `${initiator.character.name || initiatorId} steals an item from ${target.character.name || targetId}!`;
+    } else if (success) {
+      prompt = `${initiator.character.name || initiatorId} tries to steal, but ${target.character.name || targetId} has nothing to steal!`;
+    } else {
+      prompt = `${initiator.character.name || initiatorId} fails to steal from ${target.character.name || targetId}.`;
+    }
+    // Emit results to both clients
+    io.to(initiator.socket.id).emit('steal_result', {
+      initiatorId,
+      targetId,
+      success,
+      item: itemTransferred,
+      prompt,
+      inventory: initiator.inventory
+    });
+    io.to(target.socket.id).emit('steal_result', {
+      initiatorId,
+      targetId,
+      success,
+      item: itemTransferred,
+      prompt,
+      inventory: target.inventory
+    });
+    // Optionally, emit inventory updates
+    io.to(initiator.socket.id).emit('INVENTORY_UPDATE', { playerId: initiatorId, inventory: initiator.inventory });
+    io.to(target.socket.id).emit('INVENTORY_UPDATE', { playerId: targetId, inventory: target.inventory });
+  });
+
   // --- Add more event handlers as needed ---
 });
 
@@ -467,4 +568,28 @@ server.on('request', (req, res) => {
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);
-}); 
+});
+
+// Add a function to handle AI/NPC turns server-side
+function handleNpcTurn(npcId, targetId) {
+  const npc = players.get(npcId);
+  const target = players.get(targetId);
+  if (!npc || !target) return;
+  // For now, always do a physical attack (expand for spells/AI later)
+  let baseDamage = 10 * (npc.character.str || 0);
+  let defense = 0.5 * (target.character.vit || 0);
+  let mitigation = Math.min(0.9, defense * 0.01);
+  let finalDamage = Math.max(0, Math.floor(baseDamage * (1 - mitigation)));
+  let prompt = `${npc.character.name || npcId} attacks ${target.character.name || targetId} for ${finalDamage} damage!`;
+  // Update target health
+  target.character.health = Math.max(0, (target.character.health || target.character.maxHealth || 100) - finalDamage);
+  io.to(target.socket.id).emit('attack_result', { initiatorId: npcId, targetId, damage: finalDamage, prompt, attackType: 'physical' });
+  io.to(target.socket.id).emit('health_update', { playerId: targetId, health: target.character.health, maxHealth: target.character.maxHealth || 100 });
+  io.to(npc.socket.id).emit('attack_result', { initiatorId: npcId, targetId, damage: finalDamage, prompt, attackType: 'physical' });
+  io.to(npc.socket.id).emit('health_update', { playerId: targetId, health: target.character.health, maxHealth: target.character.maxHealth || 100 });
+  if (target.character.health <= 0) {
+    io.emit('entity_died', { entityId: targetId, attackerId: npcId });
+    // TODO: Handle loot, end encounter, etc.
+  }
+  // TODO: Advance turn/order for next action
+} 
