@@ -147,7 +147,7 @@ import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDisplayData, getCharacterDisplayData } from './CharacterTypes.js'; // Import client-safe helpers
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
 import { SpellManager } from './SpellManager.js';
-import { npcItemDisplayData, getNpcItemDisplayData } from './NPCLootManager.js';
+import { npcItemDisplayData, getNpcItemDisplayData } from './NpcLootManager.js';
 // Define door configurations outside the class for clarity
 var DOOR_CONFIGS = {
     forward: {
@@ -251,7 +251,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                         var angryKey = `${prefix}2`;
                         // Use local asset paths
                         this.load.image(idleKey, `./Assets/${idleKey}.png`);
-                        this.load.image(angryKey, `./Assets/${angryKey}.png`);
+                        this.load.image(angryKey, `./Assets/ShelfEmpty.png`);
                     }
                 }
                 // Preload non-enemy specific assets
@@ -1049,9 +1049,8 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     if (this.encounterTimer <= 0) {
                         this.encounterTimer = this.encounterInterval; // Reset timer
                         var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
-                        console.log("[DEBUG] Dynamic encounter timer check in room ".concat(room.id, ". Calling initializeEncounter..."));
-                        // Let EncounterManager handle the chance check *and* cooldowns
-                        this.encounterManager.initializeEncounter(room, 'dynamic');
+                        console.log(`[DEBUG] Dynamic encounter timer check in room ${room.id}. EncounterManager.initializeEncounter removed; now handled by server.`);
+                        // EncounterManager.initializeEncounter removed; now handled by server
                     }
                 }
                 // --- Debug Update ---
@@ -1242,7 +1241,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                             // Then, initialize encounter if applicable
                             var newRoom = _this.dungeonService.getRoomById(targetId);
                             if (!_this.isInEncounter) {
-                                _this.encounterManager.initializeEncounter(newRoom, 'playerEntry');
+                                // EncounterManager.initializeEncounter removed; now handled by server
                             }
                             _this.cameras.main.fadeIn(250);
                         }
