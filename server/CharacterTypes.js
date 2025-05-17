@@ -211,7 +211,4 @@ function getCharacterDefinition(typeKey) {
     return definition ? JSON.parse(JSON.stringify(definition)) : null;
 }
 
-module.exports = {
-    characterDefinitions,
-    getCharacterDefinition
-}; 
+export { characterDefinitions, getCharacterDefinition }; 
