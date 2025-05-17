@@ -197,12 +197,16 @@ export function generateDungeon(seed, options = {}) {
       if (rng() < room.encounterChance) {
         const types = ['elvaan', 'dwarf', 'gnome', 'bat'];
         room.encounterType = types[Math.floor(rng() * types.length)];
+      } else {
+        room.encounterType = null;
       }
       room.hasShelfEmpty = false;
       room.hasShelf2Empty = false;
       room.gemType = null;
       room.hasPotion = false;
     });
+    const encounterRooms = roomList.filter(r => r.encounterType);
+    console.log(`[DUNGEON] Rooms with encounterType assigned: ${encounterRooms.length} / ${roomList.length}`);
     shelfEmptyRooms.forEach(room => { room.hasShelfEmpty = true; });
     uniqueShelf2Rooms.forEach(room => { room.hasShelf2Empty = true; });
     const gemTypes = ['ShelfBlueApatite', 'ShelfEmerald', 'ShelfAmethyst', 'ShelfRawRuby'];

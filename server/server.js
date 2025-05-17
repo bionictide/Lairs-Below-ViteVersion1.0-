@@ -92,7 +92,7 @@ const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
 const dungeon = generateDungeon(DUNGEON_SEED, { playerCount: 1 });
 console.log('[DUNGEON] Dungeon generated at startup:', {
   rooms: dungeon.rooms.length,
-  grid: dungeon.grid.length
+  encounterRooms: dungeon.rooms.filter(r => r.encounterType).length
 });
 // TODO: Add server-side mutation endpoints/events here (move, loot, puzzle, etc.)
 
@@ -204,6 +204,10 @@ io.on('connection', (socket) => {
       rooms.clear();
       bags.clear();
       console.log('[DUNGEON] All players left. Dungeon reset for next match.');
+      console.log('[DUNGEON] Dungeon regenerated:', {
+        rooms: dungeon.rooms.length,
+        encounterRooms: dungeon.rooms.filter(r => r.encounterType).length
+      });
     }
   });
 
@@ -505,6 +509,10 @@ io.on('connection', (socket) => {
           rooms.clear();
           bags.clear();
           console.log('[DUNGEON] All players disconnected. Dungeon reset for next match.');
+          console.log('[DUNGEON] Dungeon regenerated:', {
+            rooms: dungeon.rooms.length,
+            encounterRooms: dungeon.rooms.filter(r => r.encounterType).length
+          });
         }
         break;
       }
@@ -891,7 +899,7 @@ io.on('connection', (socket) => {
     const player = players.get(playerId);
     const room = dungeon.rooms.find(r => r.id === roomId);
     if (!player || !room) return;
-    console.log(`[SERVER] Room ${roomId} encounterType:`, room.encounterType);
+    console.log(`[SERVER] Room ${roomId} encounterType:`, room.encounterType, 'Full room:', room);
     // Only allow if not already in an encounter in this room
     if (encounters.has(roomId)) return;
     // Use server-authoritative roll logic
