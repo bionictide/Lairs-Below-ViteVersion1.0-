@@ -560,6 +560,14 @@ io.on('connection', (socket) => {
     // Now remove the treasure from the room and emit update to all clients
     room.treasureLevel = null;
     io.emit('TREASURE_UPDATE', { roomId, itemKey });
+    // Emit updated room state to all clients in the room
+    io.to(roomId).emit(EVENTS.ROOM_UPDATE, {
+      roomId,
+      players: Array.from(rooms.get(roomId)?.players || []),
+      entities: rooms.get(roomId)?.entities || [],
+      visited: Array.from(visitedRooms.get(playerId) || []),
+      room
+    });
   });
 
   // PUZZLE_PICKUP_REQUEST
@@ -580,6 +588,14 @@ io.on('connection', (socket) => {
     player.inventory.push(newItem);
     io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
     io.emit('PUZZLE_UPDATE', { roomId, itemKey });
+    // Emit updated room state to all clients in the room
+    io.to(roomId).emit(EVENTS.ROOM_UPDATE, {
+      roomId,
+      players: Array.from(rooms.get(roomId)?.players || []),
+      entities: rooms.get(roomId)?.entities || [],
+      visited: Array.from(visitedRooms.get(playerId) || []),
+      room
+    });
   });
 
   // --- Encounter Start: Create and register NPCs and start multi-entity encounter ---

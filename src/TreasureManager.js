@@ -41,6 +41,19 @@ export var TreasureManager = /*#__PURE__*/ function() {
                 // Optionally trigger a UI update if needed
             }
         });
+        this.socket.on('ROOM_UPDATE', (data) => {
+            if (data && data.room && this.treasures.has(data.room.id)) {
+                // Update the local room state for treasureLevel
+                if (data.room.treasureLevel === null) {
+                    const sprite = this.treasures.get(data.room.id);
+                    if (sprite && sprite.scene) {
+                        sprite.destroy();
+                        this.treasures.delete(data.room.id);
+                        console.log('[TreasureManager] Destroying treasure sprite for room (ROOM_UPDATE):', data.room.id);
+                    }
+                }
+            }
+        });
     }
     _create_class(TreasureManager, [
         {

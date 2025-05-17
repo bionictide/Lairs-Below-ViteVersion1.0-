@@ -296,7 +296,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                 this.shelves.forEach(function(shelfData) {
                     Object.values(shelfData).forEach(function(sprite) {
                         if (sprite) {
-                            console.log('[ShelfManager] Destroying shelf sprite for room:', room.id);
+                            console.log('[ShelfManager] Destroying shelf sprite');
                             sprite.destroy();
                         }
                     });
