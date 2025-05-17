@@ -141,13 +141,13 @@ import { HintManager } from './HintManager.js';
 import { ShelfManager } from './ShelfManager.js';
 import { BagManager } from './BagManager.js';
 import { HealthBar } from './HealthBar.js'; // Import the new HealthBar class
-import { NPCLootManager } from './NpcLootManager.js'; // Import the new NPCLootManager
 import { LootUIManager } from './LootUIManager.js'; // Import the new LootUIManager
 import { PlayerStats } from './PlayerStats.js'; // Import PlayerStats
 import { ItemManager } from './ItemManager.js'; // Import ItemManager
 import { characterDisplayData, getCharacterDisplayData } from './CharacterTypes.js'; // Import client-safe helpers
 import { CombatVisuals } from './CombatVisuals.js'; // Import the new CombatVisuals class
 import { SpellManager } from './SpellManager.js';
+import { npcItemDisplayData, getNpcItemDisplayData } from './NPCLootManager.js';
 // Define door configurations outside the class for clarity
 var DOOR_CONFIGS = {
     forward: {
@@ -189,7 +189,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
         _this.hintManager = null;
         _this.shelfManager = null; // Add ShelfManager instance
         _this.bagManager = null; // Add BagManager instance
-        _this.npcLootManager = null; // Add NPCLootManager instance
         _this.lootUIManager = null; // Add LootUIManager instance
         _this.playerStats = null; // Add PlayerStats instance
         _this.itemManager = null; // Add ItemManager instance
@@ -430,9 +429,7 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 var statBlock = this.statBlock;
                 this.playerStats = new PlayerStats(this, this.playerId, statBlock, socket);
                 this.combatVisuals = new CombatVisuals(this);
-                this.npcLootManager = new NPCLootManager(this);
-                // Enable debug spell animation preview
-                this.combatVisuals.setupSpellDebugPreview();
+                this.lootUIManager = new LootUIManager(this, this.playerStats, this.bagManager, this.playerId, socket);
 
                 // --- Register 60 FPS Spell Animations for ALL Elements with ACTUAL FRAME COUNTS ---
                 const spellAnims = [
@@ -549,7 +546,6 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 
                 // Then managers that depend on bagManager
                 this.spellManager = new SpellManager(this.bagManager, this.playerStats, this.combatVisuals, socket);
-                this.lootUIManager = new LootUIManager(this, this.npcLootManager, this.bagManager, this.playerId, socket);
 
                 // Finally, managers that depend on multiple other managers
                 this.encounterManager = new EncounterManager(this, this.playerStats, this.playerId, this.combatVisuals);
