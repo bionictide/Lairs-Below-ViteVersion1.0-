@@ -18,7 +18,7 @@ function _create_class(Constructor, protoProps, staticProps) {
     return Constructor;
 }
 import Phaser from 'https://esm.sh/phaser@3.60.0'; // For EventEmitter
-import { getHealthFromVIT, getPhysicalAttackFromSTR, getDefenseFromVIT, getMagicBonusFromINT, getMagicDefenseFromINT } from './StatDefinitions.js';
+import { getStatDisplayName } from './StatDefinitions.js';
 
 export var PlayerStats = /*#__PURE__*/ function() {
     "use strict";
@@ -32,12 +32,12 @@ export var PlayerStats = /*#__PURE__*/ function() {
         statBlock = statBlock || { vit: 20, str: 20, int: 20, dex: 20, mnd: 20, spd: 20 }; // fallback defaults
         this.statBlock = statBlock;
         // Derived stats from stat block
-        this._maxHealth = getHealthFromVIT(statBlock.vit);
-        this._currentHealth = this._maxHealth;
-        this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
-        this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100; // Example: scale base magic damage
-        this.elementalBaseDamage = 0; // Extend as needed
-        this._defenseRating = getDefenseFromVIT(statBlock.vit);
+        this._maxHealth = 0;
+        this._currentHealth = 0;
+        this.physicalBaseDamage = 0;
+        this.magicalBaseDamage = 0;
+        this.elementalBaseDamage = 0;
+        this._defenseRating = 0;
         this.events = new Phaser.Events.EventEmitter();
         this.itemDefenseBonus = 0; // Additive defense bonus from items
         this.swordCount = 0; // Count of swords for multiplicative damage
@@ -59,19 +59,19 @@ export var PlayerStats = /*#__PURE__*/ function() {
             if (playerId === this.playerId) {
                 this.statBlock = statBlock;
                 // Update derived stats as needed
-                this._maxHealth = getHealthFromVIT(statBlock.vit);
+                this._maxHealth = statBlock.vit;
                 this._currentHealth = Math.min(this._currentHealth, this._maxHealth);
-                this.physicalBaseDamage = getPhysicalAttackFromSTR(statBlock.str);
-                this.magicalBaseDamage = getMagicBonusFromINT(statBlock.int) * 100;
-                this._defenseRating = getDefenseFromVIT(statBlock.vit);
+                this.physicalBaseDamage = statBlock.str;
+                this.magicalBaseDamage = statBlock.int * 100;
+                this._defenseRating = statBlock.vit;
                 // Re-render UI or emit events as needed
-                this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+                this.events.emit('healthChanged', this._currentHealth, this._maxHealth);
             }
         });
         this.socket.on('PLAYER_HEALTH_UPDATE', ({ playerId, health }) => {
             if (playerId === this.playerId) {
                 this._currentHealth = health;
-                this.events.emit('healthChanged', this._currentHealth, this.getMaxHealth());
+                this.events.emit('healthChanged', this._currentHealth, this._maxHealth);
             }
         });
     }
