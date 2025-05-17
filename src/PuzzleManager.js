@@ -36,17 +36,9 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             }
             console.log('[PuzzleManager] Received PUZZLE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
         });
-        this.socket.on('ROOM_UPDATE', (data) => {
-            if (data && data.room && this.puzzles.has(data.room.id)) {
-                // Update the local room state for puzzleType
-                if (data.room.puzzleType === null) {
-                    const sprite = this.puzzles.get(data.room.id);
-                    if (sprite && sprite.scene) {
-                        sprite.destroy();
-                        this.puzzles.delete(data.room.id);
-                        console.log('[PuzzleManager] Destroying puzzle sprite for room (ROOM_UPDATE):', data.room.id);
-                    }
-                }
+        this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+            if (playerId === this.scene.playerId) {
+                // Optionally trigger a UI update if needed
             }
         });
     }
