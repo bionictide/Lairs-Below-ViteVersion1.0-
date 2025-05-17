@@ -1049,8 +1049,9 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                     if (this.encounterTimer <= 0) {
                         this.encounterTimer = this.encounterInterval;
                         var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
-                        console.log(`[DEBUG] Dynamic encounter timer check in room ${room.id}. Emitting ENCOUNTER_ROLL_REQUEST to server.`);
+                        console.log(`[DEBUG] Dynamic encounter timer check in room ${room.id}. isInEncounter=${this.isInEncounter}, encounterType=${room.encounterType}`);
                         if (this.socket && this.playerId && room) {
+                            console.log('[DEBUG] Emitting ENCOUNTER_ROLL_REQUEST (dynamic)', { playerId: this.playerId, roomId: room.id, context: 'dynamic' });
                             this.socket.emit('ENCOUNTER_ROLL_REQUEST', {
                                 playerId: this.playerId,
                                 roomId: room.id,
@@ -1248,9 +1249,10 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                             var newRoom = _this.dungeonService.getRoomById(targetId);
                             if (!_this.isInEncounter) {
                                 // EncounterManager.initializeEncounter removed; now handled by server
-                                // Emit ENCOUNTER_ROLL_REQUEST for door click
                                 var movedRoom = _this.dungeonService.getRoomById(_this.playerPosition.roomId);
+                                console.log(`[DEBUG] Door click encounter roll: isInEncounter=${_this.isInEncounter}, encounterType=${movedRoom.encounterType}`);
                                 if (_this.socket && _this.playerId && movedRoom) {
+                                    console.log('[DEBUG] Emitting ENCOUNTER_ROLL_REQUEST (door)', { playerId: _this.playerId, roomId: movedRoom.id, context: 'door' });
                                     _this.socket.emit('ENCOUNTER_ROLL_REQUEST', {
                                         playerId: _this.playerId,
                                         roomId: movedRoom.id,

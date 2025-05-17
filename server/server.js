@@ -618,6 +618,7 @@ io.on('connection', (socket) => {
       parties: encounter.parties,
       aiGroups: encounter.aiGroups
     });
+    console.log('[SERVER] ENCOUNTER_START emitted:', { roomId, participants: enrichedParticipants });
     // Start first turn
     endTurn(roomId);
   });
@@ -886,9 +887,11 @@ io.on('connection', (socket) => {
 
   // --- Add more event handlers as needed ---
   socket.on('ENCOUNTER_ROLL_REQUEST', ({ playerId, roomId, context }) => {
+    console.log('[SERVER] ENCOUNTER_ROLL_REQUEST received:', { playerId, roomId, context });
     const player = players.get(playerId);
     const room = dungeon.rooms.find(r => r.id === roomId);
     if (!player || !room) return;
+    console.log(`[SERVER] Room ${roomId} encounterType:`, room.encounterType);
     // Only allow if not already in an encounter in this room
     if (encounters.has(roomId)) return;
     // Use server-authoritative roll logic
@@ -945,6 +948,7 @@ io.on('connection', (socket) => {
         parties: encounter.parties,
         aiGroups: encounter.aiGroups
       });
+      console.log('[SERVER] ENCOUNTER_START emitted:', { roomId, participants: enrichedParticipants });
       endTurn(roomId);
     }
   });
