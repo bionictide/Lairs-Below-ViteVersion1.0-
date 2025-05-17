@@ -579,10 +579,40 @@ io.on('connection', (socket) => {
     // participantIds: array of all player and entity IDs in the encounter (party, AI group, etc.)
     // Create encounter with all participants
     const encounter = createEncounter(roomId, participantIds);
+    // Enrich each participant with full character display/stat data
+    const enrichedParticipants = encounter.participants.map(p => {
+      let charData = null;
+      if (p.type === 'player') {
+        const player = players.get(p.id);
+        if (player && player.character) {
+          charData = player.character;
+        }
+      } else if (p.type === 'entity') {
+        const entity = entities.get(p.id);
+        if (entity && entity.character) {
+          charData = entity.character;
+        }
+      }
+      if (!charData) {
+        console.warn(`[SERVER] ENCOUNTER_START: Missing character data for participant ${p.id} (${p.type})`);
+        charData = { name: p.id, type: p.type };
+      }
+      return {
+        ...p,
+        name: charData.name,
+        assetPrefix: charData.assetPrefix,
+        stats: charData.stats,
+        health: charData.health,
+        maxHealth: charData.maxHealth,
+        lootTier: charData.lootTier,
+        abilities: charData.abilities,
+        mood: charData.mood,
+      };
+    });
     // Notify clients of encounter start, including all participants
     io.to(roomId).emit(EVENTS.ENCOUNTER_START, {
       roomId,
-      participants: encounter.participants,
+      participants: enrichedParticipants,
       turnQueue: encounter.turnQueue,
       currentTurn: encounter.currentTurn,
       parties: encounter.parties,
