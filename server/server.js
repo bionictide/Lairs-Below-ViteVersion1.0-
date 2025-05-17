@@ -921,13 +921,19 @@ io.on('connection', (socket) => {
     // Use server-authoritative roll logic
     let encounterChance = room.isHub ? 0.5 : 0.2;
     if (context === 'door') encounterChance = 0.5; // Higher chance for door click
-    if (Math.random() < encounterChance && room.encounterType) {
+    const roll = Math.random();
+    console.log(`[SERVER] Encounter roll: roll=${roll}, encounterChance=${encounterChance}, encounterType=${room.encounterType}`);
+    if (roll < encounterChance && room.encounterType) {
+      console.log('[SERVER] Encounter roll succeeded. Creating enemy entities...');
       // Create enemy entities for this encounter (support multiple enemies)
       const enemyTypes = Array.isArray(room.encounterType) ? room.encounterType : [room.encounterType];
       const enemyIds = enemyTypes.map(type => {
         const entityId = `entity-${type}-${crypto.randomUUID()}`;
         const def = characterDefinitions[type];
-        if (!def) return null;
+        if (!def) {
+          console.error(`[SERVER] Missing character definition for type: ${type}. Encounter cannot start.`);
+          return null;
+        }
         entities.set(entityId, {
           id: entityId,
           type,
@@ -936,12 +942,22 @@ io.on('connection', (socket) => {
           inventory: [],
           alive: true
         });
+        console.log(`[SERVER] Created enemy entity: ${entityId} of type ${type}`);
         return entityId;
       }).filter(Boolean);
+      if (enemyIds.length === 0) {
+        console.error('[SERVER] No valid enemy entities created. Encounter cannot start.');
+        return;
+      }
       // Participants: player(s) and enemyIds
       const participantIds = [playerId, ...enemyIds];
+      console.log('[SERVER] Creating encounter with participants:', participantIds);
       // Start encounter
       const encounter = createEncounter(roomId, participantIds);
+      if (!encounter) {
+        console.error('[SERVER] Encounter creation failed.');
+        return;
+      }
       const enrichedParticipants = encounter.participants.map(p => {
         let charData = null;
         if (p.type === 'player') {
@@ -974,6 +990,8 @@ io.on('connection', (socket) => {
       });
       console.log('[SERVER] ENCOUNTER_START emitted:', { roomId, participants: enrichedParticipants });
       endTurn(roomId);
+    } else {
+      console.log('[SERVER] No encounter triggered for this roll.');
     }
   });
 });

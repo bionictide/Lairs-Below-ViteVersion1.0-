@@ -42,6 +42,9 @@ export var TreasureManager = /*#__PURE__*/ function() {
             }
         });
         this.socket.on('ROOM_UPDATE', (data) => {
+            if (data && data.room) {
+                console.log('[TreasureManager] Received ROOM_UPDATE for room:', data.room.id, 'new treasureLevel:', data.room.treasureLevel);
+            }
             if (data && data.room && this.treasures.has(data.room.id)) {
                 // Update the local room state for treasureLevel
                 if (data.room.treasureLevel === null) {
