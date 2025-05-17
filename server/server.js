@@ -806,6 +806,7 @@ server.on('request', (req, res) => {
   }
 });
 
+// Ensure the server listens on all interfaces
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Socket.io server running on port ${PORT}`);
 });
