@@ -32,7 +32,9 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             if (sprite && sprite.scene) {
                 sprite.destroy();
                 this.puzzles.delete(data.roomId);
+                console.log('[PuzzleManager] Destroying puzzle sprite for room:', data.roomId);
             }
+            console.log('[PuzzleManager] Received PUZZLE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
         });
     }
     _create_class(PuzzleManager, [
@@ -114,12 +116,14 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                             roomId: room.id,
                             itemKey: itemKey
                         });
+                        console.log('[PuzzleManager] Puzzle looted in room:', room.id, 'itemKey:', itemKey);
                     } else {
                         console.warn(`[PuzzleManager] Clicked puzzle in room ${room.id}, but original puzzleType (${originalPuzzleType}) didn't map to a known itemKey.`);
                     }
                 });
                 this.puzzles.set(room.id, sprite);
                 this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
+                console.log('[PuzzleManager] initializePuzzles for room:', room.id, 'puzzleType:', room.puzzleType);
             }
         },
         {

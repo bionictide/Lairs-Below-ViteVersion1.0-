@@ -32,7 +32,9 @@ export var TreasureManager = /*#__PURE__*/ function() {
             if (sprite && sprite.scene) {
                 sprite.destroy();
                 this.treasures.delete(data.roomId);
+                console.log('[TreasureManager] Destroying treasure sprite for room:', data.roomId);
             }
+            console.log('[TreasureManager] Received TREASURE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
         });
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
@@ -138,12 +140,14 @@ export var TreasureManager = /*#__PURE__*/ function() {
                             roomId: room.id,
                             itemKey: itemKey
                         });
+                        console.log('[TreasureManager] Treasure looted in room:', room.id, 'itemKey:', itemKey);
                     } else {
                         console.warn(`[TreasureManager] Clicked treasure in room ${room.id}, but original treasureLevel (${originalTreasureLevel}) didn't map to a known itemKey.`);
                     }
                 });
                 this.treasures.set(room.id, sprite);
                 this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
+                console.log('[TreasureManager] initializeTreasures for room:', room.id, 'treasureLevel:', room.treasureLevel);
             }
         },
         {

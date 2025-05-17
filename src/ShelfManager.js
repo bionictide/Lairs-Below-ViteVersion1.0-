@@ -45,6 +45,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                 }
             }
             // Do NOT destroy the base shelf (emptyShelf/emptyShelf2) or delete the shelfData entry
+            console.log('[ShelfManager] Received SHELF_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
         });
         this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
             if (playerId === this.scene.playerId) {
@@ -181,6 +182,7 @@ export var ShelfManager = /*#__PURE__*/ function() {
                 this.shelves.set(room.id, shelfData1);
                 // Update visibility for all shelves in this room using the new method
                 this.updateAllShelvesVisibility(room);
+                console.log('[ShelfManager] initializeShelves for room:', room.id, 'hasShelfEmpty:', room.hasShelfEmpty, 'gemType:', room.gemType, 'hasPotion:', room.hasPotion);
             }
         },
         {
@@ -293,7 +295,10 @@ export var ShelfManager = /*#__PURE__*/ function() {
             value: function clearShelves() {
                 this.shelves.forEach(function(shelfData) {
                     Object.values(shelfData).forEach(function(sprite) {
-                        if (sprite) sprite.destroy();
+                        if (sprite) {
+                            console.log('[ShelfManager] Destroying shelf sprite for room:', room.id);
+                            sprite.destroy();
+                        }
                     });
                 });
                 this.shelves.clear();
