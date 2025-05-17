@@ -266,7 +266,25 @@ io.on('connection', (socket) => {
     if (encounter.currentTurn !== playerId) return;
     const caster = getCombatant(playerId);
     const target = getCombatant(targetId);
-    if (!caster || !target) return;
+    if (!caster) {
+      console.warn(`[SERVER] spell_cast: Caster not found: ${playerId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== playerId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== playerId);
+      endTurn(roomId);
+      return;
+    }
+    if (!target) {
+      console.warn(`[SERVER] spell_cast: Target not found: ${targetId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+      endTurn(roomId);
+      return;
+    }
+    if (!caster.character || !target.character) {
+      console.warn(`[SERVER] spell_cast: Missing character stats for caster (${playerId}) or target (${targetId})`);
+      endTurn(roomId);
+      return;
+    }
     // Evasion: Each 1 SPD = 1% evasion
     const evasionChance = Math.min(100, target.character.spd || 0);
     if (Math.random() * 100 < evasionChance) {
@@ -582,9 +600,27 @@ io.on('connection', (socket) => {
     if (encounter.currentTurn !== initiatorId) return;
     const attacker = getCombatant(initiatorId);
     const defender = getCombatant(targetId);
-    if (!attacker || !defender) return;
+    if (!attacker) {
+      console.warn(`[SERVER] attack_intent: Attacker not found: ${initiatorId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== initiatorId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== initiatorId);
+      endTurn(roomId);
+      return;
+    }
+    if (!defender) {
+      console.warn(`[SERVER] attack_intent: Defender not found: ${targetId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+      endTurn(roomId);
+      return;
+    }
     const attackerStats = attacker.character;
     const defenderStats = defender.character;
+    if (!attackerStats || !defenderStats) {
+      console.warn(`[SERVER] attack_intent: Missing character stats for attacker (${initiatorId}) or defender (${targetId})`);
+      endTurn(roomId);
+      return;
+    }
     // Evasion: Each 1 SPD = 1% evasion
     const evasionChance = Math.min(100, defenderStats.spd || 0);
     if (Math.random() * 100 < evasionChance) {
@@ -641,7 +677,25 @@ io.on('connection', (socket) => {
     if (encounter.currentTurn !== initiatorId) return;
     const initiator = getCombatant(initiatorId);
     const target = getCombatant(targetId);
-    if (!initiator || !target) return;
+    if (!initiator) {
+      console.warn(`[SERVER] steal_intent: Initiator not found: ${initiatorId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== initiatorId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== initiatorId);
+      endTurn(roomId);
+      return;
+    }
+    if (!target) {
+      console.warn(`[SERVER] steal_intent: Target not found: ${targetId}`);
+      encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+      endTurn(roomId);
+      return;
+    }
+    if (!initiator.character || !target.character) {
+      console.warn(`[SERVER] steal_intent: Missing character stats for initiator (${initiatorId}) or target (${targetId})`);
+      endTurn(roomId);
+      return;
+    }
     // Evasion: Each 1 SPD = 1% evasion
     const evasionChance = Math.min(100, target.character.spd || 0);
     if (Math.random() * 100 < evasionChance) {
@@ -743,8 +797,8 @@ io.on('connection', (socket) => {
         // Flee logic: remove NPC, emit prompt, end encounter
         io.to(roomId).emit('showActionPrompt', `${npcDef.name} attempts to flee... succeeds!`);
         // Remove from encounter
-        encounter.participants = encounter.participants.filter(p => p.id !== npcId);
-        encounter.turnQueue = encounter.turnQueue.filter(id => id !== npcId);
+        encounter.participants = encounter.participants.filter(p => p.id !== npc.id);
+        encounter.turnQueue = encounter.turnQueue.filter(id => id !== npc.id);
         if (encounter.participants.length <= 1) {
           encounters.delete(roomId);
           io.to(roomId).emit('encounter_end', { roomId });
@@ -774,11 +828,11 @@ io.on('connection', (socket) => {
     // Execute action
     switch (action && action.type) {
       case 'Attack':
-        performAttack(npcId, target.id, 'physical', null, roomId);
+        performAttack(npc.id, target.id, 'physical', null, roomId);
         break;
       case 'AttemptSteal':
         if (!action.chance || Math.random() < action.chance) {
-          performSteal(npcId, target.id, roomId);
+          performSteal(npc.id, target.id, roomId);
         } else {
           io.to(roomId).emit('showActionPrompt', `${npcDef.name} eyes your belongings but does nothing.`);
           endTurn(roomId);
@@ -790,7 +844,7 @@ io.on('connection', (socket) => {
         break;
       default:
         // Fallback: always attack
-        performAttack(npcId, target.id, 'physical', null, roomId);
+        performAttack(npc.id, target.id, 'physical', null, roomId);
         break;
     }
   });
@@ -971,9 +1025,27 @@ function performAttack(initiatorId, targetId, attackType, spellName, roomId) {
   if (encounter.currentTurn !== initiatorId) return;
   const attacker = getCombatant(initiatorId);
   const defender = getCombatant(targetId);
-  if (!attacker || !defender) return;
+  if (!attacker) {
+    console.warn(`[SERVER] attack_intent: Attacker not found: ${initiatorId}`);
+    encounter.participants = encounter.participants.filter(p => p.id !== initiatorId);
+    encounter.turnQueue = encounter.turnQueue.filter(id => id !== initiatorId);
+    endTurn(roomId);
+    return;
+  }
+  if (!defender) {
+    console.warn(`[SERVER] attack_intent: Defender not found: ${targetId}`);
+    encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+    encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+    endTurn(roomId);
+    return;
+  }
   const attackerStats = attacker.character;
   const defenderStats = defender.character;
+  if (!attackerStats || !defenderStats) {
+    console.warn(`[SERVER] attack_intent: Missing character stats for attacker (${initiatorId}) or defender (${targetId})`);
+    endTurn(roomId);
+    return;
+  }
   // Evasion: Each 1 SPD = 1% evasion
   const evasionChance = Math.min(100, defenderStats.spd || 0);
   if (Math.random() * 100 < evasionChance) {
@@ -1029,7 +1101,25 @@ function performSteal(initiatorId, targetId, roomId) {
   if (encounter.currentTurn !== initiatorId) return;
   const initiator = getCombatant(initiatorId);
   const target = getCombatant(targetId);
-  if (!initiator || !target) return;
+  if (!initiator) {
+    console.warn(`[SERVER] steal_intent: Initiator not found: ${initiatorId}`);
+    encounter.participants = encounter.participants.filter(p => p.id !== initiatorId);
+    encounter.turnQueue = encounter.turnQueue.filter(id => id !== initiatorId);
+    endTurn(roomId);
+    return;
+  }
+  if (!target) {
+    console.warn(`[SERVER] steal_intent: Target not found: ${targetId}`);
+    encounter.participants = encounter.participants.filter(p => p.id !== targetId);
+    encounter.turnQueue = encounter.turnQueue.filter(id => id !== targetId);
+    endTurn(roomId);
+    return;
+  }
+  if (!initiator.character || !target.character) {
+    console.warn(`[SERVER] steal_intent: Missing character stats for initiator (${initiatorId}) or target (${targetId})`);
+    endTurn(roomId);
+    return;
+  }
   // Evasion: Each 1 SPD = 1% evasion
   const evasionChance = Math.min(100, target.character.spd || 0);
   if (Math.random() * 100 < evasionChance) {
