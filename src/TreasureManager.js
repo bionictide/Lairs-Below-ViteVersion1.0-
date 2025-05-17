@@ -45,8 +45,15 @@ export var TreasureManager = /*#__PURE__*/ function() {
             key: "initializeTreasures",
             value: function initializeTreasures(room) {
                 var _this = this;
-                // Removed the hasMiddleDoor check to allow treasure in 3-door rooms
-                if (!room.treasureLevel) return;
+                if (!room.treasureLevel) {
+                    // If treasureLevel is null, ensure sprite is destroyed and not recreated
+                    if (this.treasures.has(room.id)) {
+                        const sprite = this.treasures.get(room.id);
+                        if (sprite && sprite.scene) sprite.destroy();
+                        this.treasures.delete(room.id);
+                    }
+                    return;
+                }
                 // Skip initialization if we already have a treasure for this room
                 if (this.treasures.has(room.id)) {
                     // Just update visibility for the existing sprite

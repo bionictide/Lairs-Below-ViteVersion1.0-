@@ -885,6 +885,69 @@ io.on('connection', (socket) => {
   });
 
   // --- Add more event handlers as needed ---
+  socket.on('ENCOUNTER_ROLL_REQUEST', ({ playerId, roomId, context }) => {
+    const player = players.get(playerId);
+    const room = dungeon.rooms.find(r => r.id === roomId);
+    if (!player || !room) return;
+    // Only allow if not already in an encounter in this room
+    if (encounters.has(roomId)) return;
+    // Use server-authoritative roll logic
+    let encounterChance = room.isHub ? 0.5 : 0.2;
+    if (context === 'door') encounterChance = 0.5; // Higher chance for door click
+    if (Math.random() < encounterChance && room.encounterType) {
+      // Create enemy entities for this encounter (support multiple enemies)
+      const enemyTypes = Array.isArray(room.encounterType) ? room.encounterType : [room.encounterType];
+      const enemyIds = enemyTypes.map(type => {
+        const entityId = `entity-${type}-${crypto.randomUUID()}`;
+        const def = characterDefinitions[type];
+        if (!def) return null;
+        entities.set(entityId, {
+          id: entityId,
+          type,
+          character: { ...def, health: def.maxHealth },
+          roomId,
+          inventory: [],
+          alive: true
+        });
+        return entityId;
+      }).filter(Boolean);
+      // Participants: player(s) and enemyIds
+      const participantIds = [playerId, ...enemyIds];
+      // Start encounter
+      const encounter = createEncounter(roomId, participantIds);
+      const enrichedParticipants = encounter.participants.map(p => {
+        let charData = null;
+        if (p.type === 'player') {
+          const player = players.get(p.id);
+          if (player && player.character) charData = player.character;
+        } else if (p.type === 'entity') {
+          const entity = entities.get(p.id);
+          if (entity && entity.character) charData = entity.character;
+        }
+        if (!charData) charData = { name: p.id, type: p.type };
+        return {
+          ...p,
+          name: charData.name,
+          assetPrefix: charData.assetPrefix,
+          stats: charData.stats,
+          health: charData.health,
+          maxHealth: charData.maxHealth,
+          lootTier: charData.lootTier,
+          abilities: charData.abilities,
+          mood: charData.mood,
+        };
+      });
+      io.to(roomId).emit(EVENTS.ENCOUNTER_START, {
+        roomId,
+        participants: enrichedParticipants,
+        turnQueue: encounter.turnQueue,
+        currentTurn: encounter.currentTurn,
+        parties: encounter.parties,
+        aiGroups: encounter.aiGroups
+      });
+      endTurn(roomId);
+    }
+  });
 });
 
 // Respond to HTTP GET / requests for Render.com health check and browser visits

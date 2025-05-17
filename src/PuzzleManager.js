@@ -40,8 +40,15 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             key: "initializePuzzles",
             value: function initializePuzzles(room) {
                 var _this = this;
-                // Removed the hasMiddleDoor check to allow keys in 3-door rooms
-                if (room.puzzleType !== 'key') return;
+                if (room.puzzleType !== 'key') {
+                    // If puzzleType is not 'key', ensure sprite is destroyed and not recreated
+                    if (this.puzzles.has(room.id)) {
+                        const sprite = this.puzzles.get(room.id);
+                        if (sprite && sprite.scene) sprite.destroy();
+                        this.puzzles.delete(room.id);
+                    }
+                    return;
+                }
                 // Skip initialization if we already have a puzzle for this room
                 if (this.puzzles.has(room.id)) {
                     // Just update visibility for the existing sprite

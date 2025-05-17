@@ -1047,10 +1047,16 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                 if (!this.isInEncounter && !this.isRearranging) {
                     this.encounterTimer -= delta;
                     if (this.encounterTimer <= 0) {
-                        this.encounterTimer = this.encounterInterval; // Reset timer
+                        this.encounterTimer = this.encounterInterval;
                         var room = this.dungeonService.getRoomById(this.playerPosition.roomId);
-                        console.log(`[DEBUG] Dynamic encounter timer check in room ${room.id}. EncounterManager.initializeEncounter removed; now handled by server.`);
-                        // EncounterManager.initializeEncounter removed; now handled by server
+                        console.log(`[DEBUG] Dynamic encounter timer check in room ${room.id}. Emitting ENCOUNTER_ROLL_REQUEST to server.`);
+                        if (this.socket && this.playerId && room) {
+                            this.socket.emit('ENCOUNTER_ROLL_REQUEST', {
+                                playerId: this.playerId,
+                                roomId: room.id,
+                                context: 'dynamic'
+                            });
+                        }
                     }
                 }
                 // --- Debug Update ---
@@ -1242,6 +1248,15 @@ export var DungeonScene = /*#__PURE__*/ function(_Phaser_Scene) {
                             var newRoom = _this.dungeonService.getRoomById(targetId);
                             if (!_this.isInEncounter) {
                                 // EncounterManager.initializeEncounter removed; now handled by server
+                                // Emit ENCOUNTER_ROLL_REQUEST for door click
+                                var movedRoom = _this.dungeonService.getRoomById(_this.playerPosition.roomId);
+                                if (_this.socket && _this.playerId && movedRoom) {
+                                    _this.socket.emit('ENCOUNTER_ROLL_REQUEST', {
+                                        playerId: _this.playerId,
+                                        roomId: movedRoom.id,
+                                        context: 'door'
+                                    });
+                                }
                             }
                             _this.cameras.main.fadeIn(250);
                         }
