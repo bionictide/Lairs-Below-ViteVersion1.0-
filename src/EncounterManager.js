@@ -146,6 +146,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
         // Add at EncounterManager initialization
         this.socket = scene.socket; // Assume socket is passed or available on scene
         this.socket.on('attack_result', (data) => {
+          console.log('[CLIENT] Received attack_result:', data);
           // Show prompt, play visuals, update UI
           this.scene.events.emit('showActionPrompt', data.prompt);
           if (data.targetId === this.playerId && data.damage > 0 && this.combatVisuals) {
@@ -155,6 +156,7 @@ export var EncounterManager = /*#__PURE__*/ function() {
           }
         });
         this.socket.on('health_update', ({ playerId, health, maxHealth }) => {
+          console.log('[CLIENT] Received health_update:', { playerId, health, maxHealth });
           if (playerId === this.playerId) {
             this.playerStats._currentHealth = health;
             this.playerStats._maxHealth = maxHealth;
@@ -163,10 +165,12 @@ export var EncounterManager = /*#__PURE__*/ function() {
           // TODO: Update health for other entities if needed
         });
         this.socket.on('entity_died', ({ entityId, attackerId }) => {
+          console.log('[CLIENT] Received entity_died:', { entityId, attackerId });
           this.scene.events.emit('entityDied', { entityId, attackerId });
           // TODO: End encounter, handle loot, etc.
         });
         this.socket.on('steal_result', (data) => {
+          console.log('[CLIENT] Received steal_result:', data);
           // Show prompt and update UI
           this.scene.events.emit('showActionPrompt', data.prompt);
           // Optionally update inventories if needed
@@ -175,6 +179,22 @@ export var EncounterManager = /*#__PURE__*/ function() {
               this.scene.bagManager.setInventory(data.inventory);
             }
           }
+        });
+        this.socket.on('spell_result', (data) => {
+          console.log('[CLIENT] Received spell_result:', data);
+          // Show prompt and update UI (add more as needed)
+          this.scene.events.emit('showActionPrompt', data.prompt);
+        });
+        this.socket.on('showActionMenu', (data) => {
+          console.log('[CLIENT] Received showActionMenu:', data);
+          // Adapt to EncounterManager API
+          this.scene.encounterManager.showActionMenu(
+            data.initiatorId,
+            data.targetId,
+            data.roomId,
+            data.menuContext || { type: './main.js', page: 1 },
+            false // or data.keepTimer if provided
+          );
         });
     }
     _create_class(EncounterManager, [

@@ -794,6 +794,7 @@ io.on('connection', (socket) => {
     const lowHealth = npc.health < (npc.maxHealth * ((ai.lowHealthAction && ai.lowHealthAction.fleeThreshold) || 0.2));
     if (lowHealth && ai.lowHealthAction) {
       if (ai.lowHealthAction.type === 'AttemptFlee' && Math.random() < (ai.lowHealthAction.chance || 0)) {
+        console.log(`[SERVER] AI (${npc.id}) attempts to flee due to low health.`);
         // Flee logic: remove NPC, emit prompt, end encounter
         io.to(roomId).emit('showActionPrompt', `${npcDef.name} attempts to flee... succeeds!`);
         // Remove from encounter
@@ -825,13 +826,16 @@ io.on('connection', (socket) => {
       }
       action = chosen;
     }
+    console.log(`[SERVER] AI (${npc.id}) selected action: ${action && action.type} on target: ${target.id}`);
     // Execute action
     switch (action && action.type) {
       case 'Attack':
+        console.log(`[SERVER] AI (${npc.id}) performing Attack on ${target.id}`);
         performAttack(npc.id, target.id, 'physical', null, roomId);
         break;
       case 'AttemptSteal':
         if (!action.chance || Math.random() < action.chance) {
+          console.log(`[SERVER] AI (${npc.id}) attempting Steal on ${target.id}`);
           performSteal(npc.id, target.id, roomId);
         } else {
           io.to(roomId).emit('showActionPrompt', `${npcDef.name} eyes your belongings but does nothing.`);
@@ -839,11 +843,12 @@ io.on('connection', (socket) => {
         }
         break;
       case 'ShowPrompt':
+        console.log(`[SERVER] AI (${npc.id}) showing prompt: ${action.prompt}`);
         io.to(roomId).emit('showActionPrompt', action.prompt.replace('{NAME}', npcDef.name));
         endTurn(roomId);
         break;
       default:
-        // Fallback: always attack
+        console.log(`[SERVER] AI (${npc.id}) defaulting to Attack on ${target.id}`);
         performAttack(npc.id, target.id, 'physical', null, roomId);
         break;
     }
@@ -923,6 +928,7 @@ function endTurn(roomId) {
   encounter.turnQueue.push(encounter.turnQueue.shift());
   encounter.currentTurn = encounter.turnQueue[0];
   const current = encounter.participants.find(p => p.id === encounter.currentTurn);
+  console.log(`[SERVER] endTurn: new currentTurn is ${encounter.currentTurn}, type: ${current && current.type}`);
   if (!current) {
     // Defensive: If current is missing, skip turn
     endTurn(roomId);
@@ -963,11 +969,12 @@ function runNpcTurn(roomId, npcId) {
   const lowHealth = npc.health < (npc.maxHealth * ((ai.lowHealthAction && ai.lowHealthAction.fleeThreshold) || 0.2));
   if (lowHealth && ai.lowHealthAction) {
     if (ai.lowHealthAction.type === 'AttemptFlee' && Math.random() < (ai.lowHealthAction.chance || 0)) {
+      console.log(`[SERVER] AI (${npc.id}) attempts to flee due to low health.`);
       // Flee logic: remove NPC, emit prompt, end encounter
       io.to(roomId).emit('showActionPrompt', `${npcDef.name} attempts to flee... succeeds!`);
       // Remove from encounter
-      encounter.participants = encounter.participants.filter(p => p.id !== npcId);
-      encounter.turnQueue = encounter.turnQueue.filter(id => id !== npcId);
+      encounter.participants = encounter.participants.filter(p => p.id !== npc.id);
+      encounter.turnQueue = encounter.turnQueue.filter(id => id !== npc.id);
       if (encounter.participants.length <= 1) {
         encounters.delete(roomId);
         io.to(roomId).emit('encounter_end', { roomId });
@@ -994,26 +1001,30 @@ function runNpcTurn(roomId, npcId) {
     }
     action = chosen;
   }
+  console.log(`[SERVER] AI (${npc.id}) selected action: ${action && action.type} on target: ${target.id}`);
   // Execute action
   switch (action && action.type) {
     case 'Attack':
-      performAttack(npcId, target.id, 'physical', null, roomId);
+      console.log(`[SERVER] AI (${npc.id}) performing Attack on ${target.id}`);
+      performAttack(npc.id, target.id, 'physical', null, roomId);
       break;
     case 'AttemptSteal':
       if (!action.chance || Math.random() < action.chance) {
-        performSteal(npcId, target.id, roomId);
+        console.log(`[SERVER] AI (${npc.id}) attempting Steal on ${target.id}`);
+        performSteal(npc.id, target.id, roomId);
       } else {
         io.to(roomId).emit('showActionPrompt', `${npcDef.name} eyes your belongings but does nothing.`);
         endTurn(roomId);
       }
       break;
     case 'ShowPrompt':
+      console.log(`[SERVER] AI (${npc.id}) showing prompt: ${action.prompt}`);
       io.to(roomId).emit('showActionPrompt', action.prompt.replace('{NAME}', npcDef.name));
       endTurn(roomId);
       break;
     default:
-      // Fallback: always attack
-      performAttack(npcId, target.id, 'physical', null, roomId);
+      console.log(`[SERVER] AI (${npc.id}) defaulting to Attack on ${target.id}`);
+      performAttack(npc.id, target.id, 'physical', null, roomId);
       break;
   }
 }
