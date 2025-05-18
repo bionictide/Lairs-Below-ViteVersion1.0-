@@ -244,6 +244,60 @@
 
 ---
 
+## Universal Multiplayer Loot/Event State & Inventory Sync Pattern (2024-06)
+
+### When to Apply
+- Whenever the server emits an authoritative update event for any interactable/lootable object (e.g., SHELF_UPDATE, TREASURE_UPDATE, PUZZLE_UPDATE, LOOT_BAG_UPDATE, etc.).
+
+### What Every Client Must Do (in this order):
+1. Destroy the relevant sprite for the object in the current room (immediate visual feedback).
+2. Remove the sprite from the manager's tracking map (to prevent lingering references).
+3. Update the local room state in the client's dungeon/room cache to match the server's authoritative state (e.g., set room.treasureLevel = null, room.puzzleType = null, room.gemType = null, room.hasPotion = false, etc.).
+4. Never mutate local state in anticipation—only in direct response to a server event.
+5. For inventory: Only add the looted item to the bag/inventory UI in response to an INVENTORY_UPDATE event from the server. Never add it locally on click.
+
+### Why This Pattern?
+- Ensures all clients are always in sync with the server (the single source of truth).
+- Prevents ghosting, reappearing, or desynced loot/interactables.
+- Works for all loot types, interactables, and future event-driven state (not just shelves/treasure/puzzles).
+
+### Example (for any loot type):
+```js
+this.socket.on('TREASURE_UPDATE', (data) => {
+  // 1. Destroy the sprite
+  const entry = this.activeTreasures.get(data.roomId);
+  if (entry && entry.key === data.itemKey && entry.sprite && entry.sprite.scene) {
+    entry.sprite.destroy();
+    // 2. Remove from tracking map
+    this.activeTreasures.delete(data.roomId);
+    // 3. Update local room state
+    const room = this.scene.dungeonService.getRoomById(data.roomId);
+    if (room) room.treasureLevel = null;
+  }
+});
+// 5. Inventory is only updated in response to:
+this.socket.on('INVENTORY_UPDATE', ({ playerId, inventory }) => {
+  if (playerId === this.scene.playerId) {
+    this.bagManager.updateInventory(inventory);
+  }
+});
+```
+
+### Universal Checklist
+- [ ] Listen for the server's update event for the object.
+- [ ] Destroy the relevant sprite.
+- [ ] Remove the sprite from the manager's tracking map.
+- [ ] Update the local room state to match the server.
+- [ ] Never mutate state in anticipation—only in response to server events.
+- [ ] Only update inventory/bag UI in response to INVENTORY_UPDATE from the server.
+- [ ] Never add loot to inventory or remove from room except in response to server events.
+
+---
+
+This is the universal, multiplayer-safe, server-authoritative pattern for all interactable state and inventory flows.
+
+---
+
 ## Placeholders for Future Events
 
 ### trade_request
