@@ -26,12 +26,20 @@ export var PuzzleManager = /*#__PURE__*/ function() {
         this.socket = socket;
         this.puzzles = new Map();
         this.keyWallDirections = new Map(); // roomId: facing direction
+        this.activePuzzles = new Map(); // roomId: { sprite }
         this.socket.on('PUZZLE_UPDATE', (data) => {
-            // On authoritative update, destroy the puzzle sprite and remove from tracking
-            const sprite = this.puzzles.get(data.roomId);
-            if (sprite && sprite.scene) {
-                sprite.destroy();
-                this.puzzles.delete(data.roomId);
+            // If itemKey is present, create the puzzle sprite if not already present
+            if (data.itemKey) {
+                if (!this.activePuzzles.has(data.roomId)) {
+                    this.createPuzzleSprite(data.roomId, data.itemKey);
+                }
+            } else {
+                // If itemKey is null/undefined, destroy the puzzle sprite if present
+                const entry = this.activePuzzles.get(data.roomId);
+                if (entry && entry.sprite && entry.sprite.scene) {
+                    entry.sprite.destroy();
+                }
+                this.activePuzzles.delete(data.roomId);
                 console.log('[PuzzleManager] Destroying puzzle sprite for room:', data.roomId);
             }
             console.log('[PuzzleManager] Received PUZZLE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
@@ -42,97 +50,57 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             }
         });
     }
+    PuzzleManager.prototype.createPuzzleSprite = function(roomId, itemKey) {
+        var _this = this;
+        var room = this.scene.dungeonService.getRoomById(roomId);
+        if (!room) return;
+        var width = this.scene.game.config.width;
+        var height = this.scene.game.config.height;
+        var sprite = this.scene.add.sprite(width / 2, height * 0.85, 'Key1').setInteractive({ useHandCursor: true }).setDepth(40).setScale(0.125);
+        if (!this.keyWallDirections.has(roomId)) {
+            var directions = ['north', 'east', 'south', 'west'];
+            var directionHasDoor = {};
+            directions.forEach(function(dir) {
+                var doors = _this.scene.roomManager.getVisibleDoors(room, dir, _this.scene.dungeonService);
+                directionHasDoor[dir] = doors.includes('forward');
+            });
+            var directionsWithoutDoor = directions.filter(function(dir) {
+                return !directionHasDoor[dir];
+            });
+            var roomIdSum = roomId.split('').reduce(function(sum, char) {
+                return sum + char.charCodeAt(0);
+            }, 0);
+            var keyFacing = directionsWithoutDoor.length > 0 ? directionsWithoutDoor[roomIdSum % directionsWithoutDoor.length] : 'north';
+            this.keyWallDirections.set(roomId, keyFacing);
+        }
+        sprite.on('pointerdown', function() {
+            if (_this.scene.isInEncounter) {
+                _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
+                return;
+            }
+            if (sprite.getData('pendingLoot')) return;
+            sprite.setData('pendingLoot', true);
+            sprite.disableInteractive();
+            _this.socket.emit('PUZZLE_PICKUP_REQUEST', {
+                playerId: _this.scene.playerId,
+                roomId: roomId,
+                itemKey: itemKey
+            });
+            console.log('[PuzzleManager] Puzzle looted in room:', roomId, 'itemKey:', itemKey);
+        });
+        this.activePuzzles.set(roomId, { sprite });
+        this.updateSpriteVisibility(sprite, room);
+        console.log('[PuzzleManager] Created puzzle sprite for room:', roomId, 'itemKey:', itemKey);
+    };
+    PuzzleManager.prototype.initializePuzzles = function(room) {
+        // Only update visibility for already-present puzzles
+        var entry = this.activePuzzles.get(room.id);
+        if (entry && entry.sprite) {
+            this.updateSpriteVisibility(entry.sprite, room);
+        }
+    };
     _create_class(PuzzleManager, [
         {
-            key: "initializePuzzles",
-            value: function initializePuzzles(room) {
-                var _this = this;
-                if (room.puzzleType !== 'key') {
-                    // If puzzleType is not 'key', ensure sprite is destroyed and not recreated
-                    if (this.puzzles.has(room.id)) {
-                        const sprite = this.puzzles.get(room.id);
-                        if (sprite && sprite.scene) sprite.destroy();
-                        this.puzzles.delete(room.id);
-                    }
-                    return;
-                }
-                // Skip initialization if we already have a puzzle for this room
-                if (this.puzzles.has(room.id)) {
-                    // Just update visibility for the existing sprite
-                    this.updateSpriteVisibility(this.puzzles.get(room.id), room);
-                    return;
-                }
-                var width = this.scene.game.config.width;
-                var height = this.scene.game.config.height;
-                // Always position center-bottom
-                var sprite = this.scene.add.sprite(width / 2, height * 0.85, 'Key1') // Moved down 15% (0.7 + 0.15)
-                .setInteractive({
-                    useHandCursor: true
-                }).setDepth(40) // Updated depth for items
-                .setScale(0.125); // Scale down the key sprite by 50% (0.25 * 0.5)
-                // Only determine the wall direction if we haven't already for this room
-                if (!this.keyWallDirections.has(room.id)) {
-                    // Find walls without doors
-                    var directions = [
-                        'north',
-                        'east',
-                        'south',
-                        'west'
-                    ];
-                    var directionHasDoor = {};
-                    // Check each direction for a forward door
-                    directions.forEach(function(dir) {
-                        var doors = _this.scene.roomManager.getVisibleDoors(room, dir, _this.scene.dungeonService);
-                        directionHasDoor[dir] = doors.includes('forward');
-                    });
-                    // Find all directions without a door
-                    var directionsWithoutDoor = directions.filter(function(dir) {
-                        return !directionHasDoor[dir];
-                    });
-                    // Randomly select one direction without a door (or default to north if all have doors)
-                    // Use the room's id as a seed to ensure consistency for the same room
-                    var roomIdSum = room.id.split('').reduce(function(sum, char) {
-                        return sum + char.charCodeAt(0);
-                    }, 0);
-                    var keyFacing = directionsWithoutDoor.length > 0 ? directionsWithoutDoor[roomIdSum % directionsWithoutDoor.length] : 'north';
-                    // Store the chosen direction for this room
-                    this.keyWallDirections.set(room.id, keyFacing);
-                }
-                sprite.on('pointerdown', function() {
-                    // Prevent pickup during encounter
-                    if (_this.scene.isInEncounter) {
-                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
-                        return;
-                    }
-                    // Prevent double-looting: set pending flag and disable interactivity
-                    if (sprite.getData('pendingLoot')) return;
-                    sprite.setData('pendingLoot', true);
-                    sprite.disableInteractive();
-                    // Only emit intent to server; do NOT mutate local state or destroy sprite
-                    var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                    var itemKey;
-                    var originalPuzzleType = roomData ? roomData.puzzleType : null;
-                    if (originalPuzzleType === 'key') {
-                        itemKey = 'Key1';
-                    }
-                    if (itemKey) {
-                        _this.socket.emit('PUZZLE_PICKUP_REQUEST', {
-                            playerId: _this.scene.playerId,
-                            roomId: room.id,
-                            itemKey: itemKey
-                        });
-                        console.log('[PuzzleManager] Puzzle looted in room:', room.id, 'itemKey:', itemKey);
-                    } else {
-                        console.warn(`[PuzzleManager] Clicked puzzle in room ${room.id}, but original puzzleType (${originalPuzzleType}) didn't map to a known itemKey.`);
-                    }
-                });
-                this.puzzles.set(room.id, sprite);
-                this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
-                console.log('[PuzzleManager] initializePuzzles for room:', room.id, 'puzzleType:', room.puzzleType);
-            }
-        },
-        {
-            // Renamed function, removed facing parameter and positioning logic
             key: "updateSpriteVisibility",
             value: function updateSpriteVisibility(sprite, room) {
                 // Get player's current facing direction

@@ -26,12 +26,20 @@ export var TreasureManager = /*#__PURE__*/ function() {
         this.socket = socket;
         this.treasures = new Map();
         this.treasureWallDirections = new Map(); // roomId: facing direction
+        this.activeTreasures = new Map(); // roomId: { key, sprite }
         this.socket.on('TREASURE_UPDATE', (data) => {
-            // On authoritative update, destroy the treasure sprite and remove from tracking
-            const sprite = this.treasures.get(data.roomId);
-            if (sprite && sprite.scene) {
-                sprite.destroy();
-                this.treasures.delete(data.roomId);
+            // If itemKey is present, create the treasure sprite if not already present
+            if (data.itemKey) {
+                if (!this.activeTreasures.has(data.roomId)) {
+                    this.createTreasureSprite(data.roomId, data.itemKey);
+                }
+            } else {
+                // If itemKey is null/undefined, destroy the treasure sprite if present
+                const entry = this.activeTreasures.get(data.roomId);
+                if (entry && entry.sprite && entry.sprite.scene) {
+                    entry.sprite.destroy();
+                }
+                this.activeTreasures.delete(data.roomId);
                 console.log('[TreasureManager] Destroying treasure sprite for room:', data.roomId);
             }
             console.log('[TreasureManager] Received TREASURE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
@@ -42,116 +50,72 @@ export var TreasureManager = /*#__PURE__*/ function() {
             }
         });
     }
+    TreasureManager.prototype.createTreasureSprite = function(roomId, itemKey) {
+        var _this = this;
+        var room = this.scene.dungeonService.getRoomById(roomId);
+        if (!room) return;
+        var key, scale;
+        if (itemKey === 'sword1') {
+            key = 'Sword1';
+            scale = 0.2125;
+        } else if (itemKey === 'helm1') {
+            key = 'Helm1';
+            scale = 0.180625;
+        } else if (itemKey === 'Potion1(red)') {
+            key = 'Potion1(red)';
+            scale = 0.15;
+        } else {
+            console.warn('[TreasureManager] Unknown itemKey:', itemKey);
+            return;
+        }
+        if (!this.treasureWallDirections.has(roomId)) {
+            var directions = ['north', 'east', 'south', 'west'];
+            var directionHasDoor = {};
+            directions.forEach(function(dir) {
+                var doors = _this.scene.roomManager.getVisibleDoors(room, dir, _this.scene.dungeonService);
+                directionHasDoor[dir] = doors.includes('forward');
+            });
+            var directionsWithoutDoor = directions.filter(function(dir) {
+                return !directionHasDoor[dir];
+            });
+            var roomIdSum = roomId.split('').reduce(function(sum, char) {
+                return sum + char.charCodeAt(0);
+            }, 0);
+            var treasureFacing = directionsWithoutDoor.length > 0 ? directionsWithoutDoor[roomIdSum * 2 % directionsWithoutDoor.length] : 'north';
+            this.treasureWallDirections.set(roomId, treasureFacing);
+        }
+        var width = this.scene.game.config.width;
+        var height = this.scene.game.config.height;
+        var positionY = (key === 'Helm1' || key === 'Sword1') ? height * 0.8 : height * 0.7;
+        var sprite = this.scene.add.sprite(width / 2, positionY, key).setInteractive({ useHandCursor: true }).setDepth(40).setScale(scale);
+        sprite.on('pointerdown', function() {
+            if (_this.scene.isInEncounter) {
+                _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
+                return;
+            }
+            if (sprite.getData('pendingLoot')) return;
+            sprite.setData('pendingLoot', true);
+            sprite.disableInteractive();
+            _this.socket.emit('TREASURE_PICKUP_REQUEST', {
+                playerId: _this.scene.playerId,
+                roomId: roomId,
+                itemKey: itemKey
+            });
+            console.log('[TreasureManager] Treasure looted in room:', roomId, 'itemKey:', itemKey);
+        });
+        this.activeTreasures.set(roomId, { key: itemKey, sprite });
+        this.updateSpriteVisibility(sprite, room);
+        console.log('[TreasureManager] Created treasure sprite for room:', roomId, 'itemKey:', itemKey);
+    };
+    TreasureManager.prototype.initializeTreasures = function(room) {
+        // Only update visibility for already-present treasures
+        var entry = this.activeTreasures.get(room.id);
+        if (entry && entry.sprite) {
+            this.updateSpriteVisibility(entry.sprite, room);
+        }
+    };
     _create_class(TreasureManager, [
         {
-            key: "initializeTreasures",
-            value: function initializeTreasures(room) {
-                var _this = this;
-                if (!room.treasureLevel) {
-                    // If treasureLevel is null, ensure sprite is destroyed and not recreated
-                    if (this.treasures.has(room.id)) {
-                        const sprite = this.treasures.get(room.id);
-                        if (sprite && sprite.scene) sprite.destroy();
-                        this.treasures.delete(room.id);
-                    }
-                    return;
-                }
-                // Skip initialization if we already have a treasure for this room
-                if (this.treasures.has(room.id)) {
-                    // Just update visibility for the existing sprite
-                    this.updateSpriteVisibility(this.treasures.get(room.id), room);
-                    return;
-                }
-                var key, scale;
-                // Check against standardized item keys 'sword1' and 'helm1'
-                if (room.treasureLevel === 'sword1') {
-                    key = 'Sword1'; // Asset name
-                    scale = 0.2125; // Reduced scale by 15% (0.25 * 0.85)
-                } else if (room.treasureLevel === 'helm1') {
-                    key = 'Helm1'; // Asset name
-                    scale = 0.180625; // Further reduced scale by 15% (0.2125 * 0.85)
-                } else if (room.treasureLevel === 'Potion1(red)') {
-                    key = 'Potion1(red)'; // Asset name
-                    scale = 0.15;
-                } else {
-                    console.warn("[TreasureManager] Unknown treasureLevel: ".concat(room.treasureLevel));
-                    return; // Don't create treasure if type is unknown
-                }
-                // Only determine the wall direction if we haven't already for this room
-                if (!this.treasureWallDirections.has(room.id)) {
-                    // Find walls without doors
-                    var directions = [
-                        'north',
-                        'east',
-                        'south',
-                        'west'
-                    ];
-                    var directionHasDoor = {};
-                    // Check each direction for a forward door
-                    directions.forEach(function(dir) {
-                        var doors = _this.scene.roomManager.getVisibleDoors(room, dir, _this.scene.dungeonService);
-                        directionHasDoor[dir] = doors.includes('forward');
-                    });
-                    // Find all directions without a door
-                    var directionsWithoutDoor = directions.filter(function(dir) {
-                        return !directionHasDoor[dir];
-                    });
-                    // Randomly select one direction without a door (or default to north if all have doors)
-                    // Use the room's id as a seed to ensure consistency for the same room
-                    var roomIdSum = room.id.split('').reduce(function(sum, char) {
-                        return sum + char.charCodeAt(0);
-                    }, 0);
-                    var treasureFacing = directionsWithoutDoor.length > 0 ? directionsWithoutDoor[roomIdSum * 2 % directionsWithoutDoor.length] // Use different factor than keys/hints
-                     : 'north';
-                    // Store the chosen direction for this room
-                    this.treasureWallDirections.set(room.id, treasureFacing);
-                }
-                var width = this.scene.game.config.width;
-                var height = this.scene.game.config.height;
-                // Position calculation depends on the item
-                var positionY = height * 0.7; // Default Y position
-                if (key === 'Helm1' || key === 'Sword1') {
-                    positionY = height * 0.8; // Move down by 10% screen height (0.7 + 0.1)
-                }
-                var sprite = this.scene.add.sprite(width / 2, positionY, key).setInteractive({
-                    useHandCursor: true
-                }).setDepth(40) // Treasure/Puzzle Item layer (Depth 40)
-                .setScale(scale); // Apply specific scale
-                sprite.on('pointerdown', function() {
-                    // Prevent pickup during encounter
-                    if (_this.scene.isInEncounter) {
-                        _this.scene.events.emit('showActionPrompt', 'Cannot loot items during combat!');
-                        return;
-                    }
-                    // Prevent double-looting: set pending flag and disable interactivity
-                    if (sprite.getData('pendingLoot')) return;
-                    sprite.setData('pendingLoot', true);
-                    sprite.disableInteractive();
-                    // Only emit intent to server; do NOT mutate local state or destroy sprite
-                    var roomData = _this.scene.dungeonService.getRoomById(room.id);
-                    var itemKey;
-                    var originalTreasureLevel = roomData ? roomData.treasureLevel : null;
-                    if (originalTreasureLevel === 'sword1') itemKey = 'sword1';
-                    else if (originalTreasureLevel === 'helm1') itemKey = 'helm1';
-                    else if (originalTreasureLevel === 'Potion1(red)') itemKey = 'Potion1(red)';
-                    if (itemKey) {
-                        _this.socket.emit('TREASURE_PICKUP_REQUEST', {
-                            playerId: _this.scene.playerId,
-                            roomId: room.id,
-                            itemKey: itemKey
-                        });
-                        console.log('[TreasureManager] Treasure looted in room:', room.id, 'itemKey:', itemKey);
-                    } else {
-                        console.warn(`[TreasureManager] Clicked treasure in room ${room.id}, but original treasureLevel (${originalTreasureLevel}) didn't map to a known itemKey.`);
-                    }
-                });
-                this.treasures.set(room.id, sprite);
-                this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
-                console.log('[TreasureManager] initializeTreasures for room:', room.id, 'treasureLevel:', room.treasureLevel);
-            }
-        },
-        {
-            // Updated function to show treasure only in a specific direction
             key: "updateSpriteVisibility",
             value: function updateSpriteVisibility(sprite, room) {
                 if (!sprite) return; // Guard: do nothing if sprite is undefined
