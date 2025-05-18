@@ -33,6 +33,9 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             if (entry && data.itemKey === 'Key1' && entry.sprite && entry.sprite.scene) {
                 entry.sprite.destroy();
                 this.activePuzzles.delete(data.roomId);
+                // Update local room state to match server
+                const room = this.scene.dungeonService.getRoomById(data.roomId);
+                if (room) room.puzzleType = null;
                 console.log('[PuzzleManager] Destroying puzzle sprite for room:', data.roomId);
             }
             console.log('[PuzzleManager] Received PUZZLE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);

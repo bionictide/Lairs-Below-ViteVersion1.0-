@@ -33,6 +33,9 @@ export var TreasureManager = /*#__PURE__*/ function() {
             if (entry && entry.key === data.itemKey && entry.sprite && entry.sprite.scene) {
                 entry.sprite.destroy();
                 this.activeTreasures.delete(data.roomId);
+                // Update local room state to match server
+                const room = this.scene.dungeonService.getRoomById(data.roomId);
+                if (room) room.treasureLevel = null;
                 console.log('[TreasureManager] Destroying treasure sprite for room:', data.roomId);
             }
             console.log('[TreasureManager] Received TREASURE_UPDATE for room:', data.roomId, 'itemKey:', data.itemKey);
