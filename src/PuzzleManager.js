@@ -91,12 +91,38 @@ export var PuzzleManager = /*#__PURE__*/ function() {
             if (!this.activePuzzles.has(room.id)) {
                 this.createPuzzleSprite(room.id, 'Key1');
             }
+        } else {
+            // If no puzzle, destroy any lingering sprite for this room
+            const entry = this.activePuzzles.get(room.id);
+            if (entry && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
+            }
+            this.activePuzzles.delete(room.id);
         }
         // Only update visibility for already-present puzzles
         var entry = this.activePuzzles.get(room.id);
         if (entry && entry.sprite) {
             this.updateSpriteVisibility(entry.sprite, room);
         }
+    };
+    PuzzleManager.prototype.updateSpriteVisibility = function(sprite, room) {
+        // Get player's current facing direction
+        var currentFacing = this.scene.playerPosition.facing;
+        // Get the pre-determined wall direction for this room
+        var keyFacing = this.keyWallDirections.get(room.id);
+        // Only show key when player is facing the designated wall without a door
+        // OR in a dead end when facing any wall without a door
+        var isDeadEnd = room.doors.length === 1;
+        var isFacingWall = !this.scene.roomManager.getVisibleDoors(room, currentFacing, this.scene.dungeonService).includes('forward');
+        sprite.setVisible(isDeadEnd && isFacingWall || currentFacing === keyFacing && isFacingWall);
+    };
+    PuzzleManager.prototype.clearPuzzles = function() {
+        this.activePuzzles.forEach(function(entry) {
+            if (entry && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
+            }
+        });
+        this.activePuzzles.clear();
     };
     _create_class(PuzzleManager, [
         {

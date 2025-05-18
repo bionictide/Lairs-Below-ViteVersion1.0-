@@ -106,12 +106,42 @@ export var TreasureManager = /*#__PURE__*/ function() {
             if (!this.activeTreasures.has(room.id)) {
                 this.createTreasureSprite(room.id, room.treasureLevel);
             }
+        } else {
+            // If no treasure, destroy any lingering sprite for this room
+            const entry = this.activeTreasures.get(room.id);
+            if (entry && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
+            }
+            this.activeTreasures.delete(room.id);
         }
         // Only update visibility for already-present treasures
         var entry = this.activeTreasures.get(room.id);
         if (entry && entry.sprite) {
             this.updateSpriteVisibility(entry.sprite, room);
         }
+    };
+    TreasureManager.prototype.updateSpriteVisibility = function(sprite, room) {
+        if (!sprite) return; // Guard: do nothing if sprite is undefined
+        // Get player's current facing direction
+        var currentFacing = this.scene.playerPosition.facing;
+        // Get the pre-determined wall direction for this room
+        var treasureFacing = this.treasureWallDirections.get(room.id);
+        // Two cases where treasure should be visible:
+        // 1. Dead end room with player facing the wall without a door
+        // 2. Regular room with player facing the designated wall without a door
+        var isDeadEnd = room.doors.length === 1;
+        var isFacingWall = !this.scene.roomManager.getVisibleDoors(room, currentFacing, this.scene.dungeonService).includes('forward');
+        // Only show treasure when player is facing the designated wall without a door
+        // OR in a dead end when facing the wall
+        sprite.setVisible(isDeadEnd && isFacingWall || currentFacing === treasureFacing && isFacingWall);
+    };
+    TreasureManager.prototype.clearTreasures = function() {
+        this.activeTreasures.forEach(function(entry) {
+            if (entry && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
+            }
+        });
+        this.activeTreasures.clear();
     };
     _create_class(TreasureManager, [
         {
