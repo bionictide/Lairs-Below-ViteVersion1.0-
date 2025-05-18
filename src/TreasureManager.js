@@ -28,17 +28,10 @@ export var TreasureManager = /*#__PURE__*/ function() {
         this.treasureWallDirections = new Map(); // roomId: facing direction
         this.activeTreasures = new Map(); // roomId: { key, sprite }
         this.socket.on('TREASURE_UPDATE', (data) => {
-            // If itemKey is present, create the treasure sprite if not already present
-            if (data.itemKey) {
-                if (!this.activeTreasures.has(data.roomId)) {
-                    this.createTreasureSprite(data.roomId, data.itemKey);
-                }
-            } else {
-                // If itemKey is null/undefined, destroy the treasure sprite if present
-                const entry = this.activeTreasures.get(data.roomId);
-                if (entry && entry.sprite && entry.sprite.scene) {
-                    entry.sprite.destroy();
-                }
+            // Destroy the treasure sprite if the itemKey matches the sprite's key for this room
+            const entry = this.activeTreasures.get(data.roomId);
+            if (entry && entry.key === data.itemKey && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
                 this.activeTreasures.delete(data.roomId);
                 console.log('[TreasureManager] Destroying treasure sprite for room:', data.roomId);
             }

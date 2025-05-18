@@ -28,17 +28,10 @@ export var PuzzleManager = /*#__PURE__*/ function() {
         this.keyWallDirections = new Map(); // roomId: facing direction
         this.activePuzzles = new Map(); // roomId: { sprite }
         this.socket.on('PUZZLE_UPDATE', (data) => {
-            // If itemKey is present, create the puzzle sprite if not already present
-            if (data.itemKey) {
-                if (!this.activePuzzles.has(data.roomId)) {
-                    this.createPuzzleSprite(data.roomId, data.itemKey);
-                }
-            } else {
-                // If itemKey is null/undefined, destroy the puzzle sprite if present
-                const entry = this.activePuzzles.get(data.roomId);
-                if (entry && entry.sprite && entry.sprite.scene) {
-                    entry.sprite.destroy();
-                }
+            // Destroy the puzzle sprite if the itemKey matches the sprite's key for this room
+            const entry = this.activePuzzles.get(data.roomId);
+            if (entry && data.itemKey === 'Key1' && entry.sprite && entry.sprite.scene) {
+                entry.sprite.destroy();
                 this.activePuzzles.delete(data.roomId);
                 console.log('[PuzzleManager] Destroying puzzle sprite for room:', data.roomId);
             }
