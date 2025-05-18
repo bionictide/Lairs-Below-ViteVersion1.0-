@@ -86,8 +86,8 @@ export var PuzzleManager = /*#__PURE__*/ function() {
         console.log('[PuzzleManager] Created puzzle sprite for room:', roomId, 'itemKey:', itemKey);
     };
     PuzzleManager.prototype.initializePuzzles = function(room) {
-        // If the room has a puzzleType of 'key', create the puzzle sprite if not already present
-        if (room.puzzleType === 'key') {
+        // Only create the puzzle sprite if the room has a valid puzzleType (not null/undefined/empty)
+        if (room.puzzleType && typeof room.puzzleType === 'string' && room.puzzleType.trim() !== '') {
             if (!this.activePuzzles.has(room.id)) {
                 this.createPuzzleSprite(room.id, 'Key1');
             }

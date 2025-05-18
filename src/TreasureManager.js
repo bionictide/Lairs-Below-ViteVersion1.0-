@@ -101,8 +101,8 @@ export var TreasureManager = /*#__PURE__*/ function() {
         console.log('[TreasureManager] Created treasure sprite for room:', roomId, 'itemKey:', itemKey);
     };
     TreasureManager.prototype.initializeTreasures = function(room) {
-        // If the room has a treasureLevel, create the treasure sprite if not already present
-        if (room.treasureLevel) {
+        // Only create the treasure sprite if the room has a valid treasureLevel (not null/undefined/empty)
+        if (room.treasureLevel && typeof room.treasureLevel === 'string' && room.treasureLevel.trim() !== '') {
             if (!this.activeTreasures.has(room.id)) {
                 this.createTreasureSprite(room.id, room.treasureLevel);
             }
