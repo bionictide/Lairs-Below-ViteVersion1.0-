@@ -1,6 +1,6 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { getCharacterDisplayData } from './CharacterTypes.js';
+import { getCharacterDisplayData, getPlayableCharacters } from './CharacterTypes.js';
 import { connectSocket, joinPlayer, enterRoom } from './socket.js';
 import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
@@ -252,18 +252,14 @@ function LoginScreen({ onLogin }) {
 // 3. CharacterSelectScreen with exact stats, animation, and in-game menu styling
 function CharacterSelectScreen({ onSelect, error }) {
   // Use CharacterTypes.js for stat blocks
-  const characterTypes = ['dwarf', 'elvaan', 'gnome'];
-  const characters = characterTypes.map(typeKey => {
-    const def = getCharacterDisplayData(typeKey);
-    return {
-      name: def.name,
-      img: `./Assets/${def.assetPrefix}1.png`,
-      stats: def.stats,
-      abilities: def.abilities,
-      type: def.type,
-      comingSoon: false
-    };
-  });
+  const characters = getPlayableCharacters().map(def => ({
+    name: def.name,
+    img: `./Assets/${def.sprite}`,
+    stats: def.stats,
+    abilities: def.abilities,
+    type: def.type,
+    comingSoon: false
+  }));
   // Add placeholders for coming soon
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
