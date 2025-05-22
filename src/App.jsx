@@ -7,7 +7,7 @@ import {
   getDefenseFromVIT
 } from '// REMOVED (was insecure).js';
 import { connectSocket, joinPlayer, enterRoom } from './socket.js';
-import { EVENTS } from './shared/events.js.js';
+import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
