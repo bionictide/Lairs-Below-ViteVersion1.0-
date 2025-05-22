@@ -29,6 +29,7 @@ dist-ssr
 # Ignore asset folders
 public/Assets/
 src/assets/
+OLD PROJECT BACKUP (DO NOT EDIT)/
 
 # Ignore common image and audio file types
 *.png
