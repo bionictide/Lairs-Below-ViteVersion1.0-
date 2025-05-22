@@ -1,13 +1,13 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { getCharacterDefinition } from './CharacterTypes.js';
+import { getCharacterDefinition } from '../server/CharacterTypesServer.js';
 import {
   getHealthFromVIT,
   getPhysicalAttackFromSTR,
   getDefenseFromVIT
 } from './StatDefinitions.js';
 import { connectSocket, joinPlayer, enterRoom } from './socket.js';
-import { EVENTS } from './shared/events.js';
+import { events as EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
 // Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available

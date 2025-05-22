@@ -25,3 +25,29 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Ignore asset folders
+public/Assets/
+src/assets/
+
+# Ignore common image and audio file types
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.bmp
+*.tiff
+*.ico
+*.webp
+*.mp3
+*.wav
+*.ogg
+*.flac
+*.aac
+*.m4a
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
