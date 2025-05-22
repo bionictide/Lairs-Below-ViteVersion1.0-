@@ -1,5 +1,5 @@
 // EncounterManagerServer.js
-// Fully restored encounter flow — handles turns, AI, abilities, spell use, death
+// Fully patched with real spell casting logic
 
 import { getPlayerStatsById } from "./PlayerStatsServer.js";
 import { castSpell } from "./SpellManagerServer.js";
@@ -29,14 +29,12 @@ export function takeTurn(encounterId, entityId, action) {
   const currentEntity = getCurrentEntity(encounterId);
   if (!currentEntity || currentEntity.id !== entityId) return;
 
-  // Handle action
   if (action.type === "attack") {
     const target = encounter.participants.find(p => p.id === action.targetId);
     if (!target) return;
 
     const attackerStats = getPlayerStatsById(entityId);
     const targetStats = getPlayerStatsById(action.targetId);
-
     const damage = Math.max(0, attackerStats.attack - targetStats.defense);
     targetStats.hp -= damage;
 
@@ -52,10 +50,21 @@ export function takeTurn(encounterId, entityId, action) {
   }
 
   if (action.type === "cast") {
-    castSpell(entityId, action.spell, action.targetId, encounterId);
+    const result = castSpell(entityId, action.spell, action.targetId, encounterId);
+    if (result?.type === "damage") {
+      const targetStats = getPlayerStatsById(action.targetId);
+      if (targetStats.hp <= 0) {
+        resolveDeath({
+          entityId: action.targetId,
+          killerId: entityId,
+          killerFacing: currentEntity.facingDirection,
+          roomId: targetStats.roomId,
+          items: targetStats.inventory || []
+        });
+      }
+    }
   }
 
-  // Advance turn
   encounter.currentTurnIndex = (encounter.currentTurnIndex + 1) % encounter.participants.length;
 }
 

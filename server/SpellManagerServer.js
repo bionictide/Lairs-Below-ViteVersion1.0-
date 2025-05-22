@@ -1,18 +1,48 @@
-// Spell resolution logic
-import { calculateDamage } from "./StatDefinitionsServer.js";
+// SpellManagerServer.js
+// Server-authoritative spell resolution
 
-export class SpellManager {
-  constructor(spellList = []) {
-    this.spells = spellList;
+import { getPlayerStatsById } from "./PlayerStatsServer.js";
+
+const spells = {
+  "Blizzard": {
+    name: "Blizzard",
+    gemCost: 1,
+    effect: ({ caster, target }) => {
+      const damage = 30;
+      target.hp -= damage;
+      return { type: "damage", amount: damage };
+    }
+  },
+  "Toxic Breath": {
+    name: "Toxic Breath",
+    gemCost: 1,
+    effect: ({ caster, target }) => {
+      const damage = 20;
+      target.hp -= damage;
+      return { type: "damage", amount: damage };
+    }
+  },
+  "Neutron Crucible": {
+    name: "Neutron Crucible",
+    gemCost: 3,
+    effect: ({ caster, target }) => {
+      const damage = 75;
+      target.hp -= damage;
+      return { type: "damage", amount: damage };
+    }
   }
+};
 
-  castSpell(spellName, caster, target) {
-    const spell = this.spells.find(s => s.name === spellName);
-    if (!spell) return { success: false, message: "Unknown spell" };
+export function castSpell(casterId, spellName, targetId, encounterId) {
+  const spell = spells[spellName];
+  if (!spell) return;
 
-    const damage = calculateDamage(caster.getStat("int"), spell.baseDamage || 5);
-    target.applyDamage(damage);
+  const caster = getPlayerStatsById(casterId);
+  const target = getPlayerStatsById(targetId);
+  if (!caster || !target) return;
 
-    return { success: true, damage, spell };
-  }
+  if ((caster.gems || 0) < spell.gemCost) return;
+
+  caster.gems -= spell.gemCost;
+  return spell.effect({ caster, target });
 }
