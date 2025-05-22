@@ -40,3 +40,9 @@ export function buildNPCStats(type) {
     evasion: getEvasionFromSPD(base.spd)
   };
 }
+
+// TEMP: Stub for getPlayerStatsById to resolve import error
+export function getPlayerStatsById(id) {
+  // TODO: Implement this to fetch player stats by ID from your server state
+  return null;
+}

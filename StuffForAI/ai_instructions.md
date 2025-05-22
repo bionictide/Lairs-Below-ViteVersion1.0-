@@ -1,5 +1,8 @@
 # AI Instructions
 
+> **GOLDEN RULE:**
+> This game is one giant circulatory system, not a collection of individual files. Everything is connected and must function as one unit.
+
 > **NEW Q&A CLARIFICATIONS (2024-06):**
 > - Never guess or assume anything about the code, game, or plans. If you are unsure, always ask the user for clarification and commit the answer here.
 > - All new lessons, clarifications, or user answers must be added to this folder immediately for future AI/developers.

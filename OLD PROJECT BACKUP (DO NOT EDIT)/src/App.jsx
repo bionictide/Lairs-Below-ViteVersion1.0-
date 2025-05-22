@@ -1,7 +1,12 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { getCharacterDisplayData, getPlayableCharacters } from './CharacterTypes.js';
-import socket from './socket.js';
+import { getCharacterDefinition } from './CharacterTypes.js';
+import {
+  getHealthFromVIT,
+  getPhysicalAttackFromSTR,
+  getDefenseFromVIT
+} from './StatDefinitions.js';
+import { connectSocket, joinPlayer, enterRoom } from './socket.js';
 import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
@@ -252,14 +257,18 @@ function LoginScreen({ onLogin }) {
 // 3. CharacterSelectScreen with exact stats, animation, and in-game menu styling
 function CharacterSelectScreen({ onSelect, error }) {
   // Use CharacterTypes.js for stat blocks
-  const characters = getPlayableCharacters().map(def => ({
-    name: def.name,
-    img: `./Assets/${def.sprite}`,
-    stats: def.stats,
-    abilities: def.abilities,
-    type: def.type,
-    comingSoon: false
-  }));
+  const characterTypes = ['dwarf', 'elvaan', 'gnome'];
+  const characters = characterTypes.map(typeKey => {
+    const def = getCharacterDefinition(typeKey);
+    return {
+      name: def.name,
+      img: `./Assets/${def.assetPrefix}1.png`,
+      stats: def.stats,
+      abilities: def.abilities,
+      type: def.type,
+      comingSoon: false
+    };
+  });
   // Add placeholders for coming soon
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
   characters.push({ name: '?????', img: '', stats: {}, abilities: [], comingSoon: true });
@@ -439,19 +448,19 @@ function CharacterSelectScreen({ onSelect, error }) {
             transform: statVisibilities[0] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[0] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Health: {char.type === 'dwarf' ? 750 : char.type === 'gnome' ? 400 : char.type === 'elvaan' ? 500 : 0}</div>
+          }}>Health: {getHealthFromVIT(char.stats?.vit || 0)}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[1] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[1] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Attack: {char.type === 'dwarf' ? 60 : char.type === 'gnome' ? 40 : char.type === 'elvaan' ? 80 : 0}</div>
+          }}>Attack: {getPhysicalAttackFromSTR(char.stats?.str || 0)}</div>
           <div style={{
             marginBottom: 6,
             transform: statVisibilities[2] ? 'translateX(0)' : 'translateX(-600px)',
             opacity: statVisibilities[2] ? 1 : 0,
             transition: 'transform 0.5s cubic-bezier(.77,0,.18,1), opacity 0.5s',
-          }}>Defense: {char.type === 'dwarf' ? 7.5 : char.type === 'gnome' ? 4 : char.type === 'elvaan' ? 5 : 0}</div>
+          }}>Defense: {getDefenseFromVIT(char.stats?.vit || 0)}</div>
           <div style={{
             marginTop: 8,
             transform: statVisibilities[3] ? 'translateX(0)' : 'translateX(-600px)',
@@ -958,7 +967,7 @@ function App() {
       return;
     }
     // Get the stat block from CharacterTypes.js for the selected type
-    const def = getCharacterDisplayData(charData.type?.toLowerCase());
+    const def = getCharacterDefinition(charData.type?.toLowerCase());
     const stats = def?.stats || { vit: 0, str: 0, int: 0, dex: 0, mnd: 0, spd: 0 };
     // Insert character into Supabase
     const { data, error } = await supabase
@@ -1100,7 +1109,7 @@ function App() {
         return;
       }
       const token = data.session.access_token;
-      window.socket = socket(token);
+      window.socket = connectSocket(token);
 
       window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
         setNotification(`${name} is now roaming the dungeon.`);
@@ -1112,15 +1121,17 @@ function App() {
       });
 
       // Use the freshly fetched character for joinPlayer
-      socket.emit(
-        EVENTS.PLAYER_JOIN,
-        { playerId: freshChar.id, character: freshChar },
+      joinPlayer(
+        { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
           window.currentCharacter = freshChar;
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
           }
+        },
+        (errorMsg) => {
+          setConnectionError(true);
         }
       );
     } catch (e) {
