@@ -1,13 +1,16 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
+import { getCharacterDefinition } from './CharacterTypes.js';
 import {
   getHealthFromVIT,
   getPhysicalAttackFromSTR,
   getDefenseFromVIT
-import { connectSocket, joinPlayer, enterRoom } from './socket.js';
-import { EVENTS } from './shared/events.js';
+} from './StatDefinitions.js';
+import { connectSocket, joinPlayer, enterRoom } from './socket.js.js';
+import { EVENTS } from './shared/events.js.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
+// Assume CharacterTypes.js is loaded globally and getPlayableCharacters is available
 
 // Add global style for html/body
 if (typeof document !== 'undefined' && !document.getElementById('global-game-style')) {
@@ -253,6 +256,7 @@ function LoginScreen({ onLogin }) {
 
 // 3. CharacterSelectScreen with exact stats, animation, and in-game menu styling
 function CharacterSelectScreen({ onSelect, error }) {
+  // Use CharacterTypes.js for stat blocks
   const characterTypes = ['dwarf', 'elvaan', 'gnome'];
   const characters = characterTypes.map(typeKey => {
     const def = getCharacterDefinition(typeKey);
@@ -962,6 +966,7 @@ function App() {
       setCharCreateError('User not logged in.');
       return;
     }
+    // Get the stat block from CharacterTypes.js for the selected type
     const def = getCharacterDefinition(charData.type?.toLowerCase());
     const stats = def?.stats || { vit: 0, str: 0, int: 0, dex: 0, mnd: 0, spd: 0 };
     // Insert character into Supabase
