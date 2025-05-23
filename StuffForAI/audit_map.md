@@ -10,42 +10,41 @@
 |----------------------------|------------------------------|----------------------------------------------------|
 | CharacterTypes.js          | CharacterTypesServer.js      | Character definitions (client: preview, server: logic) |
 | StatDefinitions.js         | StatDefinitionsServer.js     | Stat formulas (client: preview, server: logic)     |
-| BagManager.js              | BagManagerServer.js          | Inventory/bag logic (client: UI, server: logic)    |
-| ShelfManager.js            | ShelfManagerServer.js        | Shelf/gem logic                                    |
-| TreasureManager.js         | TreasureManagerServer.js     | Treasure logic                                     |
-| PuzzleManager.js           | PuzzleManagerServer.js       | Puzzle/key logic                                   |
-| RoomManager.js             | RoomManagerServer.js         | Room/door logic                                    |
-| ItemManager.js             | ItemManagerServer.js         | Item logic                                         |
-| NPCLootManager.js          | NPCLootManagerServer.js      | NPC loot logic                                     |
-| HintManager.js             | HintManagerServer.js         | Hint logic                                         |
-| LootUIManager.js           | PlayerLootManagerServer.js   | Loot UI (client) vs. loot logic (server)           |
-| CombatVisuals.js           | EncounterManagerServer.js    | Combat visuals (client) vs. combat logic (server)   |
-| socket.js                  | server.js                    | Socket routing (client/server)                     |
-| DungeonScene.js            | EncounterManagerServer.js    | Main UI scene (client) vs. encounter logic (server) |
+| BagManager.js              | BagManagerServer.js          | Inventory/loot UI (client), loot state (server)    |
+| EncounterManager.js        | EncounterManagerServer.js    | Combat/encounter UI (client), logic (server)       |
+| ShelfManager.js            | ShelfManagerServer.js        | Shelf UI (client), shelf logic (server)            |
+| TreasureManager.js         | TreasureManagerServer.js     | Treasure UI (client), logic (server)               |
+| (no client)                | DungeonCore.js               | Living world, server-only                          |
+| socket.js                  | server.js                    | Routing layer (client/server)                      |
 
 ---
 
-## 2. Server-Only Modules
-| Server File                | Purpose/Notes                                      |
-|----------------------------|----------------------------------------------------|
-| DungeonCore.js             | The living world, dungeon state, entity management |
-| PlayerStatsServer.js       | Player stat calculation, modification, and lookup  |
-| SpellManagerServer.js      | Spell logic and resolution                         |
-| RNG.js                     | Deterministic random number generation             |
+## 2. Current Audit Progress
+- 1:1 client-server file structure is solid and being preserved.
+- Logic within each file is being systematically restored to match the original, working system (pre-migration).
+- Unique ID generation is being refactored to remove all `uuid` npm package usage:
+  - Loot bags, items: use timestamp-based IDs (e.g., `bag-${ownerId}-${Date.now()}`)
+  - Dungeon/room/entity: use deterministic `uuidv4` from `server/RNG.js` if needed
+- All server-authoritative flows (join, leave, loot, combat, etc.) are being restored to match the old, working logic.
+- All unnecessary complexity and GPT artifacts are being removed.
 
 ---
 
-## 3. Client-Only Modules
-| Client File                | Purpose/Notes                                      |
-|----------------------------|----------------------------------------------------|
-| DungeonScene.js            | Main Phaser scene, renders world/encounters        |
-| HealthBar.js               | UI health bar                                      |
-| DebugHelper.js             | Debug UI                                           |
-| App.jsx                    | React root, UI flow                                |
+## 3. Known Issues Being Addressed
+- Bad imports/exports (e.g., `playerStatsMap`)
+- Broken or missing logic in migrated files
+- Unneeded complexity and architectural drift
+- Any other GPT-induced errors or logic changes
 
 ---
 
-## 4. Intended Data & Event Flows
+## 4. Next Steps
+- Continue systematic audit and refactor of all modules, updating this map as progress is made.
+- Prioritize restoring the "circulatory system" and server-authoritative design everywhere.
+
+---
+
+## 5. Intended Data & Event Flows
 
 ### Player Join
 1. Client emits join intent via socket.js.
@@ -64,12 +63,19 @@
 
 ---
 
-## 5. Audit Priorities & Next Steps
+## 6. Audit Priorities & Next Steps
 - Audit server.js for relic logic and modularize as needed.
 - Audit PlayerStatsServer.js and DungeonCore.js for correct, centralized logic.
 - Ensure all gameplay logic is server-side and modular.
 - Remove any logic from client that should be server-only.
 - Document any mismatches, broken flows, or missing logic.
+
+---
+
+## 7. Upcoming Refactors for True Dumb Renderer Security
+- All placement/facing/visibility calculations for treasures, shelves, puzzles, etc. will be migrated to the server (e.g., TreasureManagerServer.js) for true server-authoritative rendering.
+- Client managers will become pure renderers, using only server-sent data for display.
+- This is a high-priority security and consistency fix to prevent exploits and desyncs.
 
 ---
 

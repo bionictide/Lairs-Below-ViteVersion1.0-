@@ -9,7 +9,7 @@ import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import { lootItem, markLootBagChecked } from "./BagManagerServer.js";
 import { takeTurn } from "./EncounterManagerServer.js";
-import { buildPlayerStats, playerStatsMap } from './PlayerStatsServer.js';
+import { buildPlayerStats } from './PlayerStatsServer.js';
 import { addPlayerToWorld } from './DungeonCore.js';
 
 const io = new Server();

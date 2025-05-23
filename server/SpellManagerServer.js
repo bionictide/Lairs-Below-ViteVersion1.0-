@@ -1,7 +1,7 @@
 // SpellManagerServer.js
 // Server-authoritative spell resolution
 
-import { getPlayerStatsById } from "./PlayerStatsServer.js";
+// import { getPlayerStatsById } from "./PlayerStatsServer.js";
 
 const spells = {
   "Blizzard": {
@@ -33,13 +33,9 @@ const spells = {
   }
 };
 
-export function castSpell(casterId, spellName, targetId, encounterId) {
+export function castSpell(caster, spellName, target) {
   const spell = spells[spellName];
   if (!spell) return;
-
-  const caster = getPlayerStatsById(casterId);
-  const target = getPlayerStatsById(targetId);
-  if (!caster || !target) return;
 
   if ((caster.gems || 0) < spell.gemCost) return;
 

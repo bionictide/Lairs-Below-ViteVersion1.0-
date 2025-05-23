@@ -1,7 +1,6 @@
 // EncounterManagerServer.js
 // Fully patched with real spell casting logic
 
-import { getPlayerStatsById } from "./PlayerStatsServer.js";
 import { castSpell } from "./SpellManagerServer.js";
 import { createLootBag } from "./BagManagerServer.js";
 import { EVENTS } from "../src/shared/events.js";
@@ -30,38 +29,35 @@ export function takeTurn(encounterId, entityId, action) {
   if (!currentEntity || currentEntity.id !== entityId) return;
 
   if (action.type === "attack") {
+    const attacker = currentEntity;
     const target = encounter.participants.find(p => p.id === action.targetId);
     if (!target) return;
-
-    const attackerStats = getPlayerStatsById(entityId);
-    const targetStats = getPlayerStatsById(action.targetId);
-    const damage = Math.max(0, attackerStats.attack - targetStats.defense);
-    targetStats.hp -= damage;
-
-    if (targetStats.hp <= 0) {
+    const damage = Math.max(0, (attacker.attack || 0) - (target.defense || 0));
+    target.hp = (target.hp || 0) - damage;
+    if (target.hp <= 0) {
       resolveDeath({
         entityId: target.id,
-        killerId: currentEntity.id,
-        killerFacing: currentEntity.facingDirection,
+        killerId: attacker.id,
+        killerFacing: attacker.facingDirection,
         roomId: target.roomId,
-        items: targetStats.inventory || []
+        items: target.inventory || []
       });
     }
   }
 
   if (action.type === "cast") {
-    const result = castSpell(entityId, action.spell, action.targetId, encounterId);
-    if (result?.type === "damage") {
-      const targetStats = getPlayerStatsById(action.targetId);
-      if (targetStats.hp <= 0) {
-        resolveDeath({
-          entityId: action.targetId,
-          killerId: entityId,
-          killerFacing: currentEntity.facingDirection,
-          roomId: targetStats.roomId,
-          items: targetStats.inventory || []
-        });
-      }
+    const attacker = currentEntity;
+    const target = encounter.participants.find(p => p.id === action.targetId);
+    if (!target) return;
+    const result = castSpell(attacker, action.spell, target);
+    if (result?.type === "damage" && target.hp <= 0) {
+      resolveDeath({
+        entityId: target.id,
+        killerId: attacker.id,
+        killerFacing: attacker.facingDirection,
+        roomId: target.roomId,
+        items: target.inventory || []
+      });
     }
   }
 
