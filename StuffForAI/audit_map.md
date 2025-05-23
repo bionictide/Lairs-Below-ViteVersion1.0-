@@ -44,6 +44,7 @@
 | RoomManagerServer      |       ✅         |              ✅               |
 | SpellManagerServer     |       ✅         |              ✅               |
 | GroupManagerServer     |       ⬜         |              ⬜               |  <!-- PVP/Group logic, see design notes; TODO, will implement last unless needed sooner -->
+| PlayerManagerServer    |       ⬜         |              ⬜               |  <!-- Tracks all player state: location, encounter status, group status, playerIDs, buffs, debuffs, resistances, etc. Essential for PVP/group monitoring. TODO: implement as server-authoritative, MM-routed. -->
 | ...                   |                  |                               |
 
 ---
