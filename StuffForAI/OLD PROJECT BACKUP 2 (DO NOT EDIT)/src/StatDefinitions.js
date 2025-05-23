@@ -1,5 +1,6 @@
-// StatDefinitionsServer.js
-// Centralized stat conversion functions for all base stats (server-authoritative).
+// StatDefinitions.js
+// Centralized stat conversion functions for all base stats.
+// Use these functions everywhere you need to convert base stats to derived stats.
 
 // --- Conversion Rates ---
 // VIT: +50 health, +0.5 defense per point
@@ -53,4 +54,4 @@ export function getFleeChanceFromSPD(spd) {
 export const BASE_CRIT_CHANCE = 0.05; // 5% physical crit chance
 export const BASE_CRIT_DAMAGE = 1.5;  // 150% physical crit damage (multiplier)
 export const BASE_CRIT_SPELL_CHANCE = 0.10; // 10% spell crit chance
-export const BASE_CRIT_SPELL_DAMAGE = 2.0;  // 200% spell crit damage (multiplier)
+export const BASE_CRIT_SPELL_DAMAGE = 2.0;  // 200% spell crit damage (multiplier) 

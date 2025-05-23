@@ -1,48 +1,57 @@
 // PlayerStatsServer.js
-// Handles stat construction for players and NPCs
+// Server-authoritative player stats and stat manipulation utilities.
 
-import { getHealthFromVIT, getDefenseFromVIT, getPhysicalAttackFromSTR, getMagicBonusFromINT, getMagicDefenseFromINT, getManaFromMND, getCritSpellBonusFromMND, getFleeChanceFromSPD, getEvasionFromSPD } from './StatDefinitionsServer.js';
-import { CharacterTypes } from './CharacterTypesServer.js';
+import * as StatDefinitions from './StatDefinitionsServer.js';
 
-// Build stats for a player using Supabase profile
-export function buildPlayerStats(playerData) {
-  const stats = playerData.stats || {};
+export class PlayerStats {
+  constructor(baseStats = {}) {
+    this.vit = baseStats.vit || 0;
+    this.str = baseStats.str || 0;
+    this.int = baseStats.int || 0;
+    this.dex = baseStats.dex || 0;
+    this.mnd = baseStats.mnd || 0;
+    this.spd = baseStats.spd || 0;
+    // Derived stats
+    this.health = StatDefinitions.getHealthFromVIT(this.vit);
+    this.defense = StatDefinitions.getDefenseFromVIT(this.vit);
+    this.physicalAttack = StatDefinitions.getPhysicalAttackFromSTR(this.str);
+    this.magicBonus = StatDefinitions.getMagicBonusFromINT(this.int);
+    this.magicDefense = StatDefinitions.getMagicDefenseFromINT(this.int);
+    this.stealBonus = StatDefinitions.getStealBonusFromDEX(this.dex);
+    this.critDamage = StatDefinitions.getCritDamageFromDEX(this.dex);
+    this.mana = StatDefinitions.getManaFromMND(this.mnd);
+    this.critSpellBonus = StatDefinitions.getCritSpellBonusFromMND(this.mnd);
+    this.fleeChance = StatDefinitions.getFleeChanceFromSPD(this.spd);
+  }
 
-  return {
-    ...stats,
-    hp: getHealthFromVIT(stats.vit),
-    def: getDefenseFromVIT(stats.vit),
-    atk: getPhysicalAttackFromSTR(stats.str),
-    magicBonus: getMagicBonusFromINT(stats.int),
-    magicDefense: getMagicDefenseFromINT(stats.int),
-    mana: getManaFromMND(stats.mnd),
-    critSpellBonus: getCritSpellBonusFromMND(stats.mnd),
-    fleeChance: getFleeChanceFromSPD(stats.spd),
-    evasion: getEvasionFromSPD(stats.spd)
-  };
+  // Utility to update derived stats after a change
+  recalculateDerived() {
+    this.health = StatDefinitions.getHealthFromVIT(this.vit);
+    this.defense = StatDefinitions.getDefenseFromVIT(this.vit);
+    this.physicalAttack = StatDefinitions.getPhysicalAttackFromSTR(this.str);
+    this.magicBonus = StatDefinitions.getMagicBonusFromINT(this.int);
+    this.magicDefense = StatDefinitions.getMagicDefenseFromINT(this.int);
+    this.stealBonus = StatDefinitions.getStealBonusFromDEX(this.dex);
+    this.critDamage = StatDefinitions.getCritDamageFromDEX(this.dex);
+    this.mana = StatDefinitions.getManaFromMND(this.mnd);
+    this.critSpellBonus = StatDefinitions.getCritSpellBonusFromMND(this.mnd);
+    this.fleeChance = StatDefinitions.getFleeChanceFromSPD(this.spd);
+  }
+
+  // Clone utility
+  clone() {
+    return new PlayerStats({
+      vit: this.vit,
+      str: this.str,
+      int: this.int,
+      dex: this.dex,
+      mnd: this.mnd,
+      spd: this.spd
+    });
+  }
 }
 
-// Build stats for NPCs using CharacterTypes
-export function buildNPCStats(type) {
-  const base = CharacterTypes[type]?.stats;
-  if (!base) return null;
-
-  return {
-    ...base,
-    hp: getHealthFromVIT(base.vit),
-    def: getDefenseFromVIT(base.vit),
-    atk: getPhysicalAttackFromSTR(base.str),
-    magicBonus: getMagicBonusFromINT(base.int),
-    magicDefense: getMagicDefenseFromINT(base.int),
-    mana: getManaFromMND(base.mnd),
-    critSpellBonus: getCritSpellBonusFromMND(base.mnd),
-    fleeChance: getFleeChanceFromSPD(base.spd),
-    evasion: getEvasionFromSPD(base.spd)
-  };
-}
-
-// TEMP: Stub for getPlayerStatsById to resolve import error
-export function getPlayerStatsById(id) {
-  // TODO: Implement this to fetch player stats by ID from your server state
-  return null;
+// Utility to create a PlayerStats from a character definition
+export function createStatsFromDefinition(def) {
+  return new PlayerStats(def.stats);
 }
