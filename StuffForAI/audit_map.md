@@ -1,5 +1,11 @@
 # Project Audit Map & Architecture Reference
 
+## Audit Status (as of latest pass)
+- All core files from the OLD backup have been fully read, audited, and assimilated into the new system.
+- All client files are pure renderers/intent emitters (no game logic or state mutation).
+- All server logic is routed through ManagerManager (MM) for traceability and modularity.
+- The audit is up to date except for GroupManagerServer (PVP/Group logic, to be done last).
+
 ## Golden Rule
 > This game is one giant circulatory system, not a collection of individual files. Everything is connected and must function as one unit.
 
@@ -36,6 +42,8 @@
 | ItemManagerServer      |       ✅         |              ✅               |
 | StatDefinitionsServer  |       ✅         |              ✅               |
 | RoomManagerServer      |       ✅         |              ✅               |
+| SpellManagerServer     |       ✅         |              ✅               |
+| GroupManagerServer     |       ⬜         |              ⬜               |  <!-- PVP/Group logic, see design notes; TODO, will implement last unless needed sooner -->
 | ...                   |                  |                               |
 
 ---
@@ -53,6 +61,7 @@
 
 ## 4. Next Steps
 - Continue systematic audit and refactor of all modules, updating this map as progress is made.
+- - GroupManagerServer (PVP/Group logic) will be implemented last unless dependencies require it sooner.
 - Prioritize restoring the "circulatory system" and server-authoritative design everywhere.
 
 ---

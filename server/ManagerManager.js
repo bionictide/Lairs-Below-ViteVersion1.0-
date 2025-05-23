@@ -18,6 +18,7 @@ import { PlayerStats, createStatsFromDefinition } from './PlayerStatsServer.js';
 import * as CharacterTypesServer from './CharacterTypesServer.js';
 import * as StatDefinitionsServer from './StatDefinitionsServer.js';
 import RoomManagerServer from './RoomManagerServer.js';
+import * as SpellManagerServer from './SpellManagerServer.js';
 
 const hintManagerServerInstance = new HintManagerServer(global.io || undefined);
 const npcLootManagerServerInstance = new NPCLootManagerServer(global.io || undefined, global.players || undefined, global.bags || undefined, global.dungeon || undefined);
@@ -361,6 +362,14 @@ export class ManagerManager {
   static findRoomBy(prop, value) {
     console.log('[ManagerManager] findRoomBy', prop, value);
     return RoomManagerServer.findRoomBy(prop, value);
+  }
+
+  /**
+   * SpellManager delegation
+   */
+  static castSpell(caster, spellName, target) {
+    console.log('[ManagerManager] castSpell', caster, spellName, target);
+    return SpellManagerServer.castSpell(caster, spellName, target);
   }
 
   // Add more methods as needed, always delegating and logging.
