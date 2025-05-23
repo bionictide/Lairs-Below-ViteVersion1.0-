@@ -14,27 +14,40 @@
 | EncounterManager.js        | EncounterManagerServer.js    | Combat/encounter UI (client), logic (server)       |
 | ShelfManager.js            | ShelfManagerServer.js        | Shelf UI (client), shelf logic (server)            |
 | TreasureManager.js         | TreasureManagerServer.js     | Treasure UI (client), logic (server)               |
-| (no client)                | DungeonCore.js               | Living world, server-only                          |
+| PuzzleManager.js           | PuzzleManagerServer.js       | Puzzle UI (client), logic (server)                 |
+| HintManager.js             | HintManagerServer.js         | Hint UI (client), hint logic (server)              |
+| NPCLootManager.js          | NPCLootManagerServer.js      | NPC loot UI (client), loot logic (server)          |
+| ItemManager.js             | ItemManagerServer.js         | Item UI (client), item logic (server)              |
+| (no client)                | DungeonCore.js               | Living world, server-only (✅ deterministic RNG, fully audited) |
 | socket.js                  | server.js                    | Routing layer (client/server)                      |
 
 ---
 
-## 2. Current Audit Progress
+## 2. MM Registration & Routing Checklist
+| Manager                | Registered in MM | All Server Logic Routed via MM |
+|------------------------|:----------------:|:-----------------------------:|
+| BagManagerServer       |       ✅         |              ✅               |
+| EncounterManagerServer |       ✅         |              ✅               |
+| ShelfManagerServer     |       ✅         |              ✅               |
+| TreasureManagerServer  |       ✅         |              ✅               |
+| PuzzleManagerServer    |       ✅         |              ✅               |
+| HintManagerServer      |       ✅         |              ✅               |
+| NPCLootManagerServer   |       ✅         |              ✅               |
+| ItemManagerServer      |       ✅         |              ✅               |
+| StatDefinitionsServer  |       ✅         |              ✅               |
+| RoomManagerServer      |       ✅         |              ✅               |
+| ...                   |                  |                               |
+
+---
+
+## 3. Current Audit Progress
 - 1:1 client-server file structure is solid and being preserved.
-- Logic within each file is being systematically restored to match the original, working system (pre-migration).
+- Logic within each file is being systematically restored to match the original, working system (pre-migration). DungeonCore now uses deterministic RNG/uuid and is fully server-authoritative.
 - Unique ID generation is being refactored to remove all `uuid` npm package usage:
   - Loot bags, items: use timestamp-based IDs (e.g., `bag-${ownerId}-${Date.now()}`)
   - Dungeon/room/entity: use deterministic `uuidv4` from `server/RNG.js` if needed
 - All server-authoritative flows (join, leave, loot, combat, etc.) are being restored to match the old, working logic.
 - All unnecessary complexity and GPT artifacts are being removed.
-
----
-
-## 3. Known Issues Being Addressed
-- Bad imports/exports (e.g., `playerStatsMap`)
-- Broken or missing logic in migrated files
-- Unneeded complexity and architectural drift
-- Any other GPT-induced errors or logic changes
 
 ---
 

@@ -1,4 +1,4 @@
-import Phaser from 'phaser';
+import { createRNG, shuffle, uuidv4 } from './RNG.js';
 
 export class DungeonCore {
   constructor() {
@@ -15,10 +15,14 @@ export class DungeonCore {
       medium: 150,
       large: 200
     };
+    this.seed = null;
+    this.rng = null;
   }
 
-  generateDungeon(playerCount) {
+  generateDungeon(playerCount, seed = Date.now()) {
     this.playerCount = playerCount;
+    this.seed = seed;
+    this.rng = createRNG(seed);
     this.dungeonGrid = [];
     this.roomList = [];
     const targetRooms = this.getTargetRoomCount();
@@ -32,9 +36,11 @@ export class DungeonCore {
     };
   }
 
-  rearrangeDungeon(playerCount) {
+  rearrangeDungeon(playerCount, seed = this.seed) {
     if (Date.now() - this.lastRearrangeTime < this.minRearrangeInterval) return false;
     this.playerCount = playerCount;
+    this.seed = seed;
+    this.rng = createRNG(seed);
     this.dungeonGrid = [];
     this.roomList.forEach(room => {
       room.doors = [];
@@ -64,7 +70,7 @@ export class DungeonCore {
       const x = Math.floor(i % maxGridSize);
       const y = Math.floor(i / maxGridSize);
       const room = {
-        id: `room-${Phaser.Math.RND.uuid()}`,
+        id: uuidv4(this.rng),
         x,
         y,
         doors: [],
@@ -104,6 +110,26 @@ export class DungeonCore {
     });
   }
 
+  getUnvisitedNeighbors(room, visited) {
+    return this.roomList.filter(r => !visited.has(r.id) && Math.abs(r.x - room.x) + Math.abs(r.y - room.y) === 1 && r !== room);
+  }
+
+  connectRooms(room1, room2) {
+    if (!room1.doors.includes(room2.id)) room1.doors.push(room2.id);
+    if (!room2.doors.includes(room1.id)) room2.doors.push(room1.id);
+  }
+
+  selectHubs() {
+    const hubs = [];
+    const minDistance = 3;
+    while (hubs.length < this.hubCount) {
+      const room = this.roomList[Math.floor(this.rng() * this.roomList.length)];
+      const isFarEnough = hubs.every(h => Math.hypot(h.x - room.x, h.y - room.y) > minDistance);
+      if (isFarEnough) hubs.push(room);
+    }
+    return hubs;
+  }
+
   generateComplexDungeon() {
     const stack = [];
     const visited = new Set();
@@ -128,9 +154,9 @@ export class DungeonCore {
         continue;
       }
       const hubNeighbors = neighbors.filter(r => r.isHub);
-      const next = hubNeighbors.length > 0 && Math.random() < 0.5
-        ? hubNeighbors[Math.floor(Math.random() * hubNeighbors.length)]
-        : neighbors[Math.floor(Math.random() * neighbors.length)];
+      const next = hubNeighbors.length > 0 && this.rng() < 0.5
+        ? hubNeighbors[Math.floor(this.rng() * hubNeighbors.length)]
+        : neighbors[Math.floor(this.rng() * neighbors.length)];
       this.connectRooms(current, next);
       visited.add(next.id);
       next.visited = true;
@@ -162,33 +188,13 @@ export class DungeonCore {
     this.ensureExits();
   }
 
-  selectHubs() {
-    const hubs = [];
-    const minDistance = 3;
-    while (hubs.length < this.hubCount) {
-      const room = this.roomList[Math.floor(Math.random() * this.roomList.length)];
-      const isFarEnough = hubs.every(h => Math.hypot(h.x - room.x, h.y - room.y) > minDistance);
-      if (isFarEnough) hubs.push(room);
-    }
-    return hubs;
-  }
-
-  getUnvisitedNeighbors(room, visited) {
-    return this.roomList.filter(r => !visited.has(r.id) && Math.abs(r.x - room.x) + Math.abs(r.y - room.y) === 1 && r !== room);
-  }
-
-  connectRooms(room1, room2) {
-    if (!room1.doors.includes(room2.id)) room1.doors.push(room2.id);
-    if (!room2.doors.includes(room1.id)) room2.doors.push(room1.id);
-  }
-
   addLoops(probability) {
     let cyclesAdded = 0;
     this.roomList.forEach(room => {
       if (room.doors.length >= 3 || room.isDeadEnd) return;
       const nearby = this.roomList.filter(r => Math.abs(r.x - room.x) + Math.abs(r.y - room.y) === 1 && r !== room && !room.doors.includes(r.id) && r.doors.length < 3 && !r.isDeadEnd);
       nearby.forEach(target => {
-        if (Math.random() < probability) {
+        if (this.rng() < probability) {
           this.connectRooms(room, target);
           cyclesAdded++;
         }
@@ -230,20 +236,20 @@ export class DungeonCore {
   }
 
   assignPlaceholders() {
-    const puzzleCount = 0, treasureCount = 0, hintCount = 0;
+    let puzzleCount = 0, treasureCount = 0, hintCount = 0;
     const eligibleItemRooms = this.roomList.filter(r => r.doors.length > 0 && r.doors.length < 4);
-    const shelfEmptyRooms = Phaser.Utils.Array.Shuffle([...eligibleItemRooms]).slice(0, 20);
-    const shelf2EmptyRooms = Phaser.Utils.Array.Shuffle([...eligibleItemRooms]).slice(0, 20);
+    const shelfEmptyRooms = shuffle([...eligibleItemRooms], this.rng).slice(0, 20);
+    const shelf2EmptyRooms = shuffle([...eligibleItemRooms], this.rng).slice(0, 20);
     const uniqueShelf2Rooms = shelf2EmptyRooms.filter(r2 => !shelfEmptyRooms.some(r1 => r1.id === r2.id));
     if (uniqueShelf2Rooms.length < 20) {
-      const additionalRooms = Phaser.Utils.Array.Shuffle([...eligibleItemRooms]).filter(r => !shelfEmptyRooms.some(r1 => r1.id === r.id) && !uniqueShelf2Rooms.some(r2 => r2.id === r.id)).slice(0, 20 - uniqueShelf2Rooms.length);
+      const additionalRooms = shuffle([...eligibleItemRooms], this.rng).filter(r => !shelfEmptyRooms.some(r1 => r1.id === r.id) && !uniqueShelf2Rooms.some(r2 => r2.id === r.id)).slice(0, 20 - uniqueShelf2Rooms.length);
       uniqueShelf2Rooms.push(...additionalRooms);
     }
     this.roomList.forEach(room => {
       room.encounterChance = room.isHub ? 0.5 : 0.2;
-      if (Math.random() < room.encounterChance) {
+      if (this.rng() < room.encounterChance) {
         const types = ['elvaan', 'dwarf', 'gnome', 'bat'];
-        room.encounterType = types[Math.floor(Math.random() * types.length)];
+        room.encounterType = types[Math.floor(this.rng() * types.length)];
       }
       room.hasShelfEmpty = false;
       room.hasShelf2Empty = false;
@@ -253,27 +259,33 @@ export class DungeonCore {
     shelfEmptyRooms.forEach(room => { room.hasShelfEmpty = true; });
     uniqueShelf2Rooms.forEach(room => { room.hasShelf2Empty = true; });
     const gemTypes = ['ShelfBlueApatite', 'ShelfEmerald', 'ShelfAmethyst', 'ShelfRawRuby'];
-    const gemRooms = Phaser.Utils.Array.Shuffle([...shelfEmptyRooms]).slice(0, 2);
-    gemRooms.forEach(room => { room.gemType = gemTypes[Math.floor(Math.random() * gemTypes.length)]; });
-    const potionRooms = Phaser.Utils.Array.Shuffle([...uniqueShelf2Rooms]).slice(0, 12);
+    const gemRooms = shuffle([...shelfEmptyRooms], this.rng).slice(0, 2);
+    gemRooms.forEach(room => {
+      const randomGemType = gemTypes[Math.floor(this.rng() * gemTypes.length)];
+      room.gemType = randomGemType;
+    });
+    const potionRooms = shuffle([...uniqueShelf2Rooms], this.rng).slice(0, 12);
     potionRooms.forEach(room => { room.hasPotion = true; });
-    Phaser.Utils.Array.Shuffle(eligibleItemRooms).slice(0, 10).forEach(room => {
-      if (Math.random() < 0.7) {
+    shuffle([...eligibleItemRooms], this.rng).slice(0, 10).forEach(room => {
+      if (puzzleCount < 10 && this.rng() < 0.7) {
         room.puzzleType = 'key';
+        puzzleCount++;
       }
     });
-    Phaser.Utils.Array.Shuffle(eligibleItemRooms).slice(0, 15).forEach(room => {
-      if (Math.random() < 0.9) {
-        room.treasureLevel = Math.random() < 0.5 ? 'sword1' : 'helm1';
+    shuffle([...eligibleItemRooms], this.rng).slice(0, 15).forEach(room => {
+      if (treasureCount < 15 && this.rng() < 0.9) {
+        room.treasureLevel = this.rng() < 0.5 ? 'sword1' : 'helm1';
+        treasureCount++;
       }
     });
-    Phaser.Utils.Array.Shuffle(eligibleItemRooms).slice(0, 10).forEach(room => {
-      if (room.doors.length === 1 && Math.random() < 0.5) {
+    shuffle([...eligibleItemRooms], this.rng).slice(0, 10).forEach(room => {
+      if (hintCount < 10 && room.doors.length === 1 && this.rng() < 0.5) {
         const treasureRoom = this.roomList.find(r => r.treasureLevel);
         if (treasureRoom) {
           const dx = Math.round(treasureRoom.x - room.x);
           const dy = Math.round(treasureRoom.y - room.y);
           room.hintContent = `${Math.abs(dx)} ${dx >= 0 ? 'east' : 'west'}, ${Math.abs(dy)} ${dy >= 0 ? 'south' : 'north'}: ${treasureRoom.treasureLevel}`;
+          hintCount++;
         }
       }
     });
