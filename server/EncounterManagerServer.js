@@ -1,89 +1,66 @@
 // EncounterManagerServer.js
-// Fully patched with real spell casting logic
+// Server-authoritative encounter and combat management.
 
-import { castSpell } from "./SpellManagerServer.js";
-import { createLootBag } from "./BagManagerServer.js";
-import { EVENTS } from "../src/shared/events.js";
+export class EncounterManager {
+  constructor() {
+    this.encounters = new Map(); // encounterId -> encounter object
+  }
 
-const activeEncounters = {};
+  createEncounter(encounter) {
+    if (!encounter.id) throw new Error('Encounter must have an id');
+    this.encounters.set(encounter.id, encounter);
+  }
 
-export function startEncounter(encounterId, participants) {
-  activeEncounters[encounterId] = {
-    participants: [...participants],
-    currentTurnIndex: 0,
-    state: "active"
-  };
-}
+  getEncounter(encounterId) {
+    return this.encounters.get(encounterId) || null;
+  }
 
-export function getCurrentEntity(encounterId) {
-  const encounter = activeEncounters[encounterId];
-  if (!encounter) return null;
-  return encounter.participants[encounter.currentTurnIndex];
-}
+  getAllEncounters() {
+    return Array.from(this.encounters.values());
+  }
 
-export function takeTurn(encounterId, entityId, action) {
-  const encounter = activeEncounters[encounterId];
-  if (!encounter || encounter.state !== "active") return;
+  removeEncounter(encounterId) {
+    this.encounters.delete(encounterId);
+  }
 
-  const currentEntity = getCurrentEntity(encounterId);
-  if (!currentEntity || currentEntity.id !== entityId) return;
+  addParticipant(encounterId, playerId) {
+    const encounter = this.getEncounter(encounterId);
+    if (!encounter) throw new Error(`Encounter ${encounterId} not found`);
+    if (!encounter.participants) encounter.participants = new Set();
+    encounter.participants.add(playerId);
+  }
 
-  if (action.type === "attack") {
-    const attacker = currentEntity;
-    const target = encounter.participants.find(p => p.id === action.targetId);
-    if (!target) return;
-    const damage = Math.max(0, (attacker.attack || 0) - (target.defense || 0));
-    target.hp = (target.hp || 0) - damage;
-    if (target.hp <= 0) {
-      resolveDeath({
-        entityId: target.id,
-        killerId: attacker.id,
-        killerFacing: attacker.facingDirection,
-        roomId: target.roomId,
-        items: target.inventory || []
-      });
+  removeParticipant(encounterId, playerId) {
+    const encounter = this.getEncounter(encounterId);
+    if (encounter && encounter.participants) {
+      encounter.participants.delete(playerId);
     }
   }
 
-  if (action.type === "cast") {
-    const attacker = currentEntity;
-    const target = encounter.participants.find(p => p.id === action.targetId);
-    if (!target) return;
-    const result = castSpell(attacker, action.spell, target);
-    if (result?.type === "damage" && target.hp <= 0) {
-      resolveDeath({
-        entityId: target.id,
-        killerId: attacker.id,
-        killerFacing: attacker.facingDirection,
-        roomId: target.roomId,
-        items: target.inventory || []
-      });
+  getParticipants(encounterId) {
+    const encounter = this.getEncounter(encounterId);
+    return encounter && encounter.participants ? Array.from(encounter.participants) : [];
+  }
+
+  setEncounterState(encounterId, state) {
+    const encounter = this.getEncounter(encounterId);
+    if (encounter) {
+      encounter.state = state;
     }
   }
 
-  encounter.currentTurnIndex = (encounter.currentTurnIndex + 1) % encounter.participants.length;
-}
+  getEncounterState(encounterId) {
+    const encounter = this.getEncounter(encounterId);
+    return encounter ? encounter.state : null;
+  }
 
-export function resolveDeath({ entityId, killerId, killerFacing, roomId, items }) {
-  for (const [encounterId, encounter] of Object.entries(activeEncounters)) {
-    const index = encounter.participants.findIndex(p => p.id === entityId);
-    if (index !== -1) {
-      encounter.participants.splice(index, 1);
-
-      if (items && items.length > 0) {
-        createLootBag({
-          ownerId: entityId,
-          roomId,
-          facingDirection: killerFacing,
-          items
-        });
-      }
-
-      if (encounter.participants.length <= 1) {
-        delete activeEncounters[encounterId];
-      }
-
-      break;
+  // Utility: Find encounter by property
+  findEncounterBy(prop, value) {
+    for (const encounter of this.encounters.values()) {
+      if (encounter[prop] === value) return encounter;
     }
+    return null;
   }
 }
+
+export default new EncounterManager();
