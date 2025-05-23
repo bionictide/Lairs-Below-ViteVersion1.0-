@@ -2,12 +2,12 @@
 // Handles creation, sync, and lifecycle of loot bags
 
 import { EVENTS } from "../src/shared/events.js";
-import { v4 as uuidv4 } from "uuid";
 
 const lootBags = {};
 
 export function createLootBag({ ownerId, roomId, facingDirection, items }) {
-  const bagId = uuidv4();
+  // Use timestamp-based ID for both player and entity loot bags
+  const bagId = `bag-${ownerId}-${Date.now()}`;
   lootBags[bagId] = {
     bagId,
     ownerId, // playerId or entityId
