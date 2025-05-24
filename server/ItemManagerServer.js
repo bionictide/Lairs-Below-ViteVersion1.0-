@@ -1,13 +1,21 @@
 // Handles item effects and inventory assignment (server-side only)
 export class ItemManagerServer {
-  static useItem(player, item) {
-    if (!player || !item) return;
-
-    if (item.type === "heal") {
-      player.stats.health += item.amount || 10;
+  static itemEffects = {
+    'Potion1(red)': {
+      type: 'healing',
+      amount: 150
     }
+    // Add more items/effects as needed
+  };
 
-    // Future: handle buffs, debuffs, etc.
+  static useItem(playerStats, itemInstance) {
+    if (!playerStats || !itemInstance) return;
+    const effect = ItemManagerServer.itemEffects[itemInstance.itemKey];
+    if (!effect) return;
+    if (effect.type === 'healing') {
+      return playerStats.applyHealing(effect.amount);
+    }
+    // Add more effect types as needed
   }
 
   static canPlaceItemInGrid(inventoryGrid, item) {
