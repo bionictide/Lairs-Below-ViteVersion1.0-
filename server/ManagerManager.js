@@ -19,6 +19,7 @@ import * as CharacterTypesServer from './CharacterTypesServer.js';
 import * as StatDefinitionsServer from './StatDefinitionsServer.js';
 import RoomManagerServer from './RoomManagerServer.js';
 import * as SpellManagerServer from './SpellManagerServer.js';
+import { CharacterSprites } from './CharacterSpritesServer.js';
 
 const hintManagerServerInstance = new HintManagerServer(global.io || undefined);
 const npcLootManagerServerInstance = new NPCLootManagerServer(global.io || undefined, global.players || undefined, global.bags || undefined, global.dungeon || undefined);
@@ -370,6 +371,19 @@ export class ManagerManager {
   static castSpell(caster, spellName, target) {
     console.log('[ManagerManager] castSpell', caster, spellName, target);
     return SpellManagerServer.castSpell(caster, spellName, target);
+  }
+
+  /**
+   * Get the sprite filename for a character type and mood (idle/angry).
+   * @param {string} type - Character type key (e.g., 'Dwarf', 'Gnome', 'BatMonster', etc.)
+   * @param {string} [mood='idle'] - Mood/state ('idle' or 'angry').
+   * @returns {string|null} - Sprite filename or null if not found.
+   */
+  static getCharacterSprite(type, mood = 'idle') {
+    const sprites = CharacterSprites[type];
+    const sprite = sprites ? sprites[mood] : null;
+    console.log(`[ManagerManager] getCharacterSprite(${type}, ${mood}) -> ${sprite}`);
+    return sprite;
   }
 
   // Add more methods as needed, always delegating and logging.
