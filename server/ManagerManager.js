@@ -168,6 +168,10 @@ export class ManagerManager {
     console.log('[ManagerManager] removeItemFromShelf', roomId, facingDirection, itemId);
     return ShelfManagerServer.removeItemFromShelf(roomId, facingDirection, itemId);
   }
+  static handleShelfPickup(io, socket, data) {
+    console.log('[ManagerManager] handleShelfPickup', data);
+    return ShelfManagerServer.handleShelfPickup(io, socket, data);
+  }
 
   /**
    * Treasure delegation
@@ -184,6 +188,10 @@ export class ManagerManager {
     console.log('[ManagerManager] removeItemFromTreasure', roomId, facingDirection, itemId);
     return TreasureManagerServer.removeItemFromTreasure(roomId, facingDirection, itemId);
   }
+  static handleTreasurePickup(io, socket, data) {
+    console.log('[ManagerManager] handleTreasurePickup', data);
+    return TreasureManagerServer.handleTreasurePickup(io, socket, data);
+  }
 
   /**
    * Puzzle delegation
@@ -199,6 +207,10 @@ export class ManagerManager {
   static handlePuzzleAttempt(socket, data) {
     console.log('[ManagerManager] handlePuzzleAttempt', data);
     return PuzzleManagerServer.handlePuzzleAttempt(socket, data);
+  }
+  static handlePuzzlePickup(io, socket, data) {
+    console.log('[ManagerManager] handlePuzzlePickup', data);
+    return PuzzleManagerServer.handlePuzzlePickup(io, socket, data);
   }
 
   /**
@@ -419,6 +431,11 @@ export class ManagerManager {
       return;
     }
     // No dungeon change needed
+  }
+
+  static getLootForTier(tierName) {
+    console.log('[ManagerManager] getLootForTier', tierName);
+    return NPCLootManagerServer.getLootForTier(tierName);
   }
 
   // Add more methods as needed, always delegating and logging.

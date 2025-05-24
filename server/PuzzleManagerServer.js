@@ -2,6 +2,7 @@
 // Server-authoritative puzzle state and validation logic
 
 import { EVENTS } from "../src/shared/events.js";
+import DungeonCore from "./DungeonCore.js";
 
 const puzzles = {};
 
@@ -29,4 +30,19 @@ export function handlePuzzleAttempt(socket, data) {
   } else {
     socket.emit(EVENTS.PUZZLE_FAILED, { puzzleId });
   }
+}
+
+// --- Key Pickup Logic (room-based puzzles) ---
+export function handlePuzzlePickup(io, socket, data) {
+  const { playerId, roomId, itemKey } = data;
+  // Validate room and puzzle
+  const room = DungeonCore.getRoomById(roomId);
+  if (!room || room.puzzleType !== 'key') return socket.emit(EVENTS.ERROR, { message: 'No key puzzle in this room.' });
+  // Remove the key from the room
+  room.puzzleType = null;
+  // Notify all clients to remove the key sprite
+  io.emit('PUZZLE_UPDATE', { roomId });
+  // Optionally: grant the key to the player (inventory logic)
+  // ...
+  return true;
 }
