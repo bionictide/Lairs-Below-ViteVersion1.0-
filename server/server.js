@@ -14,6 +14,9 @@ import { ManagerManager } from './ManagerManager.js';
 
 const io = new Server();
 
+let previousPlayerCount = 0;
+let currentPlayerCount = 0;
+
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
 
@@ -76,6 +79,9 @@ io.on("connection", (socket) => {
       });
       // Notify others
       socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
+      previousPlayerCount = currentPlayerCount;
+      currentPlayerCount = players.size;
+      ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
     } catch (err) {
       socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
       return;
@@ -100,6 +106,9 @@ io.on("connection", (socket) => {
       rooms.clear();
       bags.clear();
     }
+    previousPlayerCount = currentPlayerCount;
+    currentPlayerCount = players.size;
+    ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
   });
 
   // Additional connections (player join/leave, room sync, etc.) would route here too

@@ -386,5 +386,40 @@ export class ManagerManager {
     return sprite;
   }
 
+  /**
+   * Handle player count changes and manage dungeon resizing/regeneration.
+   * @param {number} newCount
+   * @param {number} prevCount
+   */
+  static handlePlayerCountChange(newCount, prevCount) {
+    console.log(`[ManagerManager] handlePlayerCountChange: prev=${prevCount}, new=${newCount}`);
+    if (prevCount > 0 && newCount === 0) {
+      console.log('[ManagerManager] All players left. Regenerating dungeon.');
+      DungeonCore.generateDungeon(0);
+      return;
+    }
+    if (prevCount < 6 && newCount === 6) {
+      console.log('[ManagerManager] Player count increased to 6. Expanding dungeon.');
+      DungeonCore.rearrangeDungeon(6);
+      return;
+    }
+    if (prevCount < 11 && newCount === 11) {
+      console.log('[ManagerManager] Player count increased to 11. Expanding dungeon.');
+      DungeonCore.rearrangeDungeon(11);
+      return;
+    }
+    if (prevCount > 6 && newCount === 6) {
+      console.log('[ManagerManager] Player count decreased to 6. Shrinking dungeon.');
+      DungeonCore.rearrangeDungeon(6);
+      return;
+    }
+    if (prevCount > 1 && newCount === 1) {
+      console.log('[ManagerManager] Player count decreased to 1. Shrinking dungeon.');
+      DungeonCore.rearrangeDungeon(1);
+      return;
+    }
+    // No dungeon change needed
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 
