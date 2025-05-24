@@ -69,4 +69,12 @@ export default class DungeonScene extends Phaser.Scene {
     console.log(`[DEBUG] Room ${this.player.roomId}: doors=${doors}, asset=${asset}`);
     this.bagManager.createToggleButton(20, 20);
   }
+
+  getSpriteForEntity(entityId) {
+    const sprite = this.entitySprites && this.entitySprites.get ? this.entitySprites.get(entityId) : null;
+    if (!sprite) {
+      console.warn(`[DungeonScene] getSpriteForEntity: Sprite not found for entityId: ${entityId}`);
+    }
+    return sprite || null;
+  }
 }

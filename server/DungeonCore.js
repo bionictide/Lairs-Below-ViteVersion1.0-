@@ -285,6 +285,21 @@ export class DungeonCore {
           const dx = Math.round(treasureRoom.x - room.x);
           const dy = Math.round(treasureRoom.y - room.y);
           room.hintContent = `${Math.abs(dx)} ${dx >= 0 ? 'east' : 'west'}, ${Math.abs(dy)} ${dy >= 0 ? 'south' : 'north'}: ${treasureRoom.treasureLevel}`;
+          const directions = ['north', 'east', 'south', 'west'];
+          const directionVectors = { north: [0, -1], east: [1, 0], south: [0, 1], west: [-1, 0] };
+          const eligibleDirections = directions.filter(dir => {
+            const [dx, dy] = directionVectors[dir];
+            const neighbor = this.roomList.find(r2 => r2.x === room.x + dx && r2.y === room.y + dy);
+            return !neighbor || !room.doors.includes(neighbor.id);
+          });
+          let hintFacing = 'north';
+          if (eligibleDirections.length > 0) {
+            const roomIdSum = room.id.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+            hintFacing = eligibleDirections[(roomIdSum * 3) % eligibleDirections.length];
+          }
+          if (typeof global.HintManagerServer !== 'undefined') {
+            global.HintManagerServer.initializeHint(room.id, room.hintContent, hintFacing);
+          }
           hintCount++;
         }
       }
