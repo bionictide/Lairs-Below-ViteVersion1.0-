@@ -5,8 +5,8 @@ import PlayerManagerServer from './PlayerManagerServer.js';
 import GroupManagerServer from './GroupManagerServer.js';
 import ManagerManager from './ManagerManager.js';
 import { getCharacterDefinition } from './CharacterTypesServer.js';
-import SpellManagerServer from './SpellManagerServer.js';
-import { getHealthFromVIT, getDefenseFromVIT } from './StatDefinitionsServer.js';
+import * as SpellManagerServer from './SpellManagerServer.js';
+import * as StatDefinitionsServer from './StatDefinitionsServer.js';
 
 class EncounterManagerServer {
   constructor() {
@@ -65,7 +65,7 @@ class EncounterManagerServer {
         if (def && def.stats) {
           encounter.npcs[entityId] = {
             statBlock: { ...def.stats },
-            health: getHealthFromVIT(def.stats.vit),
+            health: StatDefinitionsServer.getHealthFromVIT(def.stats.vit),
             // Add other derived stats as needed
           };
         }
@@ -138,7 +138,7 @@ class EncounterManagerServer {
       }
       if (!attacker || !defender) return;
       let attackValue = attacker.playerStats.getPhysicalDamage();
-      let defenseValue = isNpc ? getDefenseFromVIT(defender.statBlock.vit) : defender.playerStats.getDefenseRating();
+      let defenseValue = isNpc ? StatDefinitionsServer.getDefenseFromVIT(defender.statBlock.vit) : defender.playerStats.getDefenseRating();
       let mitigation = 1.0 - defenseValue;
       let finalDamage = Math.max(0, Math.floor(attackValue * mitigation));
       if (isNpc) {
@@ -209,7 +209,7 @@ class EncounterManagerServer {
         if (!caster || !target) return;
         if (isNpc) {
           const spellResult = SpellManagerServer.resolveSpellCast(actorId, targetId, spellName);
-          let defenseValue = getDefenseFromVIT(target.statBlock.vit);
+          let defenseValue = StatDefinitionsServer.getDefenseFromVIT(target.statBlock.vit);
           let mitigation = 1.0 - defenseValue;
           let finalDamage = Math.max(0, Math.floor(spellResult.damage * mitigation));
           const prevHealth = target.health;
