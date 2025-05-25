@@ -107,15 +107,14 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
-      // Proceed directly to fetching player data from Supabase
-      // Fetch and validate player data from Supabase
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
-        headers: {
-          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-          apikey: SUPABASE_SERVICE_KEY,
-          Accept: 'application/json',
-        },
-      });
+      const fetchUrl = `${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`;
+      const fetchHeaders = {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        Accept: 'application/json',
+      };
+      console.log('[PLAYER_JOIN] Fetching from Supabase:', fetchUrl, fetchHeaders);
+      const res = await fetch(fetchUrl, { headers: fetchHeaders });
       if (res.status !== 200) {
         console.error('[PLAYER_JOIN] Failed to fetch player data:', res.status);
         socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
@@ -137,7 +136,6 @@ io.on("connection", (socket) => {
           return;
         }
       }
-      // Inject player as new entity into dungeon
       players.set(playerId, {
         socket,
         character,
@@ -147,16 +145,13 @@ io.on("connection", (socket) => {
         alive: true,
       });
       console.log('[PLAYER_JOIN] Player inserted into players map:', playerId);
-      // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
       console.log('[PLAYER_JOIN] Assigned spawn room:', spawnRoom.id);
-      // Add player to room
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
-      // Send current world state and spawn info to client
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
         success: true,
@@ -169,7 +164,6 @@ io.on("connection", (socket) => {
         },
       });
       console.log('[PLAYER_JOIN] Sent ACTION_RESULT to client for player:', playerId);
-      // Notify others
       socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
       previousPlayerCount = currentPlayerCount;
       currentPlayerCount = players.size;
