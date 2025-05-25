@@ -5,7 +5,7 @@
 
 let socket = null;
 
-export function connectSocket(token) {
+export function connectSocket(token, onError) {
   if (socket) {
     socket.disconnect();
     socket = null;
@@ -14,6 +14,11 @@ export function connectSocket(token) {
   // Connect to the live server with JWT auth (use remote server address, not window.location.origin)
   socket = window.io('http://64.227.97.242:3001', {
     auth: { token }
+  });
+  // Add connect_error handler
+  socket.on('connect_error', (err) => {
+    console.error('[SOCKET] connect_error:', err);
+    if (onError) onError(err);
   });
   return socket;
 }

@@ -1104,7 +1104,11 @@ function App() {
         return;
       }
       const token = data.session.access_token;
-      const sock = connectSocket(token);
+      console.log('[DEBUG] JWT token for join:', token);
+      const sock = connectSocket(token, (err) => {
+        setConnectionError(true);
+        console.error('[SOCKET] connect_error:', err);
+      });
       window.socket = sock;
 
       // Wire up notifications
