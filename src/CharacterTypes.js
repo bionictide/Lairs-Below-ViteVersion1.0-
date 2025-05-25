@@ -9,7 +9,7 @@ export const characterDefinitions = {
     abilities: ["Bash"],
     lootTier: "Rare",
     playable: true,
-    sprite: "dwarf_sprite.png"
+    sprite: "Dwarf1.png"
   },
   Gnome: {
     name: "Gnome",
@@ -18,7 +18,7 @@ export const characterDefinitions = {
     abilities: ["Steal"],
     lootTier: "Uncommon",
     playable: true,
-    sprite: "gnome_sprite.png"
+    sprite: "Gnome1.png"
   },
   Elvaan: {
     name: "Elvaan",
@@ -27,7 +27,7 @@ export const characterDefinitions = {
     abilities: ["Double Shot"],
     lootTier: "Rare",
     playable: true,
-    sprite: "elvaan_sprite.png"
+    sprite: "Elvaan1.png"
   }
   // Add more playable types as needed
 };
