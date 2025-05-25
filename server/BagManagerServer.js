@@ -133,3 +133,25 @@ export function pickupTreasureItem(playerId, item) {
 export function pickupPuzzleItem(playerId, item) {
   addItem(playerId, { ...item, gridX: -1, gridY: -1 });
 }
+
+const BagManagerServer = {
+  createLootBag,
+  getVisibleLootBagsForRoom,
+  lootItem,
+  markLootBagChecked,
+  removeEmptyBags,
+  destroyRoomBags,
+  getBagById,
+  getInventory,
+  setInventory,
+  addItem,
+  removeItem,
+  useItem,
+  moveItem,
+  lootBagPickup,
+  pickupShelfItem,
+  pickupTreasureItem,
+  pickupPuzzleItem
+};
+
+export default BagManagerServer;
