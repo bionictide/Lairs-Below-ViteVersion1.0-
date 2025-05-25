@@ -195,3 +195,5 @@ export function resolveSpellCast(casterId, targetId, spellName) {
     targetHealth: target.playerStats._currentHealth
   };
 }
+
+export { resolveSpellCast };

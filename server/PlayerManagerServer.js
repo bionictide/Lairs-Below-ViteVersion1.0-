@@ -16,7 +16,7 @@ class PlayerManagerServer {
    */
   addPlayer(playerId, statBlock, options = {}) {
     if (this.players.has(playerId)) throw new Error(`Player ${playerId} already exists`);
-    const playerStats = new PlayerStats(null, playerId, statBlock, null); // scene/socket are not needed server-side
+    const playerStats = new PlayerStats(statBlock, options.inventory || []);
     const player = {
       playerId,
       location: options.location || null, // { roomId, facing }
