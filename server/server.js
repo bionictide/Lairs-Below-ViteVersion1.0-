@@ -43,7 +43,7 @@ const io = new Server(server, {
 // Supabase JWT authentication middleware
 io.use(async (socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
-  console.log('[AUTH] Incoming connection.');
+  console.log('[AUTH] Incoming connection. Token:', token ? token.slice(0, 12) + '...' : '[none]');
   if (!token) {
     console.log('[AUTH] No token provided. Rejecting connection.');
     return next(new Error('No token provided'));
@@ -57,7 +57,7 @@ io.use(async (socket, next) => {
       }
     });
     if (res.status !== 200) {
-      console.log('[AUTH] Invalid token. Rejecting connection.');
+      console.log('[AUTH] Invalid token. Rejecting connection. Status:', res.status, 'Body:', await res.text());
       return next(new Error('Invalid token'));
     }
     const user = await res.json();
@@ -65,8 +65,8 @@ io.use(async (socket, next) => {
     console.log('[AUTH] Authenticated user:', user.id || '[no id]');
     return next();
   } catch (err) {
-    console.log('[AUTH] Auth failed with error:', err.message);
-    return next(new Error('Auth failed'));
+    console.log('[AUTH] Auth failed with error:', err.message, err);
+    return next(new Error('Auth failed: ' + err.message));
   }
 });
 
@@ -86,7 +86,7 @@ io.on("connection", (socket) => {
 
   // Catch-all event logger
   socket.onAny((event, ...args) => {
-    console.log('[SOCKET] Received event:', event, args);
+    console.log('[SOCKET][SERVER] Received event:', event, args);
   });
 
   socket.on(EVENTS.PUZZLE_ATTEMPT, (data) => handlePuzzleAttempt(socket, data));
@@ -105,6 +105,7 @@ io.on("connection", (socket) => {
     );
   });
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
+    console.log('[SOCKET][SERVER] PLAYER_JOIN received:', { playerId, user_id });
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
         headers: {
@@ -114,12 +115,15 @@ io.on("connection", (socket) => {
         },
       });
       if (res.status !== 200) {
-        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
+        const body = await res.text();
+        console.error('[SOCKET][SERVER] Failed to fetch player data. Status:', res.status, 'Body:', body);
+        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED', status: res.status, body });
         return;
       }
       const data = await res.json();
       if (!data || !data[0]) {
-        socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
+        console.error('[SOCKET][SERVER] Player not found or invalid:', { playerId, user_id, data });
+        socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND', playerId, user_id, data });
         return;
       }
       const character = data[0];
@@ -127,7 +131,8 @@ io.on("connection", (socket) => {
       const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
       for (const field of requiredFields) {
         if (!(field in character)) {
-          socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA' });
+          console.error('[SOCKET][SERVER] Missing field in character:', field, character);
+          socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA', field, character });
           return;
         }
       }
@@ -161,7 +166,8 @@ io.on("connection", (socket) => {
       currentPlayerCount = players.size;
       ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
     } catch (err) {
-      socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
+      console.error('[SOCKET][SERVER] Exception in PLAYER_JOIN:', err);
+      socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR', error: err?.message, stack: err?.stack });
       return;
     }
   });
