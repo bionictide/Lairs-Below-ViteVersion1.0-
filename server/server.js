@@ -50,11 +50,14 @@ io.use(async (socket, next) => {
   }
   try {
     // Validate JWT with Supabase
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      apikey: SUPABASE_SERVICE_KEY
+    };
+    console.log('[AUTH][DEBUG] Using headers:', headers);
+    console.log('[AUTH][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'apikey': SUPABASE_SERVICE_KEY
-      }
+      headers
     });
     if (res.status !== 200) {
       console.log('[AUTH] Invalid token. Rejecting connection. Status:', res.status, 'Body:', await res.text());
@@ -107,12 +110,15 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[SOCKET][SERVER] PLAYER_JOIN received:', { playerId, user_id });
     try {
+      const headers = {
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+        apikey: SUPABASE_SERVICE_KEY,
+        Accept: 'application/json',
+      };
+      console.log('[PLAYER_JOIN][DEBUG] Using headers:', headers);
+      console.log('[PLAYER_JOIN][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Accept': 'application/json',
-        },
+        headers
       });
       if (res.status !== 200) {
         const body = await res.text();
