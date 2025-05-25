@@ -1,7 +1,7 @@
 import React from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { getCharacterDisplayData, getPlayableCharacters } from './CharacterTypes.js';
-import socket from './socket.js';
+import { connectSocket, joinPlayer, socket as clientSocket } from './socket.js';
 import { EVENTS } from './shared/events.js';
 // No imports or exports! All code is in the global scope for in-browser Babel.
 
@@ -1100,27 +1100,32 @@ function App() {
         return;
       }
       const token = data.session.access_token;
-      window.socket = socket(token);
+      const sock = connectSocket(token);
+      window.socket = sock;
 
-      window.socket.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
+      // Wire up notifications
+      sock.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
         setNotification(`${name} is now roaming the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
       });
-      window.socket.on(EVENTS.PLAYER_LEAVE_NOTIFICATION, ({ name }) => {
+      sock.on(EVENTS.PLAYER_LEAVE_NOTIFICATION, ({ name }) => {
         setNotification(`${name} has left the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
       });
 
       // Use the freshly fetched character for joinPlayer
-      socket.emit(
-        EVENTS.PLAYER_JOIN,
-        { playerId: freshChar.id, character: freshChar },
+      joinPlayer(
+        { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
           window.currentCharacter = freshChar;
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
           }
+        },
+        (errMsg) => {
+          setConnectionError(true);
+          console.error('Join error:', errMsg);
         }
       );
     } catch (e) {

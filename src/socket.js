@@ -1,8 +1,44 @@
 // socket.js
-// Establishes socket.io connection for client to emit and receive events
+// Robust Socket.io client connection for multiplayer with JWT auth
 
-import { io } from "socket.io-client";
+// Usage: import { connectSocket, joinPlayer, socket } from './socket.js';
 
-const socket = io(); // Connects to server at current origin
+let socket = null;
 
-export default socket;
+export function connectSocket(token) {
+  if (socket) {
+    socket.disconnect();
+    socket = null;
+  }
+  // Connect to the live server with JWT auth (use current origin by default)
+  socket = window.io(window.location.origin, {
+    auth: { token }
+  });
+  return socket;
+}
+
+// Emit PLAYER_JOIN with playerId and user_id, and handle join result
+export function joinPlayer({ playerId, user_id }, onSuccess, onError) {
+  if (!socket) throw new Error('Socket not connected');
+  socket.emit('player_join', { playerId, user_id });
+  const handleJoin = (payload) => {
+    if (payload.action === 'player_join') {
+      if (payload.success) {
+        onSuccess && onSuccess(payload.data);
+      } else {
+        onError && onError(payload.message || 'Join failed');
+      }
+      socket.off('action_result', handleJoin);
+      socket.off('error', handleError);
+    }
+  };
+  const handleError = (err) => {
+    onError && onError(err.message || 'Join error');
+    socket.off('action_result', handleJoin);
+    socket.off('error', handleError);
+  };
+  socket.on('action_result', handleJoin);
+  socket.on('error', handleError);
+}
+
+export { socket };

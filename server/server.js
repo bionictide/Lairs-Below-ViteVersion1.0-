@@ -4,6 +4,8 @@
 import { Server } from "socket.io";
 import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
+import http from 'http';
+import fetch from 'node-fetch';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
@@ -11,7 +13,62 @@ import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
 
-const io = new Server();
+const PORT = process.env.PORT || 3001;
+const ALLOWED_ORIGINS = [
+  'https://www.bionictide.com',
+  /^https:\/\/.*\.github\.io$/,
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost',
+  'http://127.0.0.1',
+];
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rcbqjftzzdtbghrrtxai.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
+
+const server = http.createServer();
+const io = new Server(server, {
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (ALLOWED_ORIGINS.some(o => (typeof o === 'string' ? o === origin : o.test(origin)))) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true
+  }
+});
+
+// Supabase JWT authentication middleware
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth && socket.handshake.auth.token;
+  console.log('[AUTH] Incoming connection.');
+  if (!token) {
+    console.log('[AUTH] No token provided. Rejecting connection.');
+    return next(new Error('No token provided'));
+  }
+  try {
+    // Validate JWT with Supabase
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_KEY
+      }
+    });
+    if (res.status !== 200) {
+      console.log('[AUTH] Invalid token. Rejecting connection.');
+      return next(new Error('Invalid token'));
+    }
+    const user = await res.json();
+    socket.user = user;
+    console.log('[AUTH] Authenticated user:', user.id || '[no id]');
+    return next();
+  } catch (err) {
+    console.log('[AUTH] Auth failed with error:', err.message);
+    return next(new Error('Auth failed'));
+  }
+});
 
 let previousPlayerCount = 0;
 let currentPlayerCount = 0;
@@ -25,7 +82,12 @@ const dungeonCore = new DungeonCore();
 const dungeon = dungeonCore.generateDungeon(1, DUNGEON_SEED);
 
 io.on("connection", (socket) => {
-  console.log("Player connected:", socket.id);
+  console.log("[SOCKET] Client connected:", socket.id, "User:", socket.user?.id || '[no user]');
+
+  // Catch-all event logger
+  socket.onAny((event, ...args) => {
+    console.log('[SOCKET] Received event:', event, args);
+  });
 
   socket.on(EVENTS.PUZZLE_ATTEMPT, (data) => handlePuzzleAttempt(socket, data));
   socket.on(EVENTS.SHELF_INTERACT, (data) => handleShelfAccess(socket, data));
@@ -45,20 +107,32 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
+      // Validate that the socket user matches the user_id
+      if (!socket.user || socket.user.id !== user_id) {
+        console.error('[PLAYER_JOIN] Auth mismatch:', socket.user?.id, user_id);
+        socket.emit(EVENTS.ERROR, { message: 'Auth mismatch', code: 'AUTH_MISMATCH' });
+        return;
+      }
       // Fetch and validate player data from Supabase
-      const { data, error } = await supabase
-        .from('characters')
-        .select('*')
-        .eq('user_id', user_id)
-        .eq('id', playerId)
-        .single();
-      console.log('[PLAYER_JOIN] Supabase result:', { data, error });
-      if (error || !data) {
-        console.error('[PLAYER_JOIN] Player not found or invalid:', error);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          Accept: 'application/json',
+        },
+      });
+      if (res.status !== 200) {
+        console.error('[PLAYER_JOIN] Failed to fetch player data:', res.status);
+        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
+        return;
+      }
+      const dataArr = await res.json();
+      if (!dataArr || !dataArr[0]) {
+        console.error('[PLAYER_JOIN] Player not found or invalid:', dataArr);
         socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
         return;
       }
-      const character = data;
+      const character = dataArr[0];
       // Validate required fields
       const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
       for (const field of requiredFields) {
@@ -136,6 +210,10 @@ io.on("connection", (socket) => {
   });
 
   // Additional connections (player join/leave, room sync, etc.) would route here too
+});
+
+server.listen(PORT, () => {
+  console.log(`[SERVER] Listening on port ${PORT}`);
 });
 
 export default io;
