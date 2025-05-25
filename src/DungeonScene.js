@@ -4,6 +4,7 @@ import { LootUIManager } from "./LootUIManager.js";
 import { CombatVisuals } from "./CombatVisuals.js";
 import HintManager from "./HintManager.js";
 import { CharacterSprites } from '../server/CharacterSpritesServer.js';
+import { EVENTS } from './shared/events.js';
 
 export default class DungeonScene extends Phaser.Scene {
   constructor() {
@@ -16,6 +17,10 @@ export default class DungeonScene extends Phaser.Scene {
     this.combatVisuals = null;
     this.hintManager = null;
     this.tempCombatTexts = [];
+    this.actionMenu = null;
+    this.targetingMenu = null;
+    this.currentActionContext = null;
+    this.currentTargetList = null;
   }
 
   init(data) {
@@ -149,6 +154,13 @@ export default class DungeonScene extends Phaser.Scene {
         }
       }
     });
+
+    this.socket.on("ENCOUNTER_ACTION_MENU", (data) => {
+      this.renderActionMenu(data);
+    });
+    this.socket.on("ENCOUNTER_TARGET_SELECTION", (data) => {
+      this.renderTargetingMenu(data);
+    });
   }
 
   createRoom() {
@@ -170,5 +182,144 @@ export default class DungeonScene extends Phaser.Scene {
       this.tempCombatTexts.forEach(txt => txt && txt.destroy());
       this.tempCombatTexts = [];
     }
+  }
+
+  // --- Action Menu Rendering ---
+  renderActionMenu({ actions, paginationInfo, actorId, encounterId, targetId, spellMenu }) {
+    if (this.actionMenu) this.actionMenu.destroy();
+    this.actionMenu = this.add.container(400, 300).setDepth(100);
+    const buttonWidth = 220;
+    const buttonHeight = 48;
+    const buttonSpacing = 56;
+    // If this is a spell menu, use the canonical spell order and requirements
+    if (spellMenu && Array.isArray(spellMenu)) {
+      // Canonical spell order
+      const spellOrder = [
+        'Blizzard', 'Cure', 'Firestorm', 'Void Blast', 'Toxic Gaze',
+        'Earthquake', 'Healing Wind', 'Break Time', 'Stop Breathing', 'Bullet Hell', 'Neutron Crucible'
+      ];
+      // Map spellMenu to a lookup for quick access
+      const spellMap = {};
+      spellMenu.forEach(spell => { spellMap[spell.text] = spell; });
+      spellOrder.forEach((spellName, i) => {
+        const spell = spellMap[spellName];
+        if (!spell) return;
+        const y = i * buttonSpacing;
+        const isDisabled = spell.enabled === false || spell.disabled === true;
+        const btn = this.add.rectangle(0, y, buttonWidth, buttonHeight, isDisabled ? 0x555555 : 0x333333)
+          .setStrokeStyle(2, isDisabled ? 0x777777 : 0xffffff)
+          .setInteractive({ useHandCursor: !isDisabled });
+        // Show gem requirements if present
+        let label = spell.text;
+        if (spell.requirements && spell.requirements.length > 0) {
+          label += ` (${spell.requirements.join(', ')})`;
+        }
+        const txt = this.add.text(0, y, label, {
+          fontSize: '18px', color: isDisabled ? '#999999' : '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: buttonWidth - 16 }
+        }).setOrigin(0.5);
+        if (!isDisabled) {
+          btn.on('pointerover', () => btn.setFillStyle(0x555555));
+          btn.on('pointerout', () => btn.setFillStyle(0x333333));
+          btn.on('pointerdown', () => {
+            this.socket.emit(EVENTS.ENCOUNTER_ACTION, {
+              encounterId,
+              actorId,
+              action: spell.action,
+              targetId,
+              extra: spell.extra || null
+            });
+            this.actionMenu.destroy();
+            this.actionMenu = null;
+          });
+        } else if (spell.info) {
+          btn.on('pointerdown', () => {
+            this.showActionPrompt(spell.info);
+          });
+        }
+        this.actionMenu.add([btn, txt]);
+      });
+      // Pagination (if present)
+      if (paginationInfo && paginationInfo.totalPages > 1) {
+        const pageText = this.add.text(0, spellOrder.length * buttonSpacing + 10, `Page ${paginationInfo.page} / ${paginationInfo.totalPages}`,
+          { fontSize: '16px', color: '#fff' }).setOrigin(0.5);
+        this.actionMenu.add(pageText);
+      }
+      return;
+    }
+    // Default: render generic actions
+    actions.forEach((action, i) => {
+      const y = i * buttonSpacing;
+      const isDisabled = action.enabled === false || action.disabled === true;
+      const btn = this.add.rectangle(0, y, buttonWidth, buttonHeight, isDisabled ? 0x555555 : 0x333333)
+        .setStrokeStyle(2, isDisabled ? 0x777777 : 0xffffff)
+        .setInteractive({ useHandCursor: !isDisabled });
+      const txt = this.add.text(0, y, action.text, {
+        fontSize: '18px', color: isDisabled ? '#999999' : '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: buttonWidth - 16 }
+      }).setOrigin(0.5);
+      if (!isDisabled) {
+        btn.on('pointerover', () => btn.setFillStyle(0x555555));
+        btn.on('pointerout', () => btn.setFillStyle(0x333333));
+        btn.on('pointerdown', () => {
+          this.socket.emit(EVENTS.ENCOUNTER_ACTION, {
+            encounterId,
+            actorId,
+            action: action.action,
+            targetId,
+            extra: action.extra || null
+          });
+          this.actionMenu.destroy();
+          this.actionMenu = null;
+        });
+      } else if (action.info) {
+        btn.on('pointerdown', () => {
+          this.showActionPrompt(action.info);
+        });
+      }
+      this.actionMenu.add([btn, txt]);
+    });
+    if (paginationInfo && paginationInfo.totalPages > 1) {
+      const pageText = this.add.text(0, actions.length * buttonSpacing + 10, `Page ${paginationInfo.page} / ${paginationInfo.totalPages}`,
+        { fontSize: '16px', color: '#fff' }).setOrigin(0.5);
+      this.actionMenu.add(pageText);
+    }
+  }
+
+  // --- Targeting Menu Rendering ---
+  renderTargetingMenu({ validTargets, action, encounterId, actorId, extra }) {
+    if (this.targetingMenu) this.targetingMenu.destroy();
+    this.targetingMenu = this.add.container(400, 300).setDepth(101);
+    const buttonWidth = 220;
+    const buttonHeight = 48;
+    const buttonSpacing = 56;
+    validTargets.forEach((target, i) => {
+      const y = i * buttonSpacing;
+      const btn = this.add.rectangle(0, y, buttonWidth, buttonHeight, 0x333333)
+        .setStrokeStyle(2, 0xffffff)
+        .setInteractive({ useHandCursor: true });
+      const txt = this.add.text(0, y, target.name || target.id, {
+        fontSize: '18px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: buttonWidth - 16 }
+      }).setOrigin(0.5);
+      btn.on('pointerover', () => btn.setFillStyle(0x555555));
+      btn.on('pointerout', () => btn.setFillStyle(0x333333));
+      btn.on('pointerdown', () => {
+        this.socket.emit('ENCOUNTER_TARGET_SELECTED', {
+          encounterId,
+          actorId,
+          action,
+          targetId: target.id,
+          extra: extra || null
+        });
+        this.targetingMenu.destroy();
+        this.targetingMenu = null;
+      });
+      this.targetingMenu.add([btn, txt]);
+    });
+  }
+
+  showActionPrompt(text) {
+    // Show a temporary prompt (reuse old logic or add a new text box)
+    const prompt = this.add.text(400, 60, text, { fontSize: '20px', color: '#fff', backgroundColor: '#222', padding: { x: 12, y: 8 } })
+      .setOrigin(0.5).setDepth(200);
+    this.time.delayedCall(1800, () => prompt.destroy());
   }
 }

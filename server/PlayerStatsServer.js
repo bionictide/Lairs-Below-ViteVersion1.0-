@@ -124,3 +124,114 @@ export class PlayerStats {
 export function createStatsFromDefinition(def, inventory = []) {
   return new PlayerStats(def.stats, inventory);
 }
+
+/**
+ * Resolves a spell or attack action between two players/entities.
+ * @param {object} params - { attacker, defender, actionType, spellData, context }
+ * @returns {object} result - { damageDealt, crit, dodged, effectsApplied, newHealth, effectTimers, ... }
+ */
+export function resolveCombatAction({ attacker, defender, actionType, spellData, context }) {
+  // 1. Base damage
+  let baseDamage = 0;
+  let isSpell = actionType === 'spell';
+  let isAttack = actionType === 'attack';
+  let effectsApplied = [];
+  let crit = false;
+  let dodged = false;
+  let result = {};
+
+  // 2. Stat scaling
+  if (isSpell && spellData) {
+    // Use PlayerStats to scale spell
+    const modifiedSpell = attacker.playerStats.modifyMagicalDamage(spellData);
+    baseDamage = attacker.playerStats.getMagicalDamage(modifiedSpell);
+    // Apply element multipliers, buffs, debuffs, etc. (already in getMagicalDamage)
+    if (spellData.effects) effectsApplied = [...spellData.effects];
+  } else if (isAttack) {
+    baseDamage = attacker.playerStats.getPhysicalDamage();
+  }
+
+  // 3. Crit roll (if not healing)
+  if (spellData && spellData.type === 'heal') {
+    baseDamage = Math.abs(baseDamage); // healing
+  } else {
+    const critChance = attacker.playerStats.getCritChance ? attacker.playerStats.getCritChance() : 0.05;
+    if (Math.random() < critChance) {
+      crit = true;
+      baseDamage = Math.round(baseDamage * 1.5); // 50% bonus for crit
+    }
+  }
+
+  // 4. Dodge roll (if not healing)
+  if (!spellData || spellData.type !== 'heal') {
+    if (defender.playerStats.tryDodge()) {
+      dodged = true;
+      baseDamage = 0;
+    }
+  }
+
+  // 5. Apply damage or healing
+  let damageDealt = 0;
+  let healed = 0;
+  if (spellData && spellData.type === 'heal') {
+    healed = defender.playerStats.applyHealing(baseDamage);
+  } else {
+    damageDealt = defender.playerStats.applyDamage(baseDamage);
+  }
+
+  // 6. Apply effects (buffs/debuffs/status)
+  let effectTimers = [];
+  if (effectsApplied.length > 0 && !dodged) {
+    for (const effect of effectsApplied) {
+      // Example: poison, freeze, etc. (add to defender's effect list)
+      if (defender.playerStats.applyStatusEffect) {
+        const timer = defender.playerStats.applyStatusEffect(effect, attacker.playerStats);
+        if (timer) effectTimers.push(timer);
+      }
+    }
+  }
+
+  // 7. Return result object
+  result = {
+    attackerId: attacker.playerId,
+    defenderId: defender.playerId,
+    actionType,
+    spellName: spellData ? spellData.name : null,
+    damageDealt,
+    healed,
+    crit,
+    dodged,
+    effectsApplied,
+    effectTimers,
+    newHealth: defender.playerStats.getCurrentHealth(),
+    targetDead: defender.playerStats.getCurrentHealth() <= 0
+  };
+  return result;
+}
+
+/**
+ * Called by PlayerManagerServer to process periodic effect ticks (e.g., poison, regen).
+ * @param {object} player - player object
+ * @param {string} effectType - e.g., 'poison', 'regen', etc.
+ * @returns {object} tickResult - { effectType, amount, newHealth, expired }
+ */
+export function processEffectTick(player, effectType) {
+  // Example: poison deals 5 damage per tick, regen heals 10 per tick
+  let amount = 0;
+  let expired = false;
+  if (effectType === 'poison') {
+    amount = 5;
+    player.playerStats.applyDamage(amount);
+  } else if (effectType === 'regen') {
+    amount = 10;
+    player.playerStats.applyHealing(amount);
+  }
+  // ... handle other effects ...
+  // Check if effect should expire (handled by PlayerManagerServer timer)
+  return {
+    effectType,
+    amount,
+    newHealth: player.playerStats.getCurrentHealth(),
+    expired
+  };
+}

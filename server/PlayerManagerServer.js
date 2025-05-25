@@ -1,11 +1,12 @@
 // PlayerManagerServer.js
 // Authoritative player state and group/encounter management
 
-import { PlayerStats, createStatsFromDefinition } from './PlayerStatsServer.js';
+import { PlayerStats, createStatsFromDefinition, processEffectTick } from './PlayerStatsServer.js';
 
 class PlayerManagerServer {
   constructor() {
     this.players = new Map(); // playerId -> player object
+    this.effectTimers = new Map(); // playerId -> [{ effectType, expiresAt, intervalId }]
   }
 
   /**
@@ -251,6 +252,46 @@ class PlayerManagerServer {
       debuffs: target.debuffs,
       resistances: target.resistances
     };
+  }
+
+  /**
+   * Apply a timed effect to a player (e.g., poison, freeze, regen).
+   * @param {string} playerId
+   * @param {string} effectType
+   * @param {number} durationMs
+   * @param {number} tickIntervalMs
+   * @param {object} [meta]
+   */
+  applyTimedEffect(playerId, effectType, durationMs, tickIntervalMs, meta = {}) {
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+    const expiresAt = Date.now() + durationMs;
+    const timerObj = { effectType, expiresAt, meta };
+    if (!this.effectTimers.has(playerId)) this.effectTimers.set(playerId, []);
+    this.effectTimers.get(playerId).push(timerObj);
+    // Start ticking
+    timerObj.intervalId = setInterval(() => {
+      const tickResult = processEffectTick(player, effectType);
+      // Inform MM for CombatVisuals, HealthBar, etc.
+      if (global.ManagerManager && global.ManagerManager.onEffectTick) {
+        global.ManagerManager.onEffectTick(playerId, effectType, tickResult);
+      }
+      // Check expiration
+      if (Date.now() >= expiresAt) {
+        clearInterval(timerObj.intervalId);
+        this.removeEffectTimer(playerId, effectType);
+        // Inform MM for visuals to clear
+        if (global.ManagerManager && global.ManagerManager.onEffectEnd) {
+          global.ManagerManager.onEffectEnd(playerId, effectType);
+        }
+      }
+    }, tickIntervalMs);
+  }
+
+  removeEffectTimer(playerId, effectType) {
+    if (!this.effectTimers.has(playerId)) return;
+    const timers = this.effectTimers.get(playerId).filter(t => t.effectType !== effectType);
+    this.effectTimers.set(playerId, timers);
   }
 }
 

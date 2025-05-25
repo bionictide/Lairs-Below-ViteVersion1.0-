@@ -1,5 +1,5 @@
 // SpellManagerServer.js
-// Server-authoritative spell resolution
+// Server-authoritative spell data only (no stat scaling or damage calculation)
 
 import { EVENTS } from '../src/shared/events.js';
 import PlayerManagerServer from './PlayerManagerServer.js';
@@ -133,65 +133,8 @@ export function getSpellRequirements(spellName) {
   return spellGemRequirements[spellName] || [];
 }
 
-export function castSpell(casterInventory, spellName) {
-  const requirements = getSpellRequirements(spellName);
-  const hasAll = requirements.every(gem => casterInventory.includes(gem));
-  if (!hasAll) return null;
-  return getSpellData(spellName);
+export function getAllSpells() {
+  return Object.keys(spells);
 }
 
-export function resolveSpellCast(casterId, targetId, spellName) {
-  const caster = PlayerManagerServer.getPlayer(casterId);
-  const target = PlayerManagerServer.getPlayer(targetId);
-  if (!caster || !target) return { error: 'Invalid participants' };
-  const spellData = getSpellData(spellName);
-  if (!spellData) return { error: 'Invalid spell' };
-  // Check gem requirements
-  const requirements = getSpellRequirements(spellName);
-  const inventory = caster.playerStats.inventory || [];
-  const hasAll = requirements.every(gem => inventory.includes(gem));
-  if (!hasAll) return { error: 'Missing required gems', requirements };
-  // Remove gems from inventory
-  for (const gem of requirements) {
-    const idx = inventory.indexOf(gem);
-    if (idx !== -1) inventory.splice(idx, 1);
-  }
-  // Calculate damage
-  const baseDamage = spellData.magicalBaseDamage;
-  let damage = baseDamage;
-  if (caster.playerStats && caster.playerStats.getMagicalDamage) {
-    // Optionally, allow stat scaling
-    damage = caster.playerStats.getMagicalDamage({ ...spellData, damage: baseDamage });
-  }
-  // Evasion check (after all modifiers)
-  if (target.playerStats.tryDodge()) {
-    return {
-      casterId,
-      targetId,
-      spellName,
-      damage,
-      damageDealt: 0,
-      dodged: true,
-      effects: [],
-      targetDead: false,
-      targetHealth: target.playerStats._currentHealth
-    };
-  }
-  // Apply damage to target
-  const damageDealt = target.playerStats.applyDamage(damage);
-  const targetDead = target.playerStats._currentHealth <= 0;
-  if (targetDead) PlayerManagerServer.setPlayerAlive(targetId, false);
-  // Apply effects (stub: just return effect names)
-  const effects = spellData.effects || [];
-  return {
-    casterId,
-    targetId,
-    spellName,
-    damage,
-    damageDealt,
-    dodged: false,
-    effects,
-    targetDead,
-    targetHealth: target.playerStats._currentHealth
-  };
-}
+// No stat scaling, no damage calculation, no inventory logic here.

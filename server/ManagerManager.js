@@ -532,6 +532,12 @@ export class ManagerManager {
     console.log('[ManagerManager] unlockActions', { encounterId, participantIds });
     if (global.io) global.io.emit(EVENTS.ENCOUNTER_UNLOCK_ACTIONS, { encounterId, participantIds });
   }
+  static emitEffectTick(encounterId, playerId, effectType, tickResult) {
+    if (global.io) global.io.emit(EVENTS.ENCOUNTER_EFFECT_TICK, { encounterId, playerId, effectType, tickResult });
+  }
+  static emitEffectEnd(encounterId, playerId, effectType) {
+    if (global.io) global.io.emit(EVENTS.ENCOUNTER_EFFECT_END, { encounterId, playerId, effectType });
+  }
 
   // Add more methods as needed, always delegating and logging.
 } 

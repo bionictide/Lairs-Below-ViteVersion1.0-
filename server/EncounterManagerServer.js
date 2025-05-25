@@ -7,6 +7,7 @@ import { ManagerManager } from './ManagerManager.js';
 import { getCharacterDefinition } from './CharacterTypesServer.js';
 import * as SpellManagerServer from './SpellManagerServer.js';
 import * as StatDefinitionsServer from './StatDefinitionsServer.js';
+import { resolveCombatAction } from './PlayerStatsServer.js';
 
 class EncounterManagerServer {
   constructor() {
@@ -125,117 +126,47 @@ class EncounterManagerServer {
     if (actorId !== currentId) return;
     ManagerManager.lockActions(encounterId, encounter.participants);
     let result = null;
-    if (action === 'attack') {
+    if (action === 'attack' || (action && action.startsWith('cast_'))) {
+      // --- Unified combat/spell resolution ---
+      let spellData = null;
+      let actionType = 'attack';
+      if (action.startsWith('cast_')) {
+        actionType = 'spell';
+        const spellName = action.slice(5);
+        spellData = SpellManagerServer.getSpellData(spellName);
+      }
       const attacker = PlayerManagerServer.getPlayer(actorId);
-      let defender = PlayerManagerServer.getPlayer(targetId);
-      let isNpc = false;
-      if (!defender) {
-        // Check if target is an NPC in this encounter
-        if (encounter && encounter.npcs && encounter.npcs[targetId]) {
-          defender = encounter.npcs[targetId];
-          isNpc = true;
-        }
-      }
+      const defender = PlayerManagerServer.getPlayer(targetId) || getCharacterDefinition(targetId);
       if (!attacker || !defender) return;
-      let attackValue = attacker.playerStats.getPhysicalDamage();
-      let defenseValue = isNpc ? StatDefinitionsServer.getDefenseFromVIT(defender.statBlock.vit) : defender.playerStats.getDefenseRating();
-      let mitigation = 1.0 - defenseValue;
-      let finalDamage = Math.max(0, Math.floor(attackValue * mitigation));
-      if (isNpc) {
-        const prevHealth = defender.health;
-        defender.health = Math.max(0, defender.health - finalDamage);
-        const defenderDead = defender.health <= 0;
-        result = { attackerId: actorId, defenderId: targetId, attackValue, finalDamage, defenderDead, defenderHealth: defender.health };
-        ManagerManager.emitAttackResult(encounterId, actorId, targetId, result);
-        if (defenderDead) ManagerManager.emitKO(encounterId, targetId);
-      } else {
-        const attackResult = PlayerManagerServer.resolvePhysicalAttack(actorId, targetId);
-        result = attackResult;
-        ManagerManager.emitAttackResult(encounterId, actorId, targetId, attackResult);
-        if (attackResult.defenderDead) {
-          PlayerManagerServer.setPlayerAlive(targetId, false);
-          ManagerManager.emitKO(encounterId, targetId);
-        }
+      result = resolveCombatAction({
+        attacker,
+        defender,
+        actionType,
+        spellData,
+        context: { encounterId }
+      });
+      // Relay result to MM for distribution
+      if (global.ManagerManager && global.ManagerManager.onCombatResult) {
+        global.ManagerManager.onCombatResult(encounterId, result);
       }
-    } else if (action && action.startsWith('cast_')) {
-      const spellName = action.slice(5);
-      const spellData = SpellManagerServer.getSpellData(spellName);
-      if (!spellData) return;
-      const caster = PlayerManagerServer.getPlayer(actorId);
-      let isMultiTarget = spellData.multi;
-      let isHeal = spellData.type === 'heal';
-      let isAllyTarget = spellData.target === 'ally';
-      if (isHeal && isAllyTarget) {
-        // Healing spell targeting allies
-        if (isMultiTarget) {
-          // Heal all allies (group members except enemies)
-          let casterGroupId = caster ? caster.groupId : null;
-          let targets = [];
-          for (const pid of encounter.participants) {
-            if (pid === actorId) continue; // skip self unless spell allows
-            const player = PlayerManagerServer.getPlayer(pid);
-            if (player && player.groupId === casterGroupId) {
-              targets.push(pid);
-            }
-          }
-          // Optionally include self if spell allows (here Healing Wind does not heal self)
-          for (const tid of targets) {
-            const targetPlayer = PlayerManagerServer.getPlayer(tid);
-            if (!targetPlayer) continue;
-            const healAmount = spellData.magicalBaseDamage; // or use PlayerStats.getMagicalDamage if scaling
-            const healed = targetPlayer.playerStats.applyHealing(healAmount);
-            const result = { casterId: actorId, targetId: tid, spellName, healAmount, healed, type: 'heal', multi: true };
-            ManagerManager.emitSpellResult(encounterId, actorId, tid, spellName, result);
-          }
-        } else {
-          // Single-target heal: require target selection from valid allies (handled by UI/menu)
-          const targetPlayer = PlayerManagerServer.getPlayer(targetId);
-          if (!caster || !targetPlayer) return;
-          const healAmount = spellData.magicalBaseDamage;
-          const healed = targetPlayer.playerStats.applyHealing(healAmount);
-          const result = { casterId: actorId, targetId, spellName, healAmount, healed, type: 'heal', multi: false };
-          ManagerManager.emitSpellResult(encounterId, actorId, targetId, spellName, result);
-        }
-      } else {
-        // Single-target spell (existing logic)
-        let target = PlayerManagerServer.getPlayer(targetId);
-        let isNpc = false;
-        if (!target) {
-          if (encounter && encounter.npcs && encounter.npcs[targetId]) {
-            target = encounter.npcs[targetId];
-            isNpc = true;
-          }
-        }
-        if (!caster || !target) return;
-        if (isNpc) {
-          const spellResult = SpellManagerServer.resolveSpellCast(actorId, targetId, spellName);
-          let defenseValue = StatDefinitionsServer.getDefenseFromVIT(target.statBlock.vit);
-          let mitigation = 1.0 - defenseValue;
-          let finalDamage = Math.max(0, Math.floor(spellResult.damage * mitigation));
-          const prevHealth = target.health;
-          target.health = Math.max(0, target.health - finalDamage);
-          const targetDead = target.health <= 0;
-          result = { ...spellResult, finalDamage, targetDead, targetHealth: target.health };
-          ManagerManager.emitSpellResult(encounterId, actorId, targetId, spellName, result);
-          if (targetDead) ManagerManager.emitKO(encounterId, targetId);
-        } else {
-          const spellResult = SpellManagerServer.resolveSpellCast(actorId, targetId, spellName);
-          result = spellResult;
-          ManagerManager.emitSpellResult(encounterId, actorId, targetId, spellName, spellResult);
-          if (spellResult.targetDead) {
-            PlayerManagerServer.setPlayerAlive(targetId, false);
-            ManagerManager.emitKO(encounterId, targetId);
-          }
-        }
-      }
+      // KO handling
+      if (result.targetDead) ManagerManager.emitKO(encounterId, targetId);
     } else if (action === 'steal') {
-      // Steal attempt
+      // Steal attempt: call PlayerStatsServer for roll, BagManagerServer for transfer
       const thief = PlayerManagerServer.getPlayer(actorId);
       const victim = PlayerManagerServer.getPlayer(targetId) || getCharacterDefinition(targetId);
       if (!thief || !victim) return;
-      const stealResult = PlayerManagerServer.resolveSteal(actorId, targetId);
-      result = stealResult;
-      ManagerManager.emitStealResult(encounterId, actorId, targetId, stealResult);
+      const stealResult = thief.playerStats.resolveSteal ? thief.playerStats.resolveSteal(victim.playerStats) : { success: false };
+      if (stealResult.success) {
+        // BagManagerServer handles inventory transfer
+        if (global.BagManagerServer && global.BagManagerServer.transferItem) {
+          global.BagManagerServer.transferItem(targetId, actorId, stealResult.item);
+        }
+      }
+      // Relay result to MM
+      if (global.ManagerManager && global.ManagerManager.onStealResult) {
+        global.ManagerManager.onStealResult(encounterId, actorId, targetId, stealResult);
+      }
     } else if (action === 'examine') {
       // Examine target
       const examiner = PlayerManagerServer.getPlayer(actorId);
