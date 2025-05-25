@@ -3,6 +3,7 @@
 
 import { Server } from "socket.io";
 import { EVENTS } from "../src/shared/events.js";
+import { generateDungeon } from './DungeonCore.js';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
@@ -14,6 +15,13 @@ const io = new Server();
 
 let previousPlayerCount = 0;
 let currentPlayerCount = 0;
+
+// Global state for player sessions and dungeon
+const players = new Map(); // playerId -> { socket, character, roomId, inventory, ... }
+const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
+const bags = new Map();    // bagId -> { roomId, items }
+const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
+const dungeon = generateDungeon(DUNGEON_SEED, { playerCount: 1 });
 
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
