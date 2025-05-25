@@ -564,7 +564,6 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
   const [joinBtnHover, setJoinBtnHover] = React.useState(false);
   const [hostBtnHover, setHostBtnHover] = React.useState(false);
   const [dungeon, setDungeon] = React.useState(null);
-  const [connectionErrorMsg, setConnectionErrorMsg] = React.useState('');
   // Button logic: Select Character locks in, Host starts game
   return (
     <ResponsiveGameContainer>
@@ -772,10 +771,9 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
         }}>
           <div style={{ background: '#222', border: '2px solid #fff', borderRadius: 4, padding: 32, minWidth: 320, textAlign: 'center', boxShadow: '0 4px 32px #000', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ color: '#fff', fontWeight: 700, fontSize: 20, marginBottom: 24 }}>Unable to connect</div>
-            {connectionErrorMsg && <div style={{ color: 'salmon', fontWeight: 700, marginBottom: 16 }}>{connectionErrorMsg}</div>}
             <button
               style={{ background: '#2196f3', color: '#fff', border: '2px solid #2196f3', borderRadius: 2, width: 120, height: 40, fontSize: 16, fontWeight: 700, cursor: 'pointer', margin: '0 auto' }}
-              onClick={() => { setConnectionError(false); setConnectionErrorMsg(''); }}
+              onClick={() => setConnectionError(false)}
             >
               Okay
             </button>
@@ -952,7 +950,6 @@ function App() {
   const [deletePrompt, setDeletePrompt] = React.useState(false);
   const [notification, setNotification] = React.useState(null);
   const [connectionError, setConnectionError] = React.useState(false);
-  const [connectionErrorMsg, setConnectionErrorMsg] = React.useState('');
   const [dungeon, setDungeon] = React.useState(null);
 
   // Character creation flow
@@ -1080,7 +1077,6 @@ function App() {
       !characters[lockedCharacter].id
     ) {
       setConnectionError(true);
-      setConnectionErrorMsg('Missing character or server selection.');
       return;
     }
     try {
@@ -1092,30 +1088,25 @@ function App() {
         .single();
       if (fetchError || !freshChar) {
         setConnectionError(true);
-        setConnectionErrorMsg('Failed to fetch character: ' + (fetchError?.message || 'Unknown error'));
         return;
       }
+
       // Update the local characters array with the freshChar
       const idx = lockedCharacter;
       const newChars = [...characters];
       newChars[idx] = freshChar;
       setCharacters(newChars);
+
       // Get Supabase session (JWT)
       const { data, error } = await supabase.auth.getSession();
       if (error || !data.session || !data.session.access_token) {
         setConnectionError(true);
-        setConnectionErrorMsg('Failed to get Supabase session: ' + (error?.message || 'No session'));
         return;
       }
       const token = data.session.access_token;
       const sock = connectSocket(token);
       window.socket = sock;
-      // Catch-all event logger
-      if (sock.onAny) {
-        sock.onAny((event, ...args) => {
-          console.log('[SOCKET][CLIENT] Received event:', event, args);
-        });
-      }
+
       // Wire up notifications
       sock.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
         setNotification(`${name} is now roaming the dungeon.`);
@@ -1125,12 +1116,7 @@ function App() {
         setNotification(`${name} has left the dungeon.`);
         setTimeout(() => setNotification(null), 4000);
       });
-      // Listen for server error events
-      sock.on(EVENTS.ERROR, (payload) => {
-        console.error('[SOCKET][CLIENT] Received server error:', payload);
-        setConnectionError(true);
-        setConnectionErrorMsg(payload?.message || 'Unknown server error');
-      });
+
       // Use the freshly fetched character for joinPlayer
       joinPlayer(
         { playerId: freshChar.id, user_id: freshChar.user_id },
@@ -1143,14 +1129,11 @@ function App() {
         },
         (errMsg) => {
           setConnectionError(true);
-          setConnectionErrorMsg('Join error: ' + errMsg);
-          console.error('[SOCKET][CLIENT] joinPlayer error:', errMsg);
+          console.error('Join error:', errMsg);
         }
       );
     } catch (e) {
       setConnectionError(true);
-      setConnectionErrorMsg('Exception: ' + (e?.message || e));
-      console.error('[SOCKET][CLIENT] Exception in handleJoinServer:', e);
     }
   };
 

@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
-import fetch, { Headers } from 'node-fetch';
+import fetch from 'node-fetch';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -28,9 +28,6 @@ const ALLOWED_ORIGINS = [
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rcbqjftzzdtbghrrtxai.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
-console.log('[DEBUG] process.env keys:', Object.keys(process.env));
-console.log('[DEBUG] SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY);
-
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
@@ -48,23 +45,21 @@ const io = new Server(server, {
 // Supabase JWT authentication middleware
 io.use(async (socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
-  console.log('[AUTH] Incoming connection. Token:', token ? token.slice(0, 12) + '...' : '[none]');
+  console.log('[AUTH] Incoming connection.');
   if (!token) {
     console.log('[AUTH] No token provided. Rejecting connection.');
     return next(new Error('No token provided'));
   }
   try {
-    // Use Headers class for node-fetch
-    const headers = new Headers();
-    headers.append('Authorization', `Bearer ${token}`);
-    headers.append('apikey', SUPABASE_SERVICE_KEY);
-    console.log('[AUTH][DEBUG] Using headers:', Object.fromEntries(headers.entries()));
-    console.log('[AUTH][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
+    // Validate JWT with Supabase
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_KEY
+      }
     });
     if (res.status !== 200) {
-      console.log('[AUTH] Invalid token. Rejecting connection. Status:', res.status, 'Body:', await res.text());
+      console.log('[AUTH] Invalid token. Rejecting connection.');
       return next(new Error('Invalid token'));
     }
     const user = await res.json();
@@ -72,8 +67,8 @@ io.use(async (socket, next) => {
     console.log('[AUTH] Authenticated user:', user.id || '[no id]');
     return next();
   } catch (err) {
-    console.log('[AUTH] Auth failed with error:', err.message, err);
-    return next(new Error('Auth failed: ' + err.message));
+    console.log('[AUTH] Auth failed with error:', err.message);
+    return next(new Error('Auth failed'));
   }
 });
 
@@ -93,7 +88,7 @@ io.on("connection", (socket) => {
 
   // Catch-all event logger
   socket.onAny((event, ...args) => {
-    console.log('[SOCKET][SERVER] Received event:', event, args);
+    console.log('[SOCKET] Received event:', event, args);
   });
 
   socket.on(EVENTS.PUZZLE_ATTEMPT, (data) => handlePuzzleAttempt(socket, data));
@@ -112,39 +107,44 @@ io.on("connection", (socket) => {
     );
   });
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
-    console.log('[SOCKET][SERVER] PLAYER_JOIN received:', { playerId, user_id });
+    console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
-      const headers = new Headers();
-      headers.append('Authorization', `Bearer ${SUPABASE_SERVICE_KEY}`);
-      headers.append('apikey', SUPABASE_SERVICE_KEY);
-      headers.append('Accept', 'application/json');
-      console.log('[PLAYER_JOIN][DEBUG] Using headers:', Object.fromEntries(headers.entries()));
-      console.log('[PLAYER_JOIN][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
+      // Validate that the socket user matches the user_id
+      if (!socket.user || socket.user.id !== user_id) {
+        console.error('[PLAYER_JOIN] Auth mismatch:', socket.user?.id, user_id);
+        socket.emit(EVENTS.ERROR, { message: 'Auth mismatch', code: 'AUTH_MISMATCH' });
+        return;
+      }
+      // Fetch and validate player data from Supabase
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
-        headers
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          Accept: 'application/json',
+        },
       });
       if (res.status !== 200) {
-        const body = await res.text();
-        console.error('[SOCKET][SERVER] Failed to fetch player data. Status:', res.status, 'Body:', body);
-        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED', status: res.status, body });
+        console.error('[PLAYER_JOIN] Failed to fetch player data:', res.status);
+        socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
         return;
       }
-      const data = await res.json();
-      if (!data || !data[0]) {
-        console.error('[SOCKET][SERVER] Player not found or invalid:', { playerId, user_id, data });
-        socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND', playerId, user_id, data });
+      const dataArr = await res.json();
+      if (!dataArr || !dataArr[0]) {
+        console.error('[PLAYER_JOIN] Player not found or invalid:', dataArr);
+        socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
         return;
       }
-      const character = data[0];
+      const character = dataArr[0];
       // Validate required fields
       const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
       for (const field of requiredFields) {
         if (!(field in character)) {
-          console.error('[SOCKET][SERVER] Missing field in character:', field, character);
-          socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA', field, character });
+          console.error('[PLAYER_JOIN] Missing field:', field, character);
+          socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA' });
           return;
         }
       }
+      // Inject player as new entity into dungeon
       players.set(playerId, {
         socket,
         character,
@@ -153,12 +153,17 @@ io.on("connection", (socket) => {
         lastKnownRoom: null,
         alive: true,
       });
+      console.log('[PLAYER_JOIN] Player inserted into players map:', playerId);
+      // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
+      console.log('[PLAYER_JOIN] Assigned spawn room:', spawnRoom.id);
+      // Add player to room
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
+      // Send current world state and spawn info to client
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
         success: true,
@@ -170,13 +175,15 @@ io.on("connection", (socket) => {
           dungeon,
         },
       });
+      console.log('[PLAYER_JOIN] Sent ACTION_RESULT to client for player:', playerId);
+      // Notify others
       socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
       previousPlayerCount = currentPlayerCount;
       currentPlayerCount = players.size;
       ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
     } catch (err) {
-      console.error('[SOCKET][SERVER] Exception in PLAYER_JOIN:', err);
-      socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR', error: err?.message, stack: err?.stack });
+      console.error('[PLAYER_JOIN] Exception:', err);
+      socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
       return;
     }
   });
