@@ -61,7 +61,17 @@ const spells = {
     name: "Toxic Gaze",
     magicalBaseDamage: 80,
     element: "poison",
-    effects: ["poison"],
+    effects: [
+      {
+        type: "poison",
+        params: {
+          damagePerTick: 5,
+          tickIntervalMs: 3000,
+          durationMs: 30000,
+          maxStacks: 3
+        }
+      }
+    ],
     type: "damage",
     target: "enemy",
     multi: false

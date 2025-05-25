@@ -257,35 +257,59 @@ class PlayerManagerServer {
   /**
    * Apply a timed effect to a player (e.g., poison, freeze, regen).
    * @param {string} playerId
-   * @param {string} effectType
-   * @param {number} durationMs
-   * @param {number} tickIntervalMs
+   * @param {object} effectObj - { type, params, name }
    * @param {object} [meta]
    */
-  applyTimedEffect(playerId, effectType, durationMs, tickIntervalMs, meta = {}) {
+  applyTimedEffect(playerId, effectObj, meta = {}) {
     const player = this.getPlayer(playerId);
     if (!player) return;
-    const expiresAt = Date.now() + durationMs;
-    const timerObj = { effectType, expiresAt, meta };
-    if (!this.effectTimers.has(playerId)) this.effectTimers.set(playerId, []);
-    this.effectTimers.get(playerId).push(timerObj);
-    // Start ticking
-    timerObj.intervalId = setInterval(() => {
-      const tickResult = processEffectTick(player, effectType);
-      // Inform MM for CombatVisuals, HealthBar, etc.
-      if (global.ManagerManager && global.ManagerManager.onEffectTick) {
-        global.ManagerManager.onEffectTick(playerId, effectType, tickResult);
+    const effectType = effectObj.type;
+    const effectName = effectObj.name || effectType;
+    const params = effectObj.params || {};
+    const durationMs = params.durationMs || 30000;
+    const tickIntervalMs = params.tickIntervalMs || 3000;
+    const maxStacks = params.maxStacks || 1;
+    // Track effects per player
+    if (!this.effectTimers.has(playerId)) this.effectTimers.set(playerId, {});
+    const playerEffects = this.effectTimers.get(playerId);
+    if (!playerEffects[effectType]) {
+      playerEffects[effectType] = { stacks: 1, expiresAt: Date.now() + durationMs, intervalId: null, effectName, params };
+      // Notify MM for dialog/visuals on apply
+      if (global.ManagerManager && global.ManagerManager.onEffectApply) {
+        global.ManagerManager.onEffectApply(playerId, effectType, effectName, params);
       }
-      // Check expiration
-      if (Date.now() >= expiresAt) {
-        clearInterval(timerObj.intervalId);
-        this.removeEffectTimer(playerId, effectType);
-        // Inform MM for visuals to clear
-        if (global.ManagerManager && global.ManagerManager.onEffectEnd) {
-          global.ManagerManager.onEffectEnd(playerId, effectType);
+    } else {
+      // Stack up to maxStacks
+      if (playerEffects[effectType].stacks < maxStacks) {
+        playerEffects[effectType].stacks++;
+        playerEffects[effectType].expiresAt = Date.now() + durationMs;
+      } else {
+        // Already at max stacks, ignore
+        return;
+      }
+    }
+    // Start ticking if not already
+    if (!playerEffects[effectType].intervalId) {
+      playerEffects[effectType].intervalId = setInterval(() => {
+        const tickResult = processEffectTick(player, effectType);
+        // Only emit visuals (not dialog) for ticks
+        if (global.ManagerManager && global.ManagerManager.emitEffectTick) {
+          global.ManagerManager.emitEffectTick(player.encounterId, playerId, effectType, tickResult);
         }
-      }
-    }, tickIntervalMs);
+        // Check expiration
+        if (Date.now() >= playerEffects[effectType].expiresAt) {
+          clearInterval(playerEffects[effectType].intervalId);
+          delete playerEffects[effectType];
+          // Notify MM for dialog/visuals on remove
+          if (global.ManagerManager && global.ManagerManager.onEffectRemove) {
+            global.ManagerManager.onEffectRemove(playerId, effectType, effectName);
+          }
+          if (global.ManagerManager && global.ManagerManager.emitEffectEnd) {
+            global.ManagerManager.emitEffectEnd(player.encounterId, playerId, effectType);
+          }
+        }
+      }, tickIntervalMs);
+    }
   }
 
   removeEffectTimer(playerId, effectType) {

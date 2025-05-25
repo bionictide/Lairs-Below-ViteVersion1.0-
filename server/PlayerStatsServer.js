@@ -36,6 +36,7 @@ export class PlayerStats {
       'sword1': { physicalDamageMultiplier: 1.5 },
       'helm1': { defense: 0.10 }
     };
+    this.activeEffects = {}; // { effectType: { stacks, expiresAt, intervalMs } }
     this.updateStatsFromInventory(inventory);
   }
 
@@ -117,7 +118,40 @@ export class PlayerStats {
   tryDodge() {
     return Math.random() < (this.getEvasion() / 100);
   }
-  // Add more methods as needed for steal, crit, etc.
+
+  /**
+   * Apply a status effect (e.g., poison, freeze, etc.)
+   * @param {object} effectObj - { type, params }
+   * @param {PlayerStats} [sourceStats]
+   * @returns {object|null} timer info for PlayerManagerServer
+   */
+  applyStatusEffect(effectObj, sourceStats) {
+    const effectType = effectObj.type;
+    const params = effectObj.params || {};
+    if (effectType === 'poison') {
+      // Poison: use params from spell definition
+      const now = Date.now();
+      const durationMs = params.durationMs || 30000;
+      const tickIntervalMs = params.tickIntervalMs || 3000;
+      const maxStacks = params.maxStacks || 3;
+      const damagePerTick = params.damagePerTick || 5;
+      if (!this.activeEffects.poison) {
+        this.activeEffects.poison = { stacks: 1, expiresAt: now + durationMs, intervalMs: tickIntervalMs, damagePerTick, maxStacks };
+      } else {
+        // Stack up to maxStacks
+        this.activeEffects.poison.stacks = Math.min(maxStacks, this.activeEffects.poison.stacks + 1);
+        // Refresh duration on new stack
+        this.activeEffects.poison.expiresAt = now + durationMs;
+        this.activeEffects.poison.damagePerTick = damagePerTick;
+        this.activeEffects.poison.intervalMs = tickIntervalMs;
+        this.activeEffects.poison.maxStacks = maxStacks;
+      }
+      // Return timer info for PlayerManagerServer
+      return { effectType: 'poison', durationMs, tickIntervalMs };
+    }
+    // ... handle other effects ...
+    return null;
+  }
 }
 
 // Utility to create a PlayerStats from a character definition
@@ -216,18 +250,24 @@ export function resolveCombatAction({ attacker, defender, actionType, spellData,
  * @returns {object} tickResult - { effectType, amount, newHealth, expired }
  */
 export function processEffectTick(player, effectType) {
-  // Example: poison deals 5 damage per tick, regen heals 10 per tick
   let amount = 0;
   let expired = false;
   if (effectType === 'poison') {
-    amount = 5;
-    player.playerStats.applyDamage(amount);
+    const effect = player.playerStats.activeEffects.poison;
+    if (effect) {
+      amount = (effect.damagePerTick || 5) * effect.stacks;
+      player.playerStats.applyDamage(amount);
+      // Check expiration
+      if (Date.now() >= effect.expiresAt) {
+        expired = true;
+        delete player.playerStats.activeEffects.poison;
+      }
+    }
   } else if (effectType === 'regen') {
     amount = 10;
     player.playerStats.applyHealing(amount);
   }
   // ... handle other effects ...
-  // Check if effect should expire (handled by PlayerManagerServer timer)
   return {
     effectType,
     amount,

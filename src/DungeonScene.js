@@ -6,6 +6,16 @@ import HintManager from "./HintManager.js";
 import { CharacterSprites } from '../server/CharacterSpritesServer.js';
 import { EVENTS } from './shared/events.js';
 
+function getEffectColor(effectType) {
+  switch (effectType) {
+    case 'poison': return '#00ff00'; // green
+    case 'burn': return '#ff4444'; // red
+    case 'freeze': return '#44aaff'; // blue
+    case 'regen': return '#44ff44'; // light green
+    default: return '#ffffff'; // white
+  }
+}
+
 export default class DungeonScene extends Phaser.Scene {
   constructor() {
     super("default");
@@ -81,6 +91,41 @@ export default class DungeonScene extends Phaser.Scene {
 
     this.setupSocketListeners();
     this.createRoom();
+    // Listen for effect tick events for floating numbers
+    this.socket.on(EVENTS.ENCOUNTER_EFFECT_TICK, ({ playerId, effectType, tickResult }) => {
+      const { amount } = tickResult;
+      if (!amount || amount === 0) return;
+      const color = getEffectColor(effectType);
+      const isPlayer = playerId === this.player?.id;
+      let x, y, z;
+      if (isPlayer) {
+        // Place below health bar (assume health bar at y=60, adjust as needed)
+        x = 400;
+        y = 80;
+        z = 201;
+      } else {
+        // Place above enemy sprite
+        const sprite = this.getSpriteForEntity(playerId);
+        if (!sprite) return;
+        x = sprite.x;
+        y = sprite.y - (sprite.height ? sprite.height / 2 : 40);
+        z = (sprite.depth || 100) + 1;
+      }
+      const floatText = this.add.text(x, y, `-${amount}`, {
+        font: '16px Arial',
+        fill: color,
+        fontStyle: 'bold',
+        stroke: '#222',
+        strokeThickness: 2
+      }).setOrigin(0.5).setDepth(z);
+      this.tweens.add({
+        targets: floatText,
+        y: y - 30,
+        alpha: 0,
+        duration: 1000,
+        onComplete: () => floatText.destroy()
+      });
+    });
   }
 
   setupSocketListeners() {
