@@ -330,7 +330,5 @@ export class DungeonCore {
   }
 }
 
-export function addPlayerToWorld(playerId, playerStats) {
-  // TODO: Implement logic to add player to world state
-  // Example: worldState.players.set(playerId, playerStats);
-}
+const dungeonCoreInstance = new DungeonCore();
+export default dungeonCoreInstance;
