@@ -438,5 +438,67 @@ export class ManagerManager {
     return NPCLootManagerServer.getLootForTier(tierName);
   }
 
+  // --- Encounter/Combat UI and Event Emission ---
+  static emitAttackResult(encounterId, actorId, targetId, attackResult) {
+    console.log('[ManagerManager] emitAttackResult', { encounterId, actorId, targetId, attackResult });
+    if (global.io) global.io.emit('ENCOUNTER_ATTACK_RESULT', { encounterId, actorId, targetId, attackResult });
+  }
+  static emitSpellResult(encounterId, actorId, targetId, spellName, spellResult) {
+    console.log('[ManagerManager] emitSpellResult', { encounterId, actorId, targetId, spellName, spellResult });
+    if (global.io) global.io.emit('ENCOUNTER_SPELL_RESULT', { encounterId, actorId, targetId, spellName, spellResult });
+  }
+  static emitStealResult(encounterId, actorId, targetId, stealResult) {
+    console.log('[ManagerManager] emitStealResult', { encounterId, actorId, targetId, stealResult });
+    if (global.io) global.io.emit('ENCOUNTER_STEAL_RESULT', { encounterId, actorId, targetId, stealResult });
+  }
+  static emitKO(encounterId, targetId) {
+    console.log('[ManagerManager] emitKO', { encounterId, targetId });
+    if (global.io) global.io.emit('ENCOUNTER_KO', { encounterId, targetId });
+  }
+  static emitFleeResult(encounterId, actorId, fleeResult) {
+    console.log('[ManagerManager] emitFleeResult', { encounterId, actorId, fleeResult });
+    if (global.io) global.io.emit('ENCOUNTER_FLEE_RESULT', { encounterId, actorId, fleeResult });
+  }
+  static emitActionMenu(encounterId, actorId, actions, paginationInfo, targetId) {
+    console.log('[ManagerManager] emitActionMenu', { encounterId, actorId, actions, paginationInfo, targetId });
+    if (global.io) global.io.emit('ENCOUNTER_ACTION_MENU', { encounterId, actorId, actions, paginationInfo, targetId });
+  }
+  static emitTargetSelection(encounterId, actorId, validTargets, action, extra) {
+    console.log('[ManagerManager] emitTargetSelection', { encounterId, actorId, validTargets, action, extra });
+    if (global.io) global.io.emit('ENCOUNTER_TARGET_SELECTION', { encounterId, actorId, validTargets, action, extra });
+  }
+  static emitExamineInfo(encounterId, actorId, targetId, info) {
+    console.log('[ManagerManager] emitExamineInfo', { encounterId, actorId, targetId, info });
+    if (global.io) global.io.emit('ENCOUNTER_EXAMINE_INFO', { encounterId, actorId, targetId, info });
+  }
+  static emitTradeOffer(encounterId, actorId, targetId) {
+    console.log('[ManagerManager] emitTradeOffer', { encounterId, actorId, targetId });
+    if (global.io) global.io.emit('ENCOUNTER_TRADE_OFFER', { encounterId, actorId, targetId });
+  }
+  static emitInvite(encounterId, actorId, targetId) {
+    console.log('[ManagerManager] emitInvite', { encounterId, actorId, targetId });
+    if (global.io) global.io.emit('ENCOUNTER_INVITE', { encounterId, actorId, targetId });
+  }
+  static emitTalk(encounterId, actorId, targetId) {
+    console.log('[ManagerManager] emitTalk', { encounterId, actorId, targetId });
+    if (global.io) global.io.emit('ENCOUNTER_TALK', { encounterId, actorId, targetId });
+  }
+  static emitInvalidAction(encounterId, actorId, action) {
+    console.log('[ManagerManager] emitInvalidAction', { encounterId, actorId, action });
+    if (global.io) global.io.emit('ENCOUNTER_INVALID_ACTION', { encounterId, actorId, action });
+  }
+  static emitEncounterEnd(encounterId, roomId, participants) {
+    console.log('[ManagerManager] emitEncounterEnd', { encounterId, roomId, participants });
+    if (global.io) global.io.emit('ENCOUNTER_END', { encounterId, roomId, participants });
+  }
+  static lockActions(encounterId, participantIds) {
+    console.log('[ManagerManager] lockActions', { encounterId, participantIds });
+    if (global.io) global.io.emit('ENCOUNTER_LOCK_ACTIONS', { encounterId, participantIds });
+  }
+  static unlockActions(encounterId, participantIds) {
+    console.log('[ManagerManager] unlockActions', { encounterId, participantIds });
+    if (global.io) global.io.emit('ENCOUNTER_UNLOCK_ACTIONS', { encounterId, participantIds });
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 

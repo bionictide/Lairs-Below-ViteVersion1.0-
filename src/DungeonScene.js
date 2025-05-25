@@ -14,6 +14,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.lootUIManager = null;
     this.combatVisuals = null;
     this.hintManager = null;
+    this.tempCombatTexts = [];
   }
 
   init(data) {
@@ -62,6 +63,34 @@ export default class DungeonScene extends Phaser.Scene {
     this.socket.on("ENTITY_DEFEATED", (data) => {
       console.log("[DEBUG] Entity defeated:", data);
     });
+
+    this.socket.on("ENCOUNTER_ATTACK_RESULT", (data) => {
+      this.clearTempCombatTexts();
+      if (data.dodged) {
+        const txt = this.add.text(400, 100, 'Attack dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        this.tempCombatTexts.push(txt);
+        this.time.delayedCall(1200, () => this.clearTempCombatTexts());
+      } else {
+        this.combatVisuals.playPlayerDamageEffect();
+        const txt = this.add.text(400, 100, `Hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#ff4444', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        this.tempCombatTexts.push(txt);
+        this.time.delayedCall(1200, () => this.clearTempCombatTexts());
+      }
+    });
+
+    this.socket.on("ENCOUNTER_SPELL_RESULT", (data) => {
+      this.clearTempCombatTexts();
+      if (data.dodged) {
+        const txt = this.add.text(400, 140, 'Spell dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        this.tempCombatTexts.push(txt);
+        this.time.delayedCall(1200, () => this.clearTempCombatTexts());
+      } else {
+        this.combatVisuals.playPlayerDamageEffect();
+        const txt = this.add.text(400, 140, `Spell hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#44aaff', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        this.tempCombatTexts.push(txt);
+        this.time.delayedCall(1200, () => this.clearTempCombatTexts());
+      }
+    });
   }
 
   createRoom() {
@@ -76,5 +105,12 @@ export default class DungeonScene extends Phaser.Scene {
       console.warn(`[DungeonScene] getSpriteForEntity: Sprite not found for entityId: ${entityId}`);
     }
     return sprite || null;
+  }
+
+  clearTempCombatTexts() {
+    if (this.tempCombatTexts) {
+      this.tempCombatTexts.forEach(txt => txt && txt.destroy());
+      this.tempCombatTexts = [];
+    }
   }
 }

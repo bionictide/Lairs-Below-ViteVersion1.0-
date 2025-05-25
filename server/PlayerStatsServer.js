@@ -104,6 +104,19 @@ export class PlayerStats {
   getElementalDamageMultiplier(element) {
     return this.elementalDamageMultiplier;
   }
+  /**
+   * Get evasion chance as a percentage (1 SPD = 0.5 evasion, 1 evasion = 1% dodge chance)
+   */
+  getEvasion() {
+    return this.spd * 0.5;
+  }
+
+  /**
+   * Roll for dodge. Returns true if attack is dodged.
+   */
+  tryDodge() {
+    return Math.random() < (this.getEvasion() / 100);
+  }
   // Add more methods as needed for steal, crit, etc.
 }
 
