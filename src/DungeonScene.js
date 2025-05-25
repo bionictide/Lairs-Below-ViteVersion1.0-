@@ -70,7 +70,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.add.sprite(400, 500, "player");
 
     this.bagManager = new BagManager(this);
-    this.lootUIManager = new LootUIManager(this);
+    this.lootUIManager = new LootUIManager(this, this.socket, this.player?.id);
     this.combatVisuals = new CombatVisuals(this);
     this.hintManager = new HintManager(this);
 

@@ -4,11 +4,10 @@
 import { itemData } from './BagManager.js';
 
 export class LootUIManager {
-  constructor(scene, bagManager, playerId, socket) {
+  constructor(scene, socket, playerId) {
     this.scene = scene;
-    this.bagManager = bagManager;
-    this.playerId = playerId;
     this.socket = socket;
+    this.playerId = playerId;
     this.isOpen = false;
     this.lootContainer = null;
     this.currentLootItems = [];
@@ -31,15 +30,9 @@ export class LootUIManager {
         }
       }
     });
+    // Only update UI if needed, do not mutate inventory
     this.socket.on('INVENTORY_UPDATE', (data) => {
-      if (data.playerId === this.playerId) {
-        if (this.bagManager && typeof this.bagManager.inventory !== 'undefined') {
-          this.bagManager.inventory = data.inventory;
-          if (this.bagManager.isOpen) {
-            this.bagManager.renderItems(this.bagManager.gridStartX, this.bagManager.gridStartY);
-          }
-        }
-      }
+      // Optionally, could trigger a UI refresh if needed
     });
   }
 
@@ -80,9 +73,7 @@ export class LootUIManager {
     this.lootContainer = null;
     if (this.closeButtonBg) { this.closeButtonBg.destroy(); this.closeButtonBg = null; }
     if (this.closeButtonText) { this.closeButtonText.destroy(); this.closeButtonText = null; }
-    if (this.sourceBagSprite && this.sourceBagSprite.scene && this.currentLootItems.length === 0) {
-      this.bagManager.removeBagSprite(this.currentSourceEntityId);
-    }
+    // Do not remove bag sprites or mutate world state
     this.isOpen = false;
     this.currentLootItems = [];
     this.currentSourceEntityId = null;
