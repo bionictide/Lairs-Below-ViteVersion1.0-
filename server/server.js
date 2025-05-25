@@ -43,6 +43,7 @@ io.on("connection", (socket) => {
     );
   });
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
+    console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
       // Fetch and validate player data from Supabase
       const { data, error } = await supabase
@@ -51,7 +52,9 @@ io.on("connection", (socket) => {
         .eq('user_id', user_id)
         .eq('id', playerId)
         .single();
+      console.log('[PLAYER_JOIN] Supabase result:', { data, error });
       if (error || !data) {
+        console.error('[PLAYER_JOIN] Player not found or invalid:', error);
         socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
         return;
       }
@@ -60,6 +63,7 @@ io.on("connection", (socket) => {
       const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
       for (const field of requiredFields) {
         if (!(field in character)) {
+          console.error('[PLAYER_JOIN] Missing field:', field, character);
           socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA' });
           return;
         }
@@ -73,10 +77,12 @@ io.on("connection", (socket) => {
         lastKnownRoom: null,
         alive: true,
       });
+      console.log('[PLAYER_JOIN] Player inserted into players map:', playerId);
       // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
+      console.log('[PLAYER_JOIN] Assigned spawn room:', spawnRoom.id);
       // Add player to room
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
@@ -93,12 +99,14 @@ io.on("connection", (socket) => {
           dungeon,
         },
       });
+      console.log('[PLAYER_JOIN] Sent ACTION_RESULT to client for player:', playerId);
       // Notify others
       socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
       previousPlayerCount = currentPlayerCount;
       currentPlayerCount = players.size;
       ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
     } catch (err) {
+      console.error('[PLAYER_JOIN] Exception:', err);
       socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
       return;
     }
