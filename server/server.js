@@ -46,20 +46,17 @@ io.use(async (socket, next) => {
   console.log('[AUTH] Incoming connection.');
   console.log('[DEBUG] Service Key:', SUPABASE_SERVICE_KEY);
   console.log('[DEBUG] Token:', token);
-  const headers = {
-    Authorization: `Bearer ${token}`,
-    apikey: SUPABASE_SERVICE_KEY,
-    Accept: 'application/json',
-  };
-  console.log('[DEBUG] Fetch headers:', headers);
   if (!token) {
     console.log('[AUTH] No token provided. Rejecting connection.');
     return next(new Error('No token provided'));
   }
   try {
-    // Validate JWT with Supabase
+    // Validate JWT with Supabase (EXACTLY as in old working code)
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-      headers
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: SUPABASE_SERVICE_KEY
+      }
     });
     const body = await res.text();
     console.log('[DEBUG] Supabase response status:', res.status);
