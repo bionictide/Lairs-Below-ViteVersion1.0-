@@ -8,7 +8,6 @@ import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import { takeTurn } from "./EncounterManagerServer.js";
-import { buildPlayerStats } from './PlayerStatsServer.js';
 import { ManagerManager } from './ManagerManager.js';
 
 const io = new Server();
