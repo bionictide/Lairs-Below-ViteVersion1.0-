@@ -52,8 +52,8 @@ io.use(async (socket, next) => {
     // Validate JWT with Supabase
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: {
-        Authorization: `Bearer ${token}`,
-        apikey: SUPABASE_SERVICE_KEY
+        'Authorization': `Bearer ${token}`,
+        'apikey': SUPABASE_SERVICE_KEY
       }
     });
     if (res.status !== 200) {
@@ -109,9 +109,9 @@ io.on("connection", (socket) => {
     try {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
         headers: {
-          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-          apikey: SUPABASE_SERVICE_KEY,
-          Accept: 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Accept': 'application/json',
         },
       });
       if (res.status !== 200) {
