@@ -1,6 +1,9 @@
 // SpellManagerServer.js
 // Server-authoritative spell resolution
 
+import { EVENTS } from '../src/shared/events.js';
+import PlayerManagerServer from './PlayerManagerServer.js';
+
 // import { getPlayerStatsById } from "./PlayerStatsServer.js";
 
 const spellGemRequirements = {
@@ -138,8 +141,6 @@ export function castSpell(casterInventory, spellName) {
 }
 
 export function resolveSpellCast(casterId, targetId, spellName) {
-  // Import PlayerManagerServer dynamically to avoid circular deps
-  const PlayerManagerServer = require('./PlayerManagerServer.js').default;
   const caster = PlayerManagerServer.getPlayer(casterId);
   const target = PlayerManagerServer.getPlayer(targetId);
   if (!caster || !target) return { error: 'Invalid participants' };
