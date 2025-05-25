@@ -6,7 +6,7 @@ import HintManager from "./HintManager.js";
 
 export default class DungeonScene extends Phaser.Scene {
   constructor() {
-    super("DungeonScene");
+    super("default");
     this.socket = null;
     this.player = null;
     this.dungeon = null;
@@ -19,8 +19,8 @@ export default class DungeonScene extends Phaser.Scene {
 
   init(data) {
     this.socket = data.socket;
-    this.player = data.player;
-    this.dungeon = data.dungeon;
+    this.player = data.playerData;
+    this.dungeon = data.serverDungeon;
   }
 
   preload() {
