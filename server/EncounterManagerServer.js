@@ -5,7 +5,6 @@ import PlayerManagerServer from './PlayerManagerServer.js';
 import GroupManagerServer from './GroupManagerServer.js';
 import ManagerManager from './ManagerManager.js';
 import { getCharacterDefinition } from './CharacterTypesServer.js';
-import { v4 as uuidv4 } from 'uuid';
 import SpellManagerServer from './SpellManagerServer.js';
 import { getHealthFromVIT, getDefenseFromVIT } from './StatDefinitions.js';
 
@@ -20,7 +19,7 @@ class EncounterManagerServer {
    * @returns {object} encounter
    */
   createEncounter(options) {
-    const encounterId = options.encounterId || `encounter-${uuidv4()}`;
+    const encounterId = options.encounterId || `encounter-${options.starterId || 'unknown'}-${Date.now()}`;
     if (this.encounters.has(encounterId)) throw new Error(`Encounter ${encounterId} already exists`);
     // Participants: playerIds and/or entityIds
     const participantIds = options.participantIds || [];
