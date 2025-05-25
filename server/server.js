@@ -105,33 +105,28 @@ io.on("connection", (socket) => {
     );
   });
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
-    console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
-      const fetchUrl = `${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`;
-      const fetchHeaders = {
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        apikey: SUPABASE_SERVICE_KEY,
-        Accept: 'application/json',
-      };
-      console.log('[PLAYER_JOIN] Fetching from Supabase:', fetchUrl, fetchHeaders);
-      const res = await fetch(fetchUrl, { headers: fetchHeaders });
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          Accept: 'application/json',
+        },
+      });
       if (res.status !== 200) {
-        console.error('[PLAYER_JOIN] Failed to fetch player data:', res.status);
         socket.emit(EVENTS.ERROR, { message: 'Failed to fetch player data', code: 'SUPABASE_FETCH_FAILED' });
         return;
       }
-      const dataArr = await res.json();
-      if (!dataArr || !dataArr[0]) {
-        console.error('[PLAYER_JOIN] Player not found or invalid:', dataArr);
+      const data = await res.json();
+      if (!data || !data[0]) {
         socket.emit(EVENTS.ERROR, { message: 'Player not found or invalid', code: 'PLAYER_NOT_FOUND' });
         return;
       }
-      const character = dataArr[0];
+      const character = data[0];
       // Validate required fields
       const requiredFields = ['id', 'user_id', 'name', 'type', 'level', 'vit', 'str', 'int', 'dex', 'mnd', 'spd'];
       for (const field of requiredFields) {
         if (!(field in character)) {
-          console.error('[PLAYER_JOIN] Missing field:', field, character);
           socket.emit(EVENTS.ERROR, { message: `Missing field: ${field}`, code: 'INVALID_PLAYER_DATA' });
           return;
         }
@@ -144,11 +139,9 @@ io.on("connection", (socket) => {
         lastKnownRoom: null,
         alive: true,
       });
-      console.log('[PLAYER_JOIN] Player inserted into players map:', playerId);
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
-      console.log('[PLAYER_JOIN] Assigned spawn room:', spawnRoom.id);
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
@@ -163,13 +156,11 @@ io.on("connection", (socket) => {
           dungeon,
         },
       });
-      console.log('[PLAYER_JOIN] Sent ACTION_RESULT to client for player:', playerId);
       socket.broadcast.emit(EVENTS.PLAYER_JOIN_NOTIFICATION, { name: character.name });
       previousPlayerCount = currentPlayerCount;
       currentPlayerCount = players.size;
       ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
     } catch (err) {
-      console.error('[PLAYER_JOIN] Exception:', err);
       socket.emit(EVENTS.ERROR, { message: 'Supabase validation error', code: 'SUPABASE_ERROR' });
       return;
     }
