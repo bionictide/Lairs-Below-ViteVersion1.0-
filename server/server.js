@@ -26,6 +26,9 @@ const ALLOWED_ORIGINS = [
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://rcbqjftzzdtbghrrtxai.supabase.co';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 
+console.log('[DEBUG] process.env keys:', Object.keys(process.env));
+console.log('[DEBUG] SUPABASE_SERVICE_KEY:', process.env.SUPABASE_SERVICE_KEY);
+
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
