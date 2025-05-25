@@ -3,7 +3,7 @@
 
 import { Server } from "socket.io";
 import { EVENTS } from "../src/shared/events.js";
-import { generateDungeon } from './DungeonCore.js';
+import { DungeonCore } from './DungeonCore.js';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
@@ -21,7 +21,8 @@ const players = new Map(); // playerId -> { socket, character, roomId, inventory
 const rooms = new Map();   // roomId -> { players: Set, entities: [], ... }
 const bags = new Map();    // bagId -> { roomId, items }
 const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
-const dungeon = generateDungeon(DUNGEON_SEED, { playerCount: 1 });
+const dungeonCore = new DungeonCore();
+const dungeon = dungeonCore.generateDungeon(1, DUNGEON_SEED);
 
 io.on("connection", (socket) => {
   console.log("Player connected:", socket.id);
@@ -117,7 +118,7 @@ io.on("connection", (socket) => {
     players.delete(playerId);
     socket.broadcast.emit(EVENTS.PLAYER_LEAVE, { playerId });
     if (players.size === 0) {
-      Object.assign(dungeon, generateDungeon(DUNGEON_SEED, { playerCount: 1 }));
+      Object.assign(dungeon, dungeonCore.generateDungeon(1, DUNGEON_SEED));
       rooms.clear();
       bags.clear();
     }
