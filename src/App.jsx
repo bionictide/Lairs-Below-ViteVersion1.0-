@@ -755,7 +755,10 @@ function CharacterServerSelectScreen({ characters, onCreateCharacter, onSelectCh
                 ...(lockedCharacter === null || lockedServer === null ? combatButtonDisabled : { background: '#2196f3', color: '#fff', border: '2px solid #2196f3' }),
                 borderRadius: 2, width: 260, height: 56, fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', margin: 0
               }}
-              onClick={onJoinServer}
+              onClick={() => {
+                console.log('[DEBUG] Join Server button clicked');
+                onJoinServer();
+              }}
             >
               Join Server
             </button>
@@ -1066,6 +1069,7 @@ function App() {
 
   // Add onJoinServer handler
   const handleJoinServer = async () => {
+    console.log('[DEBUG] handleJoinServer called', { lockedCharacter, lockedServer, selectedCharacter, selectedServer });
     if (
       lockedCharacter === null ||
       lockedServer === null ||

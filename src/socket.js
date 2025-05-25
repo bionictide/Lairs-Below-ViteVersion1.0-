@@ -10,6 +10,7 @@ export function connectSocket(token) {
     socket.disconnect();
     socket = null;
   }
+  console.log('[DEBUG] connectSocket called with token:', token);
   // Connect to the live server with JWT auth (use current origin by default)
   socket = window.io(window.location.origin, {
     auth: { token }
@@ -20,6 +21,7 @@ export function connectSocket(token) {
 // Emit PLAYER_JOIN with playerId and user_id, and handle join result
 export function joinPlayer({ playerId, user_id }, onSuccess, onError) {
   if (!socket) throw new Error('Socket not connected');
+  console.log('[DEBUG] joinPlayer called with:', { playerId, user_id });
   socket.emit('player_join', { playerId, user_id });
   const handleJoin = (payload) => {
     if (payload.action === 'player_join') {
