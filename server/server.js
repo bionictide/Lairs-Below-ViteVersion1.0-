@@ -7,7 +7,7 @@ import { EVENTS } from "../src/shared/events.js";
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
-import { takeTurn } from "./EncounterManagerServer.js";
+import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
 
 const io = new Server();
@@ -23,7 +23,16 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.TREASURE_INTERACT, (data) => handleTreasureAccess(socket, data));
   socket.on(EVENTS.LOOT_ITEM, (data) => ManagerManager.lootItem(data));
   socket.on(EVENTS.MARK_BAG_CHECKED, (data) => ManagerManager.markLootBagChecked(data.bagId));
-  socket.on(EVENTS.TAKE_TURN, (data) => takeTurn(data.encounterId, data.entityId, data.action));
+  socket.on(EVENTS.TAKE_TURN, (data) => {
+    // Route to EncounterManagerServer.handleAction, preserving all features
+    EncounterManagerServer.handleAction(
+      data.encounterId,
+      data.entityId,
+      data.action,
+      data.targetId,
+      data.extra
+    );
+  });
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     try {
       // Fetch and validate player data from Supabase
