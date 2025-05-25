@@ -209,3 +209,70 @@ export class BagManager {
     });
   }
 }
+
+// Placeholder item data structure (restored from old code)
+export const itemData = {
+  'Key1': {
+    name: 'Key',
+    asset: 'Key1',
+    width: 2,
+    height: 1,
+    stackable: false
+  },
+  'sword1': {
+    name: 'Sword',
+    asset: 'Sword1',
+    width: 3,
+    height: 1,
+    stackable: false,
+    usable: false
+  },
+  'helm1': {
+    name: 'Helm',
+    asset: 'Helm1',
+    width: 2,
+    height: 2,
+    stackable: false,
+    usable: false
+  },
+  'Potion1(red)': {
+    name: 'Red Potion',
+    asset: 'Potion1(red)',
+    width: 1,
+    height: 1,
+    stackable: true,
+    usable: true
+  },
+  'Emerald': {
+    name: 'Emerald',
+    asset: 'Emerald',
+    width: 1,
+    height: 1,
+    stackable: true,
+    usable: false
+  },
+  'BlueApatite': {
+    name: 'Blue Apatite',
+    asset: 'BlueApatite',
+    width: 1,
+    height: 1,
+    stackable: true,
+    usable: false
+  },
+  'Amethyst': {
+    name: 'Amethyst',
+    asset: 'Amethyst',
+    width: 1,
+    height: 1,
+    stackable: true,
+    usable: false
+  },
+  'RawRuby': {
+    name: 'Raw Ruby',
+    asset: 'RawRuby',
+    width: 1,
+    height: 1,
+    stackable: true,
+    usable: false
+  }
+};
