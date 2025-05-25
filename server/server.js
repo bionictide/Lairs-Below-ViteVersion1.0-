@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
-import fetch from 'node-fetch';
+import fetch, { Headers } from 'node-fetch';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
@@ -49,12 +49,11 @@ io.use(async (socket, next) => {
     return next(new Error('No token provided'));
   }
   try {
-    // Validate JWT with Supabase
-    const headers = {
-      Authorization: `Bearer ${token}`,
-      apikey: SUPABASE_SERVICE_KEY
-    };
-    console.log('[AUTH][DEBUG] Using headers:', headers);
+    // Use Headers class for node-fetch
+    const headers = new Headers();
+    headers.append('Authorization', `Bearer ${token}`);
+    headers.append('apikey', SUPABASE_SERVICE_KEY);
+    console.log('[AUTH][DEBUG] Using headers:', Object.fromEntries(headers.entries()));
     console.log('[AUTH][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
     const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers
@@ -110,12 +109,11 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[SOCKET][SERVER] PLAYER_JOIN received:', { playerId, user_id });
     try {
-      const headers = {
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        apikey: SUPABASE_SERVICE_KEY,
-        Accept: 'application/json',
-      };
-      console.log('[PLAYER_JOIN][DEBUG] Using headers:', headers);
+      const headers = new Headers();
+      headers.append('Authorization', `Bearer ${SUPABASE_SERVICE_KEY}`);
+      headers.append('apikey', SUPABASE_SERVICE_KEY);
+      headers.append('Accept', 'application/json');
+      console.log('[PLAYER_JOIN][DEBUG] Using headers:', Object.fromEntries(headers.entries()));
       console.log('[PLAYER_JOIN][DEBUG] SUPABASE_SERVICE_KEY:', SUPABASE_SERVICE_KEY ? SUPABASE_SERVICE_KEY.slice(0, 6) + '...' + SUPABASE_SERVICE_KEY.slice(-4) : '[none]');
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
         headers
