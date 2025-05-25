@@ -3,7 +3,7 @@
 
 import PlayerManagerServer from './PlayerManagerServer.js';
 import GroupManagerServer from './GroupManagerServer.js';
-import ManagerManager from './ManagerManager.js';
+import { ManagerManager } from './ManagerManager.js';
 import { getCharacterDefinition } from './CharacterTypesServer.js';
 import * as SpellManagerServer from './SpellManagerServer.js';
 import * as StatDefinitionsServer from './StatDefinitionsServer.js';
