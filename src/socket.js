@@ -11,8 +11,8 @@ export function connectSocket(token) {
     socket = null;
   }
   console.log('[DEBUG] connectSocket called with token:', token);
-  // Connect to the live server with JWT auth (use current origin by default)
-  socket = window.io(window.location.origin, {
+  // Connect to the live server with JWT auth (use remote server address, not window.location.origin)
+  socket = window.io('http://64.227.97.242:3001', {
     auth: { token }
   });
   return socket;
