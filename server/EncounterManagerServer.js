@@ -362,6 +362,14 @@ class EncounterManagerServer {
     ManagerManager.emitEncounterEnd(encounterId, encounter.roomId, encounter.participants);
     this.encounters.delete(encounterId);
   }
+
+  /**
+   * Get all active encounters.
+   * @returns {Array}
+   */
+  getAllEncounters() {
+    return Array.from(this.encounters.values());
+  }
 }
 
 const instance = new EncounterManagerServer();

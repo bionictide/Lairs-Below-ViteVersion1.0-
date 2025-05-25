@@ -181,6 +181,26 @@ export var CombatVisuals = /*#__PURE__*/ function() {
                     }
                 });
             }
+        },
+        {
+            /**
+     * Fades out and tints a sprite to black, then calls onComplete.
+     * @param {Phaser.GameObjects.Sprite} sprite
+     * @param {Function} onComplete
+     */
+            fadeOutAndRemove(sprite, onComplete) {
+                if (!sprite || !sprite.scene) return;
+                sprite.setTint(0x000000);
+                sprite.scene.tweens.add({
+                    targets: sprite,
+                    alpha: 0,
+                    duration: 700,
+                    ease: 'Linear',
+                    onComplete: () => {
+                        if (onComplete) onComplete();
+                    }
+                });
+            }
         }
     ]);
     return CombatVisuals;

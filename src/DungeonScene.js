@@ -3,6 +3,7 @@ import { BagManager } from "./BagManager.js";
 import { LootUIManager } from "./LootUIManager.js";
 import { CombatVisuals } from "./CombatVisuals.js";
 import HintManager from "./HintManager.js";
+import { CharacterSprites } from '../server/CharacterSpritesServer.js';
 
 export default class DungeonScene extends Phaser.Scene {
   constructor() {
@@ -24,10 +25,44 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   preload() {
-    this.load.image("bag", "assets/bag.png");
-    this.load.image("floor", "assets/floor.png");
-    this.load.image("enemy", "assets/enemy.png");
-    this.load.image("player", "assets/player.png");
+    // --- Preload all room backgrounds (old RoomManager.roomAssets) ---
+    const roomAssets = {
+      'none': 'Assets/None.png',
+      'left': 'Assets/Left.png',
+      'right': 'Assets/Right.png',
+      'forward': 'Assets/Forward.png',
+      'left-forward': 'Assets/LeftForward.png',
+      'forward-right': 'Assets/ForwardRight.png',
+      'left-right': 'Assets/LeftRight.png',
+      'left-forward-right': 'Assets/LeftForwardRight.png',
+      'right-barrel': 'Assets/Right2(barrel).png',
+      'forward-right2': 'Assets/ForwardRight2.png'
+    };
+    Object.entries(roomAssets).forEach(([key, url]) => {
+      this.load.image(key, url);
+    });
+
+    // --- Preload all character sprites (idle, angry, dead) ---
+    Object.values(CharacterSprites).forEach(spriteSet => {
+      Object.values(spriteSet).forEach(filename => {
+        this.load.image(filename.replace('.png',''), `Assets/${filename}`);
+      });
+    });
+
+    // --- Preload loot, shelf, and effect assets (as in old code) ---
+    const assetList = [
+      'Key1', 'Sword1', 'Helm1', 'Bag1', 'Bag2', 'Potion1(red)',
+      'ShelfEmpty', 'ShelfRawRuby', 'ShelfAmethyst', 'ShelfBlueApatite', 'ShelfEmerald', 'Shelf2Potion', 'Shelf2Empty',
+      'RawRuby', 'BlueApatite', 'Amethyst', 'Emerald',
+      'ShelfEmptyLeft', 'ShelfEmptyRight', 'ShelfRawRubyLeft', 'ShelfRawRubyRight',
+      'ShelfAmethystLeft', 'ShelfAmethystRight', 'ShelfBlueApatiteLeft', 'ShelfBlueApatiteRight',
+      'ShelfEmeraldLeft', 'ShelfEmeraldRight', 'Shelf2EmptyLeft', 'Shelf2EmptyRight',
+      'Shelf2PotionLeft', 'Shelf2PotionRight',
+      'GlassBroke1', 'GlassBroke2', 'GlassBroke3', 'GlassBroke4', 'GlassBroke5'
+    ];
+    assetList.forEach(key => {
+      this.load.image(key, `Assets/${key}.png`);
+    });
   }
 
   create() {
@@ -89,6 +124,29 @@ export default class DungeonScene extends Phaser.Scene {
         const txt = this.add.text(400, 140, `Spell hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#44aaff', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
         this.tempCombatTexts.push(txt);
         this.time.delayedCall(1200, () => this.clearTempCombatTexts());
+      }
+    });
+
+    this.socket.on("ENCOUNTER_KO", (data) => {
+      const { targetId, type, mood } = data;
+      // Find the sprite for this entity
+      const sprite = this.getSpriteForEntity(targetId);
+      if (sprite && type && CharacterSprites[type] && CharacterSprites[type][mood]) {
+        // Swap to the 'dead' sprite
+        sprite.setTexture(CharacterSprites[type][mood].replace('.png',''));
+        // Fade out and tint using CombatVisuals
+        this.combatVisuals.fadeOutAndRemove(sprite, () => {
+          if (this.entitySprites && this.entitySprites.delete) {
+            this.entitySprites.delete(targetId);
+          }
+          sprite.destroy();
+        });
+      } else {
+        // If no sprite or type, just remove if present
+        if (sprite) sprite.destroy();
+        if (this.entitySprites && this.entitySprites.delete) {
+          this.entitySprites.delete(targetId);
+        }
       }
     });
   }

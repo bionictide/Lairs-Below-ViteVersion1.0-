@@ -185,12 +185,85 @@ export class BagManager {
     this.activeBagSprites.set(bagId, sprite);
   }
 
-  updateBagVisibility(bagsInRoom) {
-    if (!Array.isArray(bagsInRoom)) return;
-    for (const [bagId, sprite] of this.activeBagSprites.entries()) {
-      const shouldBeVisible = bagsInRoom.includes(bagId);
-      sprite.setVisible(shouldBeVisible);
+  /**
+   * Updates bag sprite visibility and appearance based on room and facing direction.
+   * @param {string} currentRoomId
+   * @param {string} currentFacingDirection
+   */
+  updateBagVisibility(currentRoomId, currentFacingDirection) {
+    const screenWidth = this.scene.game.config.width;
+    const screenHeight = this.scene.game.config.height;
+    for (const [bagId, bagSprite] of this.activeBagSprites.entries()) {
+      const bagData = bagSprite.getData('bagData') || {};
+      const bagRoomId = bagData.roomId || bagSprite.roomId;
+      const droppedFacing = (bagData.droppedFacingDirection || bagSprite.droppedFacingDirection || 'north').trim().toLowerCase();
+      const currentFacing = (currentFacingDirection || 'north').trim().toLowerCase();
+      let isVisible = false;
+      let targetX = screenWidth / 2;
+      let targetY = screenHeight * 0.70;
+      let relativeDirection = 'front';
+      if (bagRoomId === currentRoomId) {
+        relativeDirection = this.getRelativeDirection(droppedFacing, currentFacing);
+        switch (relativeDirection) {
+          case 'front':
+            isVisible = true;
+            targetX = screenWidth / 2;
+            targetY = screenHeight * 0.70;
+            bagSprite.setFlipX(false);
+            bagSprite.setScale(0.165);
+            break;
+          case 'left':
+            isVisible = true;
+            targetX = screenWidth * 0.85;
+            targetY = screenHeight * 0.78;
+            bagSprite.setFlipX(false);
+            bagSprite.setScale(0.1875);
+            break;
+          case 'right':
+            isVisible = true;
+            targetX = screenWidth * 0.15;
+            targetY = screenHeight * 0.78;
+            bagSprite.setFlipX(true);
+            bagSprite.setScale(0.1875);
+            break;
+          case 'back':
+            isVisible = false;
+            bagSprite.setFlipX(false);
+            break;
+          default:
+            isVisible = true;
+            targetX = screenWidth / 2;
+            targetY = screenHeight * 0.70;
+            bagSprite.setFlipX(false);
+            bagSprite.setScale(0.165);
+            break;
+        }
+      } else {
+        isVisible = false;
+      }
+      bagSprite.setVisible(isVisible);
+      if (isVisible) {
+        bagSprite.setPosition(targetX, targetY);
+      }
     }
+  }
+
+  /**
+   * Returns the relative direction ('front', 'left', 'right', 'back') given dropped and current facing.
+   */
+  getRelativeDirection(droppedFacing, currentFacing) {
+    const directions = ['north', 'east', 'south', 'west'];
+    const relMap = {
+      0: 'front',
+      1: 'right',
+      2: 'back',
+      3: 'left',
+    };
+    const dropIdx = directions.indexOf(droppedFacing);
+    const currIdx = directions.indexOf(currentFacing);
+    if (dropIdx === -1 || currIdx === -1) return 'front';
+    const diff = (currIdx - dropIdx + 4) % 4;
+    return relMap[diff] || 'front';
   }
 
   createToggleButton(x = 20, y = 20) {

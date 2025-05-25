@@ -452,8 +452,41 @@ export class ManagerManager {
     if (global.io) global.io.emit(EVENTS.ENCOUNTER_STEAL_RESULT, { encounterId, actorId, targetId, stealResult });
   }
   static emitKO(encounterId, targetId) {
-    console.log('[ManagerManager] emitKO', { encounterId, targetId });
-    if (global.io) global.io.emit(EVENTS.ENCOUNTER_KO, { encounterId, targetId });
+    // Look up type for the target (player or NPC)
+    let type = null;
+    let mood = 'dead';
+    // Try to get from PlayerManagerServer first
+    const player = PlayerManagerServer.getPlayer(targetId);
+    // Find the encounter
+    let encounter = null;
+    if (EncounterManagerServer.getEncounter) {
+      encounter = EncounterManagerServer.getEncounter(encounterId);
+    }
+    // Determine loot and bag drop details
+    let lootItems = [];
+    let ownerId = targetId;
+    let roomId = null;
+    let facingDirection = 'north';
+    if (player) {
+      type = player.type;
+      lootItems = player.inventory || [];
+      roomId = player.roomId || (encounter && encounter.roomId);
+      facingDirection = player.facing || 'north';
+    } else if (encounter && encounter.npcs && encounter.npcs[targetId]) {
+      const npc = encounter.npcs[targetId];
+      type = npc.type || npc.statBlock?.type;
+      lootItems = npc.instanceLoot || [];
+      roomId = npc.roomId || (encounter && encounter.roomId);
+      facingDirection = npc.facing || 'north';
+    }
+    // Emit KO event for visuals
+    console.log('[ManagerManager] emitKO', { encounterId, targetId, type, mood });
+    if (global.io) global.io.emit(EVENTS.ENCOUNTER_KO, { encounterId, targetId, type, mood });
+    // Create loot bag and emit LOOT_BAG_DROP if there is loot
+    if (lootItems && lootItems.length > 0 && roomId) {
+      const bag = BagManagerServer.createLootBag({ ownerId, roomId, facingDirection, items: lootItems });
+      if (global.io) global.io.emit(EVENTS.LOOT_BAG_DROP, { roomId, bagId: bag.bagId, items: bag.contents });
+    }
   }
   static emitFleeResult(encounterId, actorId, fleeResult) {
     console.log('[ManagerManager] emitFleeResult', { encounterId, actorId, fleeResult });
