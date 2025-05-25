@@ -6,12 +6,15 @@ import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
 import fetch from 'node-fetch';
+import dotenv from 'dotenv';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
+
+dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGINS = [
