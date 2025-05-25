@@ -6,6 +6,8 @@ import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
 import fetch, { Headers } from 'node-fetch';
+import dotenv from 'dotenv';
+dotenv.config();
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
