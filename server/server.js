@@ -6,15 +6,12 @@ import { EVENTS } from "../src/shared/events.js";
 import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
 import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
-
-dotenv.config();
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGINS = [
@@ -43,7 +40,7 @@ const io = new Server(server, {
   }
 });
 
-// Middleware: Require Supabase JWT on connect (EXACT COPY FROM OLD WORKING CODE)
+// Supabase JWT authentication middleware
 io.use(async (socket, next) => {
   const token = socket.handshake.auth && socket.handshake.auth.token;
   console.log('[AUTH] Incoming connection.');
@@ -110,6 +107,7 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
+      // Proceed directly to fetching player data from Supabase
       // Fetch and validate player data from Supabase
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
         headers: {
