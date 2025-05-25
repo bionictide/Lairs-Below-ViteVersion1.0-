@@ -6,7 +6,7 @@ import GroupManagerServer from './GroupManagerServer.js';
 import ManagerManager from './ManagerManager.js';
 import { getCharacterDefinition } from './CharacterTypesServer.js';
 import SpellManagerServer from './SpellManagerServer.js';
-import { getHealthFromVIT, getDefenseFromVIT } from './StatDefinitions.js';
+import { getHealthFromVIT, getDefenseFromVIT } from './StatDefinitionsServer.js';
 
 class EncounterManagerServer {
   constructor() {
