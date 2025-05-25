@@ -110,12 +110,6 @@ io.on("connection", (socket) => {
   socket.on(EVENTS.PLAYER_JOIN, async ({ playerId, user_id }) => {
     console.log('[PLAYER_JOIN] Received:', { playerId, user_id });
     try {
-      // Validate that the socket user matches the user_id
-      if (!socket.user || socket.user.id !== user_id) {
-        console.error('[PLAYER_JOIN] Auth mismatch:', socket.user?.id, user_id);
-        socket.emit(EVENTS.ERROR, { message: 'Auth mismatch', code: 'AUTH_MISMATCH' });
-        return;
-      }
       // Fetch and validate player data from Supabase
       const res = await fetch(`${SUPABASE_URL}/rest/v1/characters?user_id=eq.${user_id}&id=eq.${playerId}`, {
         headers: {
