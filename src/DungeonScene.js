@@ -43,6 +43,7 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   preload() {
+    console.log('[DEBUG] DungeonScene preload START');
     // --- Preload all room backgrounds (old RoomManager.roomAssets) ---
     const roomAssets = {
       'none': 'Assets/None.png',
@@ -81,9 +82,11 @@ export default class DungeonScene extends Phaser.Scene {
     assetList.forEach(key => {
       this.load.image(key, `Assets/${key}.png`);
     });
+    console.log('[DEBUG] DungeonScene preload END');
   }
 
   create() {
+    console.log('[DEBUG] DungeonScene create START');
     this.add.image(400, 300, "floor");
     this.add.sprite(400, 500, "player");
 
@@ -129,6 +132,7 @@ export default class DungeonScene extends Phaser.Scene {
         onComplete: () => floatText.destroy()
       });
     });
+    console.log('[DEBUG] DungeonScene create END');
   }
 
   setupSocketListeners() {
@@ -211,6 +215,7 @@ export default class DungeonScene extends Phaser.Scene {
     });
 
     this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
+      console.log('[DEBUG] ROOM_UPDATE assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
       // Remove any existing background image
       if (this.roomBackground) {
         this.roomBackground.destroy();
