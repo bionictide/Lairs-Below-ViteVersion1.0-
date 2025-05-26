@@ -13,7 +13,7 @@ export default class Game {
   }
 }
 
-export function initGame(parent, dungeon, player) {
+export function initGame(parent, dungeon, player, socket) {
   const config = {
     type: Phaser.AUTO,
     width: 1456,
@@ -31,7 +31,7 @@ export function initGame(parent, dungeon, player) {
     }
   };
   const game = new Phaser.Game(config);
-  // Start DungeonScene with the old key and data structure
-  game.scene.start('default', { serverDungeon: dungeon, playerData: player });
+  // Pass socket to DungeonScene
+  game.scene.start('default', { serverDungeon: dungeon, playerData: player, socket });
   return game;
 }

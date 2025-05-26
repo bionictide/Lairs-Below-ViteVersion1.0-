@@ -1060,7 +1060,8 @@ function App() {
           initGame(
             document.getElementById('renderDiv'),
             dungeon, // Use the real dungeon object from state
-            char // Pass the full character object
+            char, // Pass the full character object
+            window.socket // Pass the socket as the fourth argument
           );
         });
       }
