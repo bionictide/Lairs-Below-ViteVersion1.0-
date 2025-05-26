@@ -1122,7 +1122,7 @@ function App() {
       joinPlayer(
         { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
-          window.currentCharacter = freshChar;
+          window.currentCharacter = data.character; // Use the server-supplied character with roomId
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
