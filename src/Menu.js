@@ -76,6 +76,7 @@ export default class Menu {
 
   createMenu(menuKey, instant = false) {
     if (this.transitioning) return;
+    this.clearMenu();
     const prevMenuContainer = this.menuContainer;
     this.menuContainer = this.scene.add.container(0, 0).setDepth(2000);
     // Set container position to center (with offset) before adding children
@@ -95,105 +96,7 @@ export default class Menu {
     });
     let currentY = -totalHeight / 2 + itemHeights[0] / 2;
     menu.forEach((item, i) => {
-      if (item.slider) {
-        // Group label, bar, and ball into a sub-container for perfect alignment
-        const sliderRow = this.scene.add.container(0, currentY);
-        const barWidth = 220;
-        const valueClamped = Phaser.Math.Clamp(item.value(), 0, 1);
-        // Label above bar/ball
-        const label = this.scene.add.text(0, -20, item.text, {
-          fontFamily: 'Arial', fontSize: '28px', color: '#000', align: 'center',
-          wordWrap: { width: 200, useAdvancedWrap: true },
-          fixedWidth: 220,
-        }).setOrigin(0.5).setDepth(2000);
-        const bar = this.scene.add.rectangle(0, 0, barWidth, 8, 0x888888).setOrigin(0.5).setDepth(2000);
-        const ballRadius = 8;
-        const ball = this.scene.add.circle(-barWidth / 2 + barWidth * valueClamped, 0, ballRadius, 0x222222).setOrigin(0.5).setDepth(2001).setInteractive({ draggable: true });
-        ball.input.draggable = true;
-        ball.on('drag', (pointer, dragX) => {
-          let localX = Phaser.Math.Clamp(dragX, -barWidth / 2, barWidth / 2);
-          ball.x = localX;
-          let value = (localX + barWidth / 2) / barWidth;
-          item.onChange(value);
-        });
-        sliderRow.add([label, bar, ball]);
-        this.menuContainer.add(sliderRow);
-        this.menuTexts.push(label, bar, ball, sliderRow);
-        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
-      } else if (item.password) {
-        this.passwordInput = '';
-        const monoFont = 'Courier New, Courier, monospace';
-        const pwText = this.scene.add.text(0, currentY, '', {
-          fontFamily: monoFont, fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)'
-        }).setOrigin(0.5).setDepth(2000);
-        this.menuContainer.add(pwText);
-        this.menuTexts.push(pwText);
-        this.scene.input.keyboard.off('keydown');
-        let cursorVisible = true;
-        let cursorTimer = this.scene.time.addEvent({
-          delay: 400,
-          loop: true,
-          callback: () => {
-            cursorVisible = !cursorVisible;
-            updatePwText();
-          }
-        });
-        const updatePwText = () => {
-          if (!pwText.scene) return;
-          const asterisks = '*'.repeat(this.passwordInput.length);
-          pwText.setText(asterisks + (cursorVisible ? '|' : ''));
-        };
-        this.scene.input.keyboard.on('keydown', (event) => {
-          if (event.key === 'Backspace') {
-            this.passwordInput = this.passwordInput.slice(0, -1);
-          } else if (event.key === 'Enter') {
-            this.handleDevPassword(this.passwordInput);
-          } else if (event.key.length === 1) {
-            this.passwordInput += event.key;
-          }
-          updatePwText();
-        });
-        updatePwText();
-        if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
-        this.passwordCursorTimer = cursorTimer;
-        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
-      } else {
-        const style = {
-          fontFamily: 'Arial',
-          fontSize: item.small ? '22px' : '36px',
-          color: '#000',
-          align: 'center',
-          wordWrap: { width: 320, useAdvancedWrap: true },
-          fixedWidth: 340,
-        };
-        const txt = this.scene.add.text(0, currentY, item.text, style)
-          .setOrigin(0.5)
-          .setDepth(2000)
-          .setInteractive({ useHandCursor: !item.disabled && !!item.action });
-        if (item.disabled) {
-          txt.setAlpha(1);
-        } else {
-          txt.setAlpha(1);
-          if (item.action) {
-            txt.on('pointerdown', () => item.action());
-          }
-        }
-        this.menuContainer.add(txt);
-        this.menuTexts.push(txt);
-        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
-      }
-    });
-    if (menuKey === 'devMenu') {
-      // Use the same rendering logic as other menus, but with custom row types
-      let totalHeight = 0;
-      let itemHeights = [];
-      const menu = this.getMenus()[menuKey];
-      menu.forEach(item => {
-        itemHeights.push(54);
-        totalHeight += 54;
-      });
-      let currentY = -totalHeight / 2 + itemHeights[0] / 2;
-      menu.forEach((item, i) => {
+      if (menuKey === 'devMenu') {
         if (item.toggle) {
           // Render label and switch to the right
           const label = this.scene.add.text(0, currentY, item.text, {
@@ -320,10 +223,94 @@ export default class Menu {
           this.menuTexts.push(btn);
           currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
         }
-      });
-      this.updateMenuPosition();
-      return;
-    }
+      } else if (item.slider) {
+        // Group label, bar, and ball into a sub-container for perfect alignment
+        const sliderRow = this.scene.add.container(0, currentY);
+        const barWidth = 220;
+        const valueClamped = Phaser.Math.Clamp(item.value(), 0, 1);
+        // Label above bar/ball
+        const label = this.scene.add.text(0, -20, item.text, {
+          fontFamily: 'Arial', fontSize: '28px', color: '#000', align: 'center',
+          wordWrap: { width: 200, useAdvancedWrap: true },
+          fixedWidth: 220,
+        }).setOrigin(0.5).setDepth(2000);
+        const bar = this.scene.add.rectangle(0, 0, barWidth, 8, 0x888888).setOrigin(0.5).setDepth(2000);
+        const ballRadius = 8;
+        const ball = this.scene.add.circle(-barWidth / 2 + barWidth * valueClamped, 0, ballRadius, 0x222222).setOrigin(0.5).setDepth(2001).setInteractive({ draggable: true });
+        ball.input.draggable = true;
+        ball.on('drag', (pointer, dragX) => {
+          let localX = Phaser.Math.Clamp(dragX, -barWidth / 2, barWidth / 2);
+          ball.x = localX;
+          let value = (localX + barWidth / 2) / barWidth;
+          item.onChange(value);
+        });
+        sliderRow.add([label, bar, ball]);
+        this.menuContainer.add(sliderRow);
+        this.menuTexts.push(label, bar, ball, sliderRow);
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+      } else if (item.password) {
+        this.passwordInput = '';
+        const monoFont = 'Courier New, Courier, monospace';
+        const pwText = this.scene.add.text(0, currentY, '', {
+          fontFamily: monoFont, fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)'
+        }).setOrigin(0.5).setDepth(2000);
+        this.menuContainer.add(pwText);
+        this.menuTexts.push(pwText);
+        this.scene.input.keyboard.off('keydown');
+        let cursorVisible = true;
+        let cursorTimer = this.scene.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            cursorVisible = !cursorVisible;
+            updatePwText();
+          }
+        });
+        const updatePwText = () => {
+          if (!pwText.scene) return;
+          const asterisks = '*'.repeat(this.passwordInput.length);
+          pwText.setText(asterisks + (cursorVisible ? '|' : ''));
+        };
+        this.scene.input.keyboard.on('keydown', (event) => {
+          if (event.key === 'Backspace') {
+            this.passwordInput = this.passwordInput.slice(0, -1);
+          } else if (event.key === 'Enter') {
+            this.handleDevPassword(this.passwordInput);
+          } else if (event.key.length === 1) {
+            this.passwordInput += event.key;
+          }
+          updatePwText();
+        });
+        updatePwText();
+        if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
+        this.passwordCursorTimer = cursorTimer;
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+      } else {
+        const style = {
+          fontFamily: 'Arial',
+          fontSize: item.small ? '22px' : '36px',
+          color: '#000',
+          align: 'center',
+          wordWrap: { width: 320, useAdvancedWrap: true },
+          fixedWidth: 340,
+        };
+        const txt = this.scene.add.text(0, currentY, item.text, style)
+          .setOrigin(0.5)
+          .setDepth(2000)
+          .setInteractive({ useHandCursor: !item.disabled && !!item.action });
+        if (item.disabled) {
+          txt.setAlpha(1);
+        } else {
+          txt.setAlpha(1);
+          if (item.action) {
+            txt.on('pointerdown', () => item.action());
+          }
+        }
+        this.menuContainer.add(txt);
+        this.menuTexts.push(txt);
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+      }
+    });
     if (instant || !prevMenuContainer) {
       this.updateMenuPosition();
       return;
