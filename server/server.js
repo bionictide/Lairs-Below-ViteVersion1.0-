@@ -15,6 +15,7 @@ import { handleShelfAccess } from "./ShelfManagerServer.js";
 import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
+import { handleDevDebugAuth } from './DebugHelperServer.js';
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGINS = [
@@ -248,6 +249,10 @@ io.on("connection", (socket) => {
       assetKey,
     });
     socket.join(roomId);
+  });
+
+  socket.on('DEV_DEBUG_AUTH', (password) => {
+    handleDevDebugAuth(socket, password);
   });
 
   // Additional connections (player join/leave, room sync, etc.) would route here too
