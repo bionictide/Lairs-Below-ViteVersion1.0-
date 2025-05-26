@@ -38,8 +38,9 @@ export default class DungeonScene extends Phaser.Scene {
     this.socket = data.socket;
     this.player = data.playerData;
     this.dungeon = data.serverDungeon;
-    console.log('[DEBUG] DungeonScene.init playerData:', data.playerData);
-    console.log('[DEBUG] DungeonScene.init this.player:', this.player);
+    console.log('[DEBUG 1] DungeonScene.init playerData:', data.playerData);
+    console.log('[DEBUG 2] DungeonScene.init this.player:', this.player);
+    console.log('[DEBUG 3] DungeonScene.init this.socket:', this.socket, 'Type:', typeof this.socket);
   }
 
   preload() {
@@ -86,7 +87,8 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   create() {
-    console.log('[DEBUG] DungeonScene create START');
+    console.log('[DEBUG 4] DungeonScene create START');
+    console.log('[DEBUG 5] DungeonScene.create this.socket:', this.socket, 'Type:', typeof this.socket);
     this.add.image(400, 300, "floor");
     this.add.sprite(400, 500, "player");
 
@@ -132,7 +134,32 @@ export default class DungeonScene extends Phaser.Scene {
         onComplete: () => floatText.destroy()
       });
     });
-    console.log('[DEBUG] DungeonScene create END');
+    if (this.socket && this.socket.on) {
+      console.log('[DEBUG 6] Registering ROOM_UPDATE on socket:', this.socket, 'Type:', typeof this.socket);
+      this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
+        try {
+          console.log('[DEBUG 7] ROOM_UPDATE assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
+        } catch (err) {
+          console.error('[DEBUG 8] Error in ROOM_UPDATE handler:', err);
+        }
+        // Remove any existing background image
+        if (this.roomBackground) {
+          this.roomBackground.destroy();
+        }
+        // Use the assetKey provided by the server
+        if (data.assetKey) {
+          this.roomBackground = this.add.image(this.game.config.width / 2, this.game.config.height / 2, data.assetKey).setDepth(0);
+        }
+        // Optionally update other room state here
+      });
+      // List all event names registered on this socket (if possible)
+      if (this.socket.eventNames) {
+        console.log('[DEBUG 9] Registered socket event names:', this.socket.eventNames());
+      }
+    } else {
+      console.warn('[DEBUG 10] this.socket is not valid or does not support .on');
+    }
+    console.log('[DEBUG 11] DungeonScene create END');
   }
 
   setupSocketListeners() {
@@ -212,19 +239,6 @@ export default class DungeonScene extends Phaser.Scene {
     });
     this.socket.on("ENCOUNTER_TARGET_SELECTION", (data) => {
       this.renderTargetingMenu(data);
-    });
-
-    this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
-      console.log('[DEBUG] ROOM_UPDATE assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
-      // Remove any existing background image
-      if (this.roomBackground) {
-        this.roomBackground.destroy();
-      }
-      // Use the assetKey provided by the server
-      if (data.assetKey) {
-        this.roomBackground = this.add.image(this.game.config.width / 2, this.game.config.height / 2, data.assetKey).setDepth(0);
-      }
-      // Optionally update other room state here
     });
   }
 
