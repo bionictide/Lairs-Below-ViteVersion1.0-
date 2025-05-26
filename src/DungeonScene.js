@@ -5,6 +5,7 @@ import { CombatVisuals } from "./CombatVisuals.js";
 import HintManager from "./HintManager.js";
 import { CharacterSprites } from '../server/CharacterSpritesServer.js';
 import { EVENTS } from './shared/events.js';
+import Menu from './Menu.js';
 
 function getEffectColor(effectType) {
   switch (effectType) {
@@ -34,6 +35,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.roomBackground = null;
     this.menuSprite = null;
     this.menuOpen = false;
+    this.menuInstance = null;
   }
 
   init(data) {
@@ -85,6 +87,13 @@ export default class DungeonScene extends Phaser.Scene {
     assetList.forEach(key => {
       this.load.image(key, `Assets/${key}.png`);
     });
+
+    // --- Preload menu animation frames ---
+    this.load.image('Menu1', 'Assets/Menu1.png');
+    this.load.image('Menu2', 'Assets/Menu2.png');
+    this.load.image('Menu3', 'Assets/Menu3.png');
+    this.load.image('Menu4', 'Assets/Menu4.png');
+
     console.log('[DEBUG] DungeonScene preload END');
   }
 
@@ -431,8 +440,8 @@ export default class DungeonScene extends Phaser.Scene {
     if (this.menuSprite) this.menuSprite.destroy();
     // Add Menu1 at 10% scale, bottom-left
     this.menuSprite = this.add.sprite(0, 0, 'Menu1')
-      .setOrigin(0, 1)
-      .setScale(0.1)
+      .setOrigin(0.5, 0.5)
+      .setScale(0.15)
       .setDepth(1001)
       .setInteractive({ useHandCursor: true });
     this.updateMenuPosition();
@@ -445,17 +454,16 @@ export default class DungeonScene extends Phaser.Scene {
 
   updateMenuPosition() {
     if (!this.menuSprite) return;
-    const cam = this.cameras.main;
-    this.menuSprite.x = cam.worldView.x;
-    this.menuSprite.y = cam.worldView.y + cam.height;
+    const smallYOffset = 24;
+    this.menuSprite.x = this.menuSprite.displayWidth / 2;
+    this.menuSprite.y = this.game.config.height - this.menuSprite.displayHeight / 2 + smallYOffset;
   }
 
   openMenuAnimation() {
     this.menuOpen = true;
     this.menuSprite.disableInteractive();
-    const cam = this.cameras.main;
-    const centerX = cam.width / 2;
-    const centerY = cam.height / 2;
+    const centerX = this.game.config.width / 2;
+    const centerY = this.game.config.height / 2;
     this.tweens.add({
       targets: this.menuSprite,
       x: centerX,
@@ -479,52 +487,14 @@ export default class DungeonScene extends Phaser.Scene {
         this.time.delayedCall(120, nextFrame);
       } else {
         // Menu is now open, show your debug GUI here if needed
-        // For demo, add a close button in the center
-        this.addMenuCloseButton();
+        this.showMenu();
       }
     };
     nextFrame();
   }
 
-  addMenuCloseButton() {
-    // Remove old button if exists
-    if (this.menuCloseBtn) this.menuCloseBtn.destroy();
-    this.menuCloseBtn = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 120, 'Close Menu', {
-      fontSize: '28px', color: '#fff', backgroundColor: '#222', padding: { x: 16, y: 8 }
-    }).setOrigin(0.5).setDepth(1002).setInteractive({ useHandCursor: true });
-    this.menuCloseBtn.on('pointerdown', () => {
-      this.menuCloseBtn.destroy();
-      this.closeMenuAnimation();
-    });
-  }
-
-  closeMenuAnimation() {
-    // Play frames in reverse: Menu4 -> Menu3 -> Menu2 -> Menu1
-    const frames = ['Menu4', 'Menu3', 'Menu2', 'Menu1'];
-    let frameIndex = 0;
-    const playReverseFrames = () => {
-      this.menuSprite.setTexture(frames[frameIndex]);
-      frameIndex++;
-      if (frameIndex < frames.length) {
-        this.time.delayedCall(120, playReverseFrames);
-      } else {
-        // After last frame, animate back to corner and shrink
-        const cam = this.cameras.main;
-        this.tweens.add({
-          targets: this.menuSprite,
-          x: cam.worldView.x,
-          y: cam.worldView.y + cam.height,
-          scale: 0.1,
-          duration: 700,
-          ease: 'Cubic.easeInOut',
-          onComplete: () => {
-            this.menuSprite.setInteractive({ useHandCursor: true });
-            this.menuOpen = false;
-            this.updateMenuPosition();
-          }
-        });
-      }
-    };
-    playReverseFrames();
+  showMenu() {
+    if (this.menuInstance) this.menuInstance.clearMenu();
+    this.menuInstance = new Menu(this, { socket: this.socket });
   }
 }
