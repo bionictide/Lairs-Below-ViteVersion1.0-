@@ -317,10 +317,7 @@ export class BagManager {
   }
 
   setInteractionBlocking(blocked) {
-    if (this.bagToggleButton) {
-      this.bagToggleButton.bg.setInteractive(blocked);
-      this.bagToggleButton.text.setInteractive(blocked);
-    }
+    // No-op: interaction blocking is handled by disabling buttons/zones in DungeonScene based on this.isOpen state.
   }
 }
 

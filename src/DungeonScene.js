@@ -217,7 +217,7 @@ export default class DungeonScene extends Phaser.Scene {
       }
       // Use the assetKey provided by the server
       if (data.assetKey) {
-        this.roomBackground = this.add.image(400, 300, data.assetKey).setDepth(0);
+        this.roomBackground = this.add.image(this.game.config.width / 2, this.game.config.height / 2, data.assetKey).setDepth(0);
       }
       // Optionally update other room state here
     });

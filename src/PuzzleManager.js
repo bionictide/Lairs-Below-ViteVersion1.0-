@@ -48,14 +48,9 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                     this.updateSpriteVisibility(this.puzzles.get(room.id), room);
                     return;
                 }
-                var width = this.scene.game.config.width;
-                var height = this.scene.game.config.height;
-                // Always position center-bottom
-                var sprite = this.scene.add.sprite(width / 2, height * 0.85, 'Key1') // Moved down 15% (0.7 + 0.15)
-                .setInteractive({
-                    useHandCursor: true
-                }).setDepth(40) // Updated depth for items
-                .setScale(0.125); // Scale down the key sprite by 50% (0.25 * 0.5)
+                const width = this.scene.game.config.width;
+                const height = this.scene.game.config.height;
+                const sprite = this.scene.add.sprite(width / 2, height * 0.85, 'Key1').setInteractive({ useHandCursor: true }).setDepth(40).setScale(0.125);
                 // Only determine the wall direction if we haven't already for this room
                 if (!this.keyWallDirections.has(room.id)) {
                     // Find walls without doors
@@ -112,7 +107,7 @@ export var PuzzleManager = /*#__PURE__*/ function() {
                     }
                 });
                 this.puzzles.set(room.id, sprite);
-                this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
+                this.updateSpriteVisibility(sprite, room);
             }
         },
         {

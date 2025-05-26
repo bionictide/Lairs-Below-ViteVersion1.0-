@@ -53,16 +53,17 @@ export var TreasureManager = /*#__PURE__*/ function() {
                     this.updateSpriteVisibility(this.treasures.get(room.id), room);
                     return;
                 }
-                var key, scale;
-                // Check against standardized item keys 'sword1' and 'helm1'
+                const width = this.scene.game.config.width;
+                const height = this.scene.game.config.height;
+                let key, scale;
                 if (room.treasureLevel === 'sword1') {
-                    key = 'Sword1'; // Asset name
-                    scale = 0.2125; // Reduced scale by 15% (0.25 * 0.85)
+                    key = 'Sword1';
+                    scale = 0.2125;
                 } else if (room.treasureLevel === 'helm1') {
-                    key = 'Helm1'; // Asset name
-                    scale = 0.180625; // Further reduced scale by 15% (0.2125 * 0.85)
+                    key = 'Helm1';
+                    scale = 0.180625;
                 } else if (room.treasureLevel === 'Potion1(red)') {
-                    key = 'Potion1(red)'; // Asset name
+                    key = 'Potion1(red)';
                     scale = 0.15;
                 } else {
                     console.warn("[TreasureManager] Unknown treasureLevel: ".concat(room.treasureLevel));
@@ -97,17 +98,11 @@ export var TreasureManager = /*#__PURE__*/ function() {
                     // Store the chosen direction for this room
                     this.treasureWallDirections.set(room.id, treasureFacing);
                 }
-                var width = this.scene.game.config.width;
-                var height = this.scene.game.config.height;
-                // Position calculation depends on the item
-                var positionY = height * 0.7; // Default Y position
+                let positionY = height * 0.7;
                 if (key === 'Helm1' || key === 'Sword1') {
-                    positionY = height * 0.8; // Move down by 10% screen height (0.7 + 0.1)
+                    positionY = height * 0.8;
                 }
-                var sprite = this.scene.add.sprite(width / 2, positionY, key).setInteractive({
-                    useHandCursor: true
-                }).setDepth(40) // Treasure/Puzzle Item layer (Depth 40)
-                .setScale(scale); // Apply specific scale
+                const sprite = this.scene.add.sprite(width / 2, positionY, key).setInteractive({ useHandCursor: true }).setDepth(40).setScale(scale);
                 sprite.on('pointerdown', function() {
                     // Prevent pickup during encounter
                     if (_this.scene.isInEncounter) {
@@ -136,7 +131,7 @@ export var TreasureManager = /*#__PURE__*/ function() {
                     }
                 });
                 this.treasures.set(room.id, sprite);
-                this.updateSpriteVisibility(sprite, room); // Renamed and removed facing
+                this.updateSpriteVisibility(sprite, room);
             }
         },
         {
