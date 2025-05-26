@@ -224,12 +224,12 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   createRoom() {
-    console.log('[DEBUG] createRoom this.player.roomId:', this.player.roomId);
+    // No background rendering here; handled by ROOM_UPDATE event
     const room = this.dungeon.rooms.find(r => r.id === this.player.roomId);
     console.log('[DEBUG] createRoom found room:', room);
-    const { doors, asset } = room;
-    console.log(`[DEBUG] Room ${this.player.roomId}: doors=${doors}, asset=${asset}`);
-    this.bagManager.createToggleButton(20, 20);
+    const { doors } = room;
+    console.log(`[DEBUG] Room ${this.player.roomId}: doors=${doors}`);
+    this.bagManager.createToggleButton();
   }
 
   getSpriteForEntity(entityId) {

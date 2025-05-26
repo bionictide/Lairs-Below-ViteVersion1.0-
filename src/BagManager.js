@@ -6,6 +6,7 @@ export class BagManager {
     this.scene = scene;
     this.socket = socket;
     this.playerId = playerId;
+    console.log('[DEBUG] BagManager constructed, socket:', !!this.socket);
     this.isOpen = false;
     this.gridCols = 10;
     this.gridRows = 7;
@@ -266,20 +267,31 @@ export class BagManager {
     return relMap[diff] || 'front';
   }
 
-  createToggleButton(x = 20, y = 20) {
-    const btn = this.scene.add.text(x, y, 'Open Bag', {
-      fontSize: '16px',
-      fill: '#ffffff',
-      backgroundColor: '#000000'
-    }).setInteractive();
+  createToggleButton() {
+    const buttonX = this.scene.game.config.width - 100; // Top right
+    const buttonY = 50;
+    const btn = this.scene.add.rectangle(buttonX, buttonY, 150, 50, 0x333333)
+      .setStrokeStyle(2, 0xffffff)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(70);
+    const text = this.scene.add.text(buttonX, buttonY, 'Open Bag', {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      stroke: '#000',
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(71);
     let isOpen = false;
     btn.on('pointerdown', () => {
       isOpen = !isOpen;
-      btn.setText(isOpen ? 'Close Bag' : 'Open Bag');
-      this.socket.emit('TOGGLE_BAG_UI', { open: isOpen });
+      text.setText(isOpen ? 'Close Bag' : 'Open Bag');
+      if (this.socket) this.socket.emit('TOGGLE_BAG_UI', { open: isOpen });
       if (isOpen) this.openBagUI();
       else this.closeBagUI();
     });
+    btn.on('pointerover', () => btn.setFillStyle(0x555555));
+    btn.on('pointerout', () => btn.setFillStyle(0x333333));
+    this.bagToggleButton = { bg: btn, text };
   }
 }
 
