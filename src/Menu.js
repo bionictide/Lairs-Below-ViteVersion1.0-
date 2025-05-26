@@ -5,13 +5,17 @@ export default class Menu {
     this.scene = scene;
     this.options = options;
     this.menuTexts = [];
-    this.menuSliders = [];
     this.currentMenu = 'main';
     this.menuStack = [];
     this.devUnlocked = false;
     this.inGroup = false; // Set externally as needed
     this.transitioning = false;
-    this.pendingClose = false;
+    this.musicVolume = 1;
+    this.sfxVolume = 1;
+    this.passwordInput = '';
+    this.passwordCursor = null;
+    this.passwordCursorBlink = true;
+    this.passwordCursorTimer = null;
     this.createMenu('main', true);
   }
 
@@ -37,12 +41,12 @@ export default class Menu {
         { text: 'No', action: () => this.transitionBack() },
       ],
       sound: [
-        { text: 'Music', slider: 'music' },
-        { text: 'Sound', slider: 'sound' },
+        { text: 'Music Volume', slider: true, value: () => this.musicVolume, onChange: v => this.setMusicVolume(v) },
+        { text: 'Sound Effects', slider: true, value: () => this.sfxVolume, onChange: v => this.setSfxVolume(v) },
         { text: 'Back', action: () => this.transitionBack() },
       ],
       dev: [
-        { text: 'Enter Password:', input: true },
+        { text: 'Enter Password:', password: true },
         { text: 'Back', action: () => this.transitionBack() },
       ],
       devMenu: [
@@ -55,39 +59,82 @@ export default class Menu {
   createMenu(menuKey, instant = false) {
     if (this.transitioning) return;
     const prevMenuTexts = this.menuTexts;
-    const prevMenuSliders = this.menuSliders;
     this.menuTexts = [];
-    this.menuSliders = [];
     this.currentMenu = menuKey;
     const menu = this.getMenus()[menuKey];
     if (!menu) return;
+    // Calculate total menu height for perfect centering
+    let totalHeight = 0;
+    menu.forEach(item => {
+      if (item.slider) {
+        totalHeight += 54 + 24; // extra space for slider
+      } else if (item.password) {
+        totalHeight += 54 + 40; // extra space for password input
+      } else {
+        totalHeight += 54;
+      }
+    });
     const centerX = this.scene.game.config.width / 2;
     const centerY = this.scene.game.config.height / 2;
-    const spacing = 54;
-    let startY = centerY - (menu.length * spacing) / 2 + spacing / 2;
+    let startY = centerY - totalHeight / 2 + 27; // 27 = 54/2 for first item
+    let currentY = startY;
     menu.forEach((item, i) => {
-      if (item.input) {
-        // Always show the input field for dev menu
-        const input = this.scene.add.dom(centerX, startY + i * spacing).createFromHTML('<input type="password" style="font-size:28px;text-align:center;width:260px;">');
-        input.setDepth(2000);
-        input.addListener('keyup');
-        input.on('keyup', (event) => {
-          if (event.key === 'Enter') {
-            this.handleDevPassword(input.node.value);
+      if (item.slider) {
+        // Phaser slider bar
+        const label = this.scene.add.text(centerX, currentY, item.text, {
+          fontFamily: 'Arial', fontSize: '36px', color: '#000', align: 'center',
+        }).setOrigin(0.5).setDepth(2000);
+        const barWidth = 220;
+        const barY = currentY + 24;
+        const bar = this.scene.add.rectangle(centerX, barY, barWidth, 8, 0x888888).setDepth(2000);
+        const ballRadius = 9;
+        const ball = this.scene.add.circle(centerX - barWidth / 2 + barWidth * item.value(), barY, ballRadius, 0x222222).setDepth(2001).setInteractive({ draggable: true });
+        ball.input.draggable = true;
+        ball.on('drag', (pointer, dragX) => {
+          let clampedX = Phaser.Math.Clamp(dragX, centerX - barWidth / 2, centerX + barWidth / 2);
+          ball.x = clampedX;
+          let value = (clampedX - (centerX - barWidth / 2)) / barWidth;
+          item.onChange(value);
+        });
+        this.menuTexts.push(label, bar, ball);
+        currentY += 54 + 24;
+      } else if (item.password) {
+        // Phaser password input
+        this.passwordInput = '';
+        const prompt = this.scene.add.text(centerX, currentY, item.text, {
+          fontFamily: 'Arial', fontSize: '36px', color: '#000', align: 'center',
+        }).setOrigin(0.5).setDepth(2000);
+        const inputY = currentY + 40;
+        this.passwordText = this.scene.add.text(centerX, inputY, '', {
+          fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)' })
+          .setOrigin(0.5).setDepth(2000);
+        this.passwordCursor = this.scene.add.text(centerX, inputY, '|', {
+          fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)' })
+          .setOrigin(0.5).setDepth(2000);
+        this.menuTexts.push(prompt, this.passwordText, this.passwordCursor);
+        this.scene.input.keyboard.off('keydown');
+        this.scene.input.keyboard.on('keydown', (event) => {
+          if (event.key === 'Backspace') {
+            this.passwordInput = this.passwordInput.slice(0, -1);
+          } else if (event.key === 'Enter') {
+            this.handleDevPassword(this.passwordInput);
+          } else if (event.key.length === 1) {
+            this.passwordInput += event.key;
+          }
+          this.passwordText.setText('*'.repeat(this.passwordInput.length));
+          this.passwordCursor.x = this.passwordText.x + this.passwordText.displayWidth / 2 + 8;
+        });
+        if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
+        this.passwordCursorBlink = true;
+        this.passwordCursorTimer = this.scene.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            this.passwordCursorBlink = !this.passwordCursorBlink;
+            this.passwordCursor.setAlpha(this.passwordCursorBlink ? 1 : 0);
           }
         });
-        input.setAlpha(instant ? 1 : 0);
-        this.menuTexts.push(input);
-      } else if (item.slider) {
-        // Label
-        const label = this.scene.add.text(centerX, startY + i * spacing, item.text, {
-          fontFamily: 'Arial', fontSize: '28px', color: '#000', align: 'center',
-        }).setOrigin(0.5).setDepth(2000).setAlpha(instant ? 1 : 0);
-        this.menuTexts.push(label);
-        // Slider
-        const sliderY = startY + i * spacing + 28;
-        const slider = this.createSlider(centerX, sliderY, item.slider);
-        this.menuSliders.push(slider);
+        currentY += 54 + 40;
       } else {
         const style = {
           fontFamily: 'Arial',
@@ -95,7 +142,7 @@ export default class Menu {
           color: '#000',
           align: 'center',
         };
-        const txt = this.scene.add.text(centerX, startY + i * spacing, item.text, style)
+        const txt = this.scene.add.text(centerX, currentY, item.text, style)
           .setOrigin(0.5)
           .setDepth(2000)
           .setInteractive({ useHandCursor: !item.disabled && !!item.action });
@@ -108,74 +155,30 @@ export default class Menu {
           }
         }
         this.menuTexts.push(txt);
+        currentY += 54;
       }
     });
     if (instant) {
       if (prevMenuTexts) prevMenuTexts.forEach(obj => obj.destroy());
-      if (prevMenuSliders) prevMenuSliders.forEach(obj => obj.destroy());
       this.menuTexts.forEach(obj => obj.setAlpha(1));
-      this.menuSliders.forEach(obj => obj.setAlpha(1));
       return;
     }
-    // If closing from main menu, instantly destroy and collapse (restore old logic)
-    if (this.pendingClose && this.currentMenu === 'main') {
-      if (prevMenuTexts) prevMenuTexts.forEach(obj => obj.destroy());
-      if (prevMenuSliders) prevMenuSliders.forEach(obj => obj.destroy());
-      this.menuTexts.forEach(obj => obj.destroy());
-      this.menuSliders.forEach(obj => obj.destroy());
-      this.menuTexts = [];
-      this.menuSliders = [];
-      this.pendingClose = false;
-      if (this.scene.closeMenuAnimation) this.scene.closeMenuAnimation();
-      return;
-    }
-    this.orbitMorphTransition(prevMenuTexts, this.menuTexts, prevMenuSliders, this.menuSliders, () => {
-      this.menuTexts.forEach(obj => obj.setAlpha(1));
-      this.menuSliders.forEach(obj => obj.setAlpha(1));
-      if (this.pendingClose) {
-        this.pendingClose = false;
-        if (this.scene.closeMenuAnimation) this.scene.closeMenuAnimation();
-      }
-    });
-  }
-
-  createSlider(x, y, key) {
-    const value = this.getVolume(key);
-    const slider = this.scene.add.dom(x, y).createFromHTML(`<input type="range" min="0" max="1" step="0.01" value="${value}" style="width: 220px;">`);
-    slider.setDepth(2000);
-    slider.addListener('input');
-    slider.on('input', (event) => {
-      this.setVolume(key, parseFloat(slider.node.value));
-    });
-    return slider;
-  }
-
-  getVolume(key) {
-    const stored = localStorage.getItem(`menu_volume_${key}`);
-    if (stored !== null) return parseFloat(stored);
-    return 1;
-  }
-
-  setVolume(key, value) {
-    localStorage.setItem(`menu_volume_${key}`, value);
-    if (this.scene && this.scene.setVolume) this.scene.setVolume(key, value);
+    this.orbitCrossfadeTransition(prevMenuTexts, this.menuTexts, menu, centerX, centerY, startY, 54);
   }
 
   clearMenu() {
+    if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
+    this.scene.input.keyboard.off('keydown');
     this.menuTexts.forEach(obj => obj.destroy());
     this.menuTexts = [];
-    this.menuSliders.forEach(obj => obj.destroy());
-    this.menuSliders = [];
   }
 
   transitionTo(menuKey) {
-    if (this.transitioning) return;
     this.menuStack.push(this.currentMenu);
     this.createMenu(menuKey);
   }
 
   transitionBack() {
-    if (this.transitioning) return;
     if (this.menuStack.length > 0) {
       const prev = this.menuStack.pop();
       this.createMenu(prev);
@@ -183,9 +186,8 @@ export default class Menu {
   }
 
   closeMenu() {
-    if (this.transitioning) return;
-    this.pendingClose = true;
-    this.createMenu('main');
+    this.clearMenu();
+    if (this.scene.closeMenuAnimation) this.scene.closeMenuAnimation();
   }
 
   leaveGroup() {
@@ -200,8 +202,15 @@ export default class Menu {
     window.location.reload();
   }
 
-  musicVolume() {}
-  soundEffects() {}
+  setMusicVolume(v) {
+    this.musicVolume = Phaser.Math.Clamp(v, 0, 1);
+    // TODO: Integrate with actual music system
+  }
+
+  setSfxVolume(v) {
+    this.sfxVolume = Phaser.Math.Clamp(v, 0, 1);
+    // TODO: Integrate with actual sfx system
+  }
 
   handleDevPassword(password) {
     if (this.scene && this.scene.socket) {
@@ -214,125 +223,81 @@ export default class Menu {
           if (this.scene && this.scene.player && this.scene.combatVisuals) {
             this.scene.combatVisuals.playPlayerDamageEffect();
           }
+          this.transitionBack();
         }
       });
     }
   }
 
-  // Orbit morph: old menu lines spiral IN to center and fade out, new menu lines spiral OUT from center to rest and fade in
-  orbitMorphTransition(oldObjs, newObjs, oldSliders, newSliders, onComplete) {
+  // Orbit crossfade: old menu orbits and fades out, new menu orbits and fades in, sharing the same path
+  orbitCrossfadeTransition(oldObjs, newObjs, newMenu, centerX, centerY, startY, spacing) {
     this.transitioning = true;
-    const duration = 750;
-    const centerX = this.scene.game.config.width / 2;
-    const centerY = this.scene.game.config.height / 2;
-    const spacing = 54;
-    const spiralRadius = 120; // Spiral out/in distance
-    const spiralTurns = 1.5; // Number of spiral turns
-    const oldPhases = oldObjs ? oldObjs.map((_, i) => (i / (oldObjs.length || 1)) * Math.PI * 2) : [];
+    const duration = 350; // Shorter fade time
+    const orbitRadius = 60;
+    const orbitSpeed = Math.PI * 2; // One full circle
+    // Assign each line a unique phase offset
+    const oldPhases = oldObjs ? oldObjs.map((obj, i) => {
+      // Start from actual position
+      if (obj && obj.y !== undefined) {
+        const dy = obj.y - centerX;
+        return Math.atan2(obj.y - (centerX), obj.x - centerX);
+      }
+      return (i / (oldObjs.length || 1)) * Math.PI * 2;
+    }) : [];
     const newPhases = newObjs.map((_, i) => (i / (newObjs.length || 1)) * Math.PI * 2);
-    let completedOld = 0;
-    let completedNew = 0;
-    const totalOld = oldObjs ? oldObjs.length : 0;
-    const totalNew = newObjs.length;
-    // Animate old menu out: spiral in to center, fade out
+    // Animate old menu out
     if (oldObjs && oldObjs.length > 0) {
       oldObjs.forEach((obj, i) => {
         const phase = oldPhases[i];
-        const startX = obj.x;
-        const startY = obj.y;
-        // Compute polar coordinates of start
-        const dx = startX - centerX;
-        const dy = startY - centerY;
-        const startR = Math.sqrt(dx * dx + dy * dy);
-        const startTheta = Math.atan2(dy, dx);
         this.scene.tweens.add({
           targets: obj,
           alpha: 0,
           duration,
-          ease: 'Linear',
           onUpdate: (tween, target) => {
-            const t = tween.progress;
-            // True spiral in: radius decreases, angle increases
-            const r = startR + (0 - startR) * t + spiralRadius * (1 - t);
-            const theta = startTheta + spiralTurns * Math.PI * 2 * t;
-            target.x = centerX + Math.cos(theta) * r;
-            target.y = centerY + Math.sin(theta) * r;
+            const progress = tween.progress;
+            const angle = phase + orbitSpeed * progress;
+            target.x = centerX + Math.cos(angle) * orbitRadius;
+            target.y = centerY + Math.sin(angle) * orbitRadius;
           },
           onComplete: () => {
             obj.destroy();
-            completedOld++;
-            if (completedOld === totalOld && completedNew === totalNew) {
-              this.transitioning = false;
-              if (onComplete) onComplete();
-            }
           }
         });
       });
-    } else {
-      completedOld = totalOld;
     }
-    // Animate old sliders out (just fade out and destroy)
-    if (oldSliders && oldSliders.length > 0) {
-      oldSliders.forEach((slider, i) => {
-        this.scene.tweens.add({
-          targets: slider,
-          alpha: 0,
-          duration: duration,
-          ease: 'Linear',
-          onComplete: () => slider.destroy()
-        });
-      });
-    }
-    // Animate new menu in: spiral out from center to rest, fade in
+    // Animate new menu in
     newObjs.forEach((obj, i) => {
       const phase = newPhases[i];
-      const targetX = centerX;
-      const targetY = centerY + (i - (newObjs.length - 1) / 2) * spacing;
-      // Compute polar coordinates of target
-      const dx = targetX - centerX;
-      const dy = targetY - centerY;
-      const targetR = Math.sqrt(dx * dx + dy * dy);
-      const targetTheta = Math.atan2(dy, dx);
-      // Start at center, at spiral angle
-      obj.x = centerX;
-      obj.y = centerY;
+      // Start mid-spiral
+      obj.x = centerX + Math.cos(phase + orbitSpeed * 0.5) * orbitRadius;
+      obj.y = centerY + Math.sin(phase + orbitSpeed * 0.5) * orbitRadius;
       obj.setAlpha(0);
       this.scene.tweens.add({
         targets: obj,
         alpha: 1,
         duration,
-        ease: 'Linear',
         onUpdate: (tween, target) => {
-          const t = tween.progress;
-          // True spiral out: radius increases, angle decreases
-          const r = spiralRadius * (1 - t) + targetR * t;
-          const theta = targetTheta - spiralTurns * Math.PI * 2 * (1 - t);
-          target.x = centerX + Math.cos(theta) * r;
-          target.y = centerY + Math.sin(theta) * r;
+          const progress = 1 - tween.progress;
+          const angle = phase + orbitSpeed * progress;
+          target.x = centerX + Math.cos(angle) * orbitRadius;
+          target.y = centerY + Math.sin(angle) * orbitRadius;
         },
         onComplete: () => {
-          obj.x = targetX;
-          obj.y = targetY;
+          // At the end, snap to center
+          if (newMenu && newMenu[i] && (newMenu[i].slider || newMenu[i].password)) {
+            // For sliders/password, keep their y offset
+            obj.x = centerX;
+            obj.y = startY + i * spacing + (newMenu[i].slider ? 18 : (newMenu[i].password ? 40 : 0));
+          } else {
+            obj.x = centerX;
+            obj.y = startY + i * spacing;
+          }
           obj.setAlpha(1);
-          completedNew++;
-          if (completedOld === totalOld && completedNew === totalNew) {
+          if (i === newObjs.length - 1) {
             this.transitioning = false;
-            if (onComplete) onComplete();
           }
         }
       });
     });
-    // Animate new sliders in (just fade in)
-    if (newSliders && newSliders.length > 0) {
-      newSliders.forEach((slider, i) => {
-        slider.setAlpha(0);
-        this.scene.tweens.add({
-          targets: slider,
-          alpha: 1,
-          duration: duration,
-          ease: 'Linear',
-        });
-      });
-    }
   }
 } 

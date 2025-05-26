@@ -487,6 +487,7 @@ export default class DungeonScene extends Phaser.Scene {
         this.time.delayedCall(120, nextFrame);
       } else {
         // Menu is now open, show your debug GUI here if needed
+        this.addMenuCloseButton();
         this.showMenu();
       }
     };
@@ -498,45 +499,49 @@ export default class DungeonScene extends Phaser.Scene {
     this.menuInstance = new Menu(this, { socket: this.socket });
   }
 
+  addMenuCloseButton() {
+    // No longer needed: close button is now handled by the menu system itself
+  }
+
   closeMenuAnimation() {
-    // Instantly destroy menuInstance text/sliders if present
+    // Destroy menu instance if present
     if (this.menuInstance) {
       this.menuInstance.clearMenu();
+      this.menuInstance = null;
     }
-    if (!this.menuSprite) return;
-    // Play Menu4->Menu3->Menu2->Menu1 animation, then shrink and move
+    // Play frames in reverse: Menu4 -> Menu3 -> Menu2 -> Menu1
     const frames = ['Menu4', 'Menu3', 'Menu2', 'Menu1'];
     let frameIndex = 0;
-    const playFrames = () => {
+    const playReverseFrames = () => {
+      this.menuSprite.setTexture(frames[frameIndex]);
+      frameIndex++;
       if (frameIndex < frames.length) {
-        this.menuSprite.setTexture(frames[frameIndex]);
-        frameIndex++;
-        this.time.delayedCall(80, playFrames);
+        this.time.delayedCall(120, playReverseFrames);
       } else {
-        // After animation, shrink and move to corner
-        // Calculate the final position for the menuSprite at 0.15 scale
+        // Calculate the final small position and scale
+        const targetScale = 0.15;
+        // Temporarily set scale to target to get correct displayWidth/Height
+        this.menuSprite.setScale(targetScale);
+        const targetX = this.menuSprite.displayWidth / 2;
         const smallYOffset = 24;
-        const finalScale = 0.15;
-        const finalX = (this.menuSprite.width * finalScale) / 2;
-        const finalY = this.game.config.height - (this.menuSprite.height * finalScale) / 2 + smallYOffset;
+        const targetY = this.game.config.height - this.menuSprite.displayHeight / 2 + smallYOffset;
+        // Restore scale for tween start
+        this.menuSprite.setScale(1);
         this.tweens.add({
           targets: this.menuSprite,
-          x: finalX,
-          y: finalY,
-          scale: finalScale,
-          duration: 400,
-          ease: 'Cubic',
+          x: targetX,
+          y: targetY,
+          scale: targetScale,
+          duration: 700,
+          ease: 'Cubic.easeInOut',
           onComplete: () => {
             this.menuSprite.setInteractive({ useHandCursor: true });
             this.menuOpen = false;
+            this.updateMenuPosition();
           }
         });
       }
     };
-    // Ensure menuSprite is centered and full size before animating out
-    this.menuSprite.x = this.game.config.width / 2;
-    this.menuSprite.y = this.game.config.height / 2;
-    this.menuSprite.setScale(1);
-    playFrames();
+    playReverseFrames();
   }
 }
