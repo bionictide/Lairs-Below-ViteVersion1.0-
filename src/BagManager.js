@@ -270,28 +270,57 @@ export class BagManager {
   createToggleButton() {
     const buttonX = this.scene.game.config.width - 100; // Top right
     const buttonY = 50;
-    const btn = this.scene.add.rectangle(buttonX, buttonY, 150, 50, 0x333333)
+    const button = this.scene.add.rectangle(buttonX, buttonY, 150, 50, 0x333333)
       .setStrokeStyle(2, 0xffffff)
       .setInteractive({ useHandCursor: true })
       .setDepth(70);
     const text = this.scene.add.text(buttonX, buttonY, 'Open Bag', {
       fontSize: '20px',
       color: '#ffffff',
-      fontStyle: 'bold',
-      stroke: '#000',
-      strokeThickness: 4
+      fontStyle: 'bold'
     }).setOrigin(0.5).setDepth(71);
-    let isOpen = false;
-    btn.on('pointerdown', () => {
-      isOpen = !isOpen;
-      text.setText(isOpen ? 'Close Bag' : 'Open Bag');
-      if (this.socket) this.socket.emit('TOGGLE_BAG_UI', { open: isOpen });
-      if (isOpen) this.openBagUI();
-      else this.closeBagUI();
+    button.on('pointerdown', () => {
+      if (!this.scene.isInEncounter) {
+        this.toggleBag();
+      } else {
+        this.scene.events.emit('showActionPrompt', 'Cannot open bag during encounter!');
+      }
     });
-    btn.on('pointerover', () => btn.setFillStyle(0x555555));
-    btn.on('pointerout', () => btn.setFillStyle(0x333333));
-    this.bagToggleButton = { bg: btn, text };
+    button.on('pointerover', () => button.setFillStyle(0x555555));
+    button.on('pointerout', () => button.setFillStyle(0x333333));
+    this.bagToggleButton = { bg: button, text };
+    this.setBagButtonVisibility(true);
+  }
+
+  toggleBag() {
+    this.isOpen = !this.isOpen;
+    if (this.isOpen) {
+      this.openBagUI();
+      this.bagToggleButton.text.setText('Close Bag');
+      this.setInteractionBlocking(true);
+    } else {
+      this.closeBagUI();
+      this.bagToggleButton.text.setText('Open Bag');
+      this.setInteractionBlocking(false);
+    }
+    if (this.scene.setupNavigationButtons) this.scene.setupNavigationButtons();
+    if (this.scene.updateDoorZoneVisibility) this.scene.updateDoorZoneVisibility(!this.isOpen && this.scene.debugHelper?.visible);
+    if (this.scene.setDoorInteractivity) this.scene.setDoorInteractivity(!this.isOpen);
+    if (this.socket) this.socket.emit('TOGGLE_BAG_UI', { open: this.isOpen });
+  }
+
+  setBagButtonVisibility(visible) {
+    if (this.bagToggleButton) {
+      this.bagToggleButton.bg.setVisible(visible);
+      this.bagToggleButton.text.setVisible(visible);
+    }
+  }
+
+  setInteractionBlocking(blocked) {
+    if (this.bagToggleButton) {
+      this.bagToggleButton.bg.setInteractive(blocked);
+      this.bagToggleButton.text.setInteractive(blocked);
+    }
   }
 }
 
