@@ -152,6 +152,7 @@ io.on("connection", (socket) => {
         inventory: character.inventory || [],
         lastKnownRoom: null,
         alive: true,
+        facing: 'north', // Default facing
       });
       console.log('[PLAYER_JOIN] Player inserted into players map:', playerId);
       // Assign spawn location (random room for now)
@@ -209,6 +210,38 @@ io.on("connection", (socket) => {
     previousPlayerCount = currentPlayerCount;
     currentPlayerCount = players.size;
     ManagerManager.handlePlayerCountChange(currentPlayerCount, previousPlayerCount);
+  });
+
+  socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId, facing }) => {
+    const player = players.get(playerId);
+    if (!player) return;
+    // Remove from old room
+    if (player.roomId && rooms.has(player.roomId)) {
+      rooms.get(player.roomId).players.delete(playerId);
+    }
+    // Add to new room
+    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
+    rooms.get(roomId).players.add(playerId);
+    player.roomId = roomId;
+    player.lastKnownRoom = roomId;
+    // Update facing if provided
+    if (facing) player.facing = facing;
+    // Track visited rooms per player
+    if (!global.visitedRooms) global.visitedRooms = new Map();
+    if (!global.visitedRooms.has(playerId)) global.visitedRooms.set(playerId, new Set());
+    global.visitedRooms.get(playerId).add(roomId);
+    // Calculate assetKey using RoomManagerServer
+    const room = dungeonCore.getRoomById(roomId);
+    const assetKey = global.RoomManagerServer.getRoomImageKey(room, player.facing, dungeonCore);
+    // Broadcast room update (only to this player for visited)
+    socket.emit(EVENTS.ROOM_UPDATE, {
+      roomId,
+      players: Array.from(rooms.get(roomId).players),
+      entities: rooms.get(roomId).entities,
+      visited: Array.from(global.visitedRooms.get(playerId)),
+      assetKey,
+    });
+    socket.join(roomId);
   });
 
   // Additional connections (player join/leave, room sync, etc.) would route here too

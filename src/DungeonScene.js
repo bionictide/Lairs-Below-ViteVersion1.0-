@@ -31,6 +31,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.targetingMenu = null;
     this.currentActionContext = null;
     this.currentTargetList = null;
+    this.roomBackground = null;
   }
 
   init(data) {
@@ -205,6 +206,18 @@ export default class DungeonScene extends Phaser.Scene {
     });
     this.socket.on("ENCOUNTER_TARGET_SELECTION", (data) => {
       this.renderTargetingMenu(data);
+    });
+
+    this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
+      // Remove any existing background image
+      if (this.roomBackground) {
+        this.roomBackground.destroy();
+      }
+      // Use the assetKey provided by the server
+      if (data.assetKey) {
+        this.roomBackground = this.add.image(400, 300, data.assetKey).setDepth(0);
+      }
+      // Optionally update other room state here
     });
   }
 
