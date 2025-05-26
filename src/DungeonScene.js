@@ -32,6 +32,8 @@ export default class DungeonScene extends Phaser.Scene {
     this.currentActionContext = null;
     this.currentTargetList = null;
     this.roomBackground = null;
+    this.menuSprite = null;
+    this.menuOpen = false;
   }
 
   init(data) {
@@ -150,6 +152,10 @@ export default class DungeonScene extends Phaser.Scene {
         if (data.assetKey) {
           this.roomBackground = this.add.image(this.game.config.width / 2, this.game.config.height / 2, data.assetKey).setDepth(0);
         }
+        // Ensure menu sprite is always above background
+        if (this.menuSprite) {
+          this.menuSprite.setDepth(1001);
+        }
         // Optionally update other room state here
       });
       // List all event names registered on this socket (if possible)
@@ -173,6 +179,8 @@ export default class DungeonScene extends Phaser.Scene {
         facing: this.player.facing || 'north'
       });
     }
+    // MENU SPRITE LOGIC
+    this.createMenuSprite();
   }
 
   setupSocketListeners() {
@@ -416,5 +424,107 @@ export default class DungeonScene extends Phaser.Scene {
     const prompt = this.add.text(400, 60, text, { fontSize: '20px', color: '#fff', backgroundColor: '#222', padding: { x: 12, y: 8 } })
       .setOrigin(0.5).setDepth(200);
     this.time.delayedCall(1800, () => prompt.destroy());
+  }
+
+  createMenuSprite() {
+    // Remove if already exists
+    if (this.menuSprite) this.menuSprite.destroy();
+    // Add Menu1 at 10% scale, bottom-left
+    this.menuSprite = this.add.sprite(0, 0, 'Menu1')
+      .setOrigin(0, 1)
+      .setScale(0.1)
+      .setDepth(1001)
+      .setInteractive({ useHandCursor: true });
+    this.updateMenuPosition();
+    this.scale.on('resize', this.updateMenuPosition, this);
+    this.menuSprite.on('pointerdown', () => {
+      if (this.menuOpen) return;
+      this.openMenuAnimation();
+    });
+  }
+
+  updateMenuPosition() {
+    if (!this.menuSprite) return;
+    const cam = this.cameras.main;
+    this.menuSprite.x = cam.worldView.x;
+    this.menuSprite.y = cam.worldView.y + cam.height;
+  }
+
+  openMenuAnimation() {
+    this.menuOpen = true;
+    this.menuSprite.disableInteractive();
+    const cam = this.cameras.main;
+    const centerX = cam.width / 2;
+    const centerY = cam.height / 2;
+    this.tweens.add({
+      targets: this.menuSprite,
+      x: centerX,
+      y: centerY,
+      scale: 1,
+      duration: 700,
+      ease: 'Cubic.easeInOut',
+      onComplete: () => {
+        this.playMenuFramesForward();
+      }
+    });
+  }
+
+  playMenuFramesForward() {
+    const frames = ['Menu1', 'Menu2', 'Menu3', 'Menu4'];
+    let frameIndex = 0;
+    const nextFrame = () => {
+      frameIndex++;
+      if (frameIndex < frames.length) {
+        this.menuSprite.setTexture(frames[frameIndex]);
+        this.time.delayedCall(120, nextFrame);
+      } else {
+        // Menu is now open, show your debug GUI here if needed
+        // For demo, add a close button in the center
+        this.addMenuCloseButton();
+      }
+    };
+    nextFrame();
+  }
+
+  addMenuCloseButton() {
+    // Remove old button if exists
+    if (this.menuCloseBtn) this.menuCloseBtn.destroy();
+    this.menuCloseBtn = this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2 + 120, 'Close Menu', {
+      fontSize: '28px', color: '#fff', backgroundColor: '#222', padding: { x: 16, y: 8 }
+    }).setOrigin(0.5).setDepth(1002).setInteractive({ useHandCursor: true });
+    this.menuCloseBtn.on('pointerdown', () => {
+      this.menuCloseBtn.destroy();
+      this.closeMenuAnimation();
+    });
+  }
+
+  closeMenuAnimation() {
+    // Play frames in reverse: Menu4 -> Menu3 -> Menu2 -> Menu1
+    const frames = ['Menu4', 'Menu3', 'Menu2', 'Menu1'];
+    let frameIndex = 0;
+    const playReverseFrames = () => {
+      this.menuSprite.setTexture(frames[frameIndex]);
+      frameIndex++;
+      if (frameIndex < frames.length) {
+        this.time.delayedCall(120, playReverseFrames);
+      } else {
+        // After last frame, animate back to corner and shrink
+        const cam = this.cameras.main;
+        this.tweens.add({
+          targets: this.menuSprite,
+          x: cam.worldView.x,
+          y: cam.worldView.y + cam.height,
+          scale: 0.1,
+          duration: 700,
+          ease: 'Cubic.easeInOut',
+          onComplete: () => {
+            this.menuSprite.setInteractive({ useHandCursor: true });
+            this.menuOpen = false;
+            this.updateMenuPosition();
+          }
+        });
+      }
+    };
+    playReverseFrames();
   }
 }
