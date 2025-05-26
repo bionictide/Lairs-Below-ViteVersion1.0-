@@ -38,6 +38,8 @@ export default class DungeonScene extends Phaser.Scene {
     this.socket = data.socket;
     this.player = data.playerData;
     this.dungeon = data.serverDungeon;
+    console.log('[DEBUG] DungeonScene.init playerData:', data.playerData);
+    console.log('[DEBUG] DungeonScene.init this.player:', this.player);
   }
 
   preload() {
@@ -222,7 +224,10 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   createRoom() {
-    const { doors, asset } = this.dungeon.rooms.find(r => r.id === this.player.roomId);
+    console.log('[DEBUG] createRoom this.player.roomId:', this.player.roomId);
+    const room = this.dungeon.rooms.find(r => r.id === this.player.roomId);
+    console.log('[DEBUG] createRoom found room:', room);
+    const { doors, asset } = room;
     console.log(`[DEBUG] Room ${this.player.roomId}: doors=${doors}, asset=${asset}`);
     this.bagManager.createToggleButton(20, 20);
   }
