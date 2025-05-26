@@ -160,6 +160,19 @@ export default class DungeonScene extends Phaser.Scene {
       console.warn('[DEBUG 10] this.socket is not valid or does not support .on');
     }
     console.log('[DEBUG 11] DungeonScene create END');
+    // Emit ROOM_ENTER after scene is ready and handler is registered
+    if (this.socket && this.player && this.player.roomId && this.player.id) {
+      this.socket.emit(EVENTS.ROOM_ENTER, {
+        playerId: this.player.id,
+        roomId: this.player.roomId,
+        facing: this.player.facing || 'north'
+      });
+      console.log('[DEBUG 12] Emitted ROOM_ENTER after scene create', {
+        playerId: this.player.id,
+        roomId: this.player.roomId,
+        facing: this.player.facing || 'north'
+      });
+    }
   }
 
   setupSocketListeners() {
