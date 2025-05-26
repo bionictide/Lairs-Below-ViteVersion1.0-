@@ -1054,13 +1054,11 @@ function App() {
       if (!window._phaserGame) {
         console.log('[DEBUG] Starting Phaser with dungeon:', dungeon);
         import('./Game.js').then(({ initGame }) => {
-          // Coerce stat fields to numbers before passing to PlayerStats
-          const char = characters[lockedCharacter];
-          // Pass the full character object to the game scene
+          // Pass the merged character object to the game scene
           initGame(
             document.getElementById('renderDiv'),
             dungeon, // Use the real dungeon object from state
-            char, // Pass the full character object
+            window.currentCharacter, // Use the merged character with correct roomId
             window.socket // Pass the socket as the fourth argument
           );
         });
@@ -1122,7 +1120,9 @@ function App() {
       joinPlayer(
         { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
-          window.currentCharacter = data.character; // Use the server-supplied character with roomId
+          // Merge Supabase statblock with server's authoritative roomId
+          const mergedCharacter = { ...freshChar, roomId: data.character.roomId };
+          window.currentCharacter = mergedCharacter;
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
