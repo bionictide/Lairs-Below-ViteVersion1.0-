@@ -7,6 +7,7 @@ import { DungeonCore } from './DungeonCore.js';
 import http from 'http';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import RoomManagerServer from './RoomManagerServer.js';
 dotenv.config();
 
 import { handlePuzzleAttempt } from "./PuzzleManagerServer.js";
@@ -82,6 +83,9 @@ const bags = new Map();    // bagId -> { roomId, items }
 const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
 const dungeonCore = new DungeonCore();
 const dungeon = dungeonCore.generateDungeon(1, DUNGEON_SEED);
+
+global.RoomManagerServer = RoomManagerServer;
+console.log('[DEBUG] global.RoomManagerServer initialized:', typeof global.RoomManagerServer);
 
 io.on("connection", (socket) => {
   console.log("[SOCKET] Client connected:", socket.id, "User:", socket.user?.id || '[no user]');
