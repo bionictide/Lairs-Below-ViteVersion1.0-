@@ -497,4 +497,46 @@ export default class DungeonScene extends Phaser.Scene {
     if (this.menuInstance) this.menuInstance.clearMenu();
     this.menuInstance = new Menu(this, { socket: this.socket });
   }
+
+  closeMenuAnimation() {
+    // Instantly destroy menuInstance text/sliders if present
+    if (this.menuInstance) {
+      this.menuInstance.clearMenu();
+    }
+    if (!this.menuSprite) return;
+    // Play Menu4->Menu3->Menu2->Menu1 animation, then shrink and move
+    const frames = ['Menu4', 'Menu3', 'Menu2', 'Menu1'];
+    let frameIndex = 0;
+    const playFrames = () => {
+      if (frameIndex < frames.length) {
+        this.menuSprite.setTexture(frames[frameIndex]);
+        frameIndex++;
+        this.time.delayedCall(80, playFrames);
+      } else {
+        // After animation, shrink and move to corner
+        // Calculate the final position for the menuSprite at 0.15 scale
+        const smallYOffset = 24;
+        const finalScale = 0.15;
+        const finalX = (this.menuSprite.width * finalScale) / 2;
+        const finalY = this.game.config.height - (this.menuSprite.height * finalScale) / 2 + smallYOffset;
+        this.tweens.add({
+          targets: this.menuSprite,
+          x: finalX,
+          y: finalY,
+          scale: finalScale,
+          duration: 400,
+          ease: 'Cubic',
+          onComplete: () => {
+            this.menuSprite.setInteractive({ useHandCursor: true });
+            this.menuOpen = false;
+          }
+        });
+      }
+    };
+    // Ensure menuSprite is centered and full size before animating out
+    this.menuSprite.x = this.game.config.width / 2;
+    this.menuSprite.y = this.game.config.height / 2;
+    this.menuSprite.setScale(1);
+    playFrames();
+  }
 }
