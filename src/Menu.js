@@ -4,7 +4,7 @@ export default class Menu {
   constructor(scene, options) {
     this.scene = scene;
     this.options = options;
-    this.menuTexts = [];
+    this.menuContainer = null;
     this.currentMenu = 'main';
     this.menuStack = [];
     this.devUnlocked = false;
@@ -13,10 +13,10 @@ export default class Menu {
     this.musicVolume = 1;
     this.sfxVolume = 1;
     this.passwordInput = '';
-    this.passwordCursor = null;
-    this.passwordCursorBlink = true;
     this.passwordCursorTimer = null;
     this.createMenu('main', true);
+    // Responsive: re-center on resize
+    this.scene.scale.on('resize', this.updateMenuPosition, this);
   }
 
   // Menu definitions
@@ -58,61 +58,73 @@ export default class Menu {
 
   createMenu(menuKey, instant = false) {
     if (this.transitioning) return;
-    const prevMenuTexts = this.menuTexts;
+    const prevMenuContainer = this.menuContainer;
+    this.menuContainer = this.scene.add.container(0, 0).setDepth(2000);
+    // Set container position to center (with offset) before adding children
+    const verticalOffset = 32;
+    this.menuContainer.x = this.scene.scale.width / 2;
+    this.menuContainer.y = this.scene.scale.height / 2 + verticalOffset;
     this.menuTexts = [];
     this.currentMenu = menuKey;
     const menu = this.getMenus()[menuKey];
     if (!menu) return;
     // Calculate total menu height for perfect centering
     let totalHeight = 0;
+    let itemHeights = [];
     menu.forEach(item => {
-      if (item.slider) {
-        totalHeight += 54 + 24; // extra space for slider
-      } else if (item.password) {
-        totalHeight += 54 + 40; // extra space for password input
-      } else {
-        totalHeight += 54;
-      }
+      itemHeights.push(54);
+      totalHeight += 54;
     });
-    const centerX = this.scene.game.config.width / 2;
-    const centerY = this.scene.game.config.height / 2;
-    let startY = centerY - totalHeight / 2 + 27; // 27 = 54/2 for first item
-    let currentY = startY;
+    let currentY = -totalHeight / 2 + itemHeights[0] / 2;
     menu.forEach((item, i) => {
       if (item.slider) {
-        // Phaser slider bar
-        const label = this.scene.add.text(centerX, currentY, item.text, {
-          fontFamily: 'Arial', fontSize: '36px', color: '#000', align: 'center',
-        }).setOrigin(0.5).setDepth(2000);
+        // Group label, bar, and ball into a sub-container for perfect alignment
+        const sliderRow = this.scene.add.container(0, currentY);
         const barWidth = 220;
-        const barY = currentY + 24;
-        const bar = this.scene.add.rectangle(centerX, barY, barWidth, 8, 0x888888).setDepth(2000);
-        const ballRadius = 9;
-        const ball = this.scene.add.circle(centerX - barWidth / 2 + barWidth * item.value(), barY, ballRadius, 0x222222).setDepth(2001).setInteractive({ draggable: true });
+        const valueClamped = Phaser.Math.Clamp(item.value(), 0, 1);
+        // Label above bar/ball
+        const label = this.scene.add.text(0, -20, item.text, {
+          fontFamily: 'Arial', fontSize: '28px', color: '#000', align: 'center',
+          wordWrap: { width: 200, useAdvancedWrap: true },
+          fixedWidth: 220,
+        }).setOrigin(0.5).setDepth(2000);
+        const bar = this.scene.add.rectangle(0, 0, barWidth, 8, 0x888888).setOrigin(0.5).setDepth(2000);
+        const ballRadius = 8;
+        const ball = this.scene.add.circle(-barWidth / 2 + barWidth * valueClamped, 0, ballRadius, 0x222222).setOrigin(0.5).setDepth(2001).setInteractive({ draggable: true });
         ball.input.draggable = true;
         ball.on('drag', (pointer, dragX) => {
-          let clampedX = Phaser.Math.Clamp(dragX, centerX - barWidth / 2, centerX + barWidth / 2);
-          ball.x = clampedX;
-          let value = (clampedX - (centerX - barWidth / 2)) / barWidth;
+          let localX = Phaser.Math.Clamp(dragX, -barWidth / 2, barWidth / 2);
+          ball.x = localX;
+          let value = (localX + barWidth / 2) / barWidth;
           item.onChange(value);
         });
-        this.menuTexts.push(label, bar, ball);
-        currentY += 54 + 24;
+        sliderRow.add([label, bar, ball]);
+        this.menuContainer.add(sliderRow);
+        this.menuTexts.push(label, bar, ball, sliderRow);
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
       } else if (item.password) {
-        // Phaser password input
         this.passwordInput = '';
-        const prompt = this.scene.add.text(centerX, currentY, item.text, {
-          fontFamily: 'Arial', fontSize: '36px', color: '#000', align: 'center',
+        const monoFont = 'Courier New, Courier, monospace';
+        const pwText = this.scene.add.text(0, currentY, '', {
+          fontFamily: monoFont, fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)'
         }).setOrigin(0.5).setDepth(2000);
-        const inputY = currentY + 40;
-        this.passwordText = this.scene.add.text(centerX, inputY, '', {
-          fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)' })
-          .setOrigin(0.5).setDepth(2000);
-        this.passwordCursor = this.scene.add.text(centerX, inputY, '|', {
-          fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: 'rgba(255,255,255,0)' })
-          .setOrigin(0.5).setDepth(2000);
-        this.menuTexts.push(prompt, this.passwordText, this.passwordCursor);
+        this.menuContainer.add(pwText);
+        this.menuTexts.push(pwText);
         this.scene.input.keyboard.off('keydown');
+        let cursorVisible = true;
+        let cursorTimer = this.scene.time.addEvent({
+          delay: 400,
+          loop: true,
+          callback: () => {
+            cursorVisible = !cursorVisible;
+            updatePwText();
+          }
+        });
+        const updatePwText = () => {
+          if (!pwText.scene) return;
+          const asterisks = '*'.repeat(this.passwordInput.length);
+          pwText.setText(asterisks + (cursorVisible ? '|' : ''));
+        };
         this.scene.input.keyboard.on('keydown', (event) => {
           if (event.key === 'Backspace') {
             this.passwordInput = this.passwordInput.slice(0, -1);
@@ -121,64 +133,75 @@ export default class Menu {
           } else if (event.key.length === 1) {
             this.passwordInput += event.key;
           }
-          this.passwordText.setText('*'.repeat(this.passwordInput.length));
-          this.passwordCursor.x = this.passwordText.x + this.passwordText.displayWidth / 2 + 8;
+          updatePwText();
         });
+        updatePwText();
         if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
-        this.passwordCursorBlink = true;
-        this.passwordCursorTimer = this.scene.time.addEvent({
-          delay: 400,
-          loop: true,
-          callback: () => {
-            this.passwordCursorBlink = !this.passwordCursorBlink;
-            this.passwordCursor.setAlpha(this.passwordCursorBlink ? 1 : 0);
-          }
-        });
-        currentY += 54 + 40;
+        this.passwordCursorTimer = cursorTimer;
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
       } else {
         const style = {
           fontFamily: 'Arial',
           fontSize: item.small ? '22px' : '36px',
           color: '#000',
           align: 'center',
+          wordWrap: { width: 320, useAdvancedWrap: true },
+          fixedWidth: 340,
         };
-        const txt = this.scene.add.text(centerX, currentY, item.text, style)
+        const txt = this.scene.add.text(0, currentY, item.text, style)
           .setOrigin(0.5)
           .setDepth(2000)
           .setInteractive({ useHandCursor: !item.disabled && !!item.action });
         if (item.disabled) {
-          txt.setAlpha(instant ? 0.4 : 0);
+          txt.setAlpha(1);
         } else {
-          txt.setAlpha(instant ? 1 : 0);
+          txt.setAlpha(1);
           if (item.action) {
             txt.on('pointerdown', () => item.action());
           }
         }
+        this.menuContainer.add(txt);
         this.menuTexts.push(txt);
-        currentY += 54;
+        currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
       }
     });
-    if (instant) {
-      if (prevMenuTexts) prevMenuTexts.forEach(obj => obj.destroy());
-      this.menuTexts.forEach(obj => obj.setAlpha(1));
+    if (instant || !prevMenuContainer) {
+      this.updateMenuPosition();
       return;
     }
-    this.orbitCrossfadeTransition(prevMenuTexts, this.menuTexts, menu, centerX, centerY, startY, 54);
+    this.orbitCrossfadeTransition(prevMenuContainer, this.menuContainer, menu, totalHeight, itemHeights);
+  }
+
+  updateMenuPosition() {
+    // Add vertical offset for better centering
+    const verticalOffset = 32;
+    if (this.menuContainer) {
+      this.menuContainer.x = this.scene.scale.width / 2;
+      this.menuContainer.y = this.scene.scale.height / 2 + verticalOffset;
+    }
   }
 
   clearMenu() {
-    if (this.passwordCursorTimer) this.passwordCursorTimer.remove();
+    if (this.passwordCursorTimer) {
+      this.passwordCursorTimer.remove();
+      this.passwordCursorTimer = null;
+    }
     this.scene.input.keyboard.off('keydown');
-    this.menuTexts.forEach(obj => obj.destroy());
+    if (this.menuContainer) {
+      this.menuContainer.destroy();
+      this.menuContainer = null;
+    }
     this.menuTexts = [];
   }
 
   transitionTo(menuKey) {
+    if (this.transitioning) return;
     this.menuStack.push(this.currentMenu);
     this.createMenu(menuKey);
   }
 
   transitionBack() {
+    if (this.transitioning) return;
     if (this.menuStack.length > 0) {
       const prev = this.menuStack.pop();
       this.createMenu(prev);
@@ -186,6 +209,7 @@ export default class Menu {
   }
 
   closeMenu() {
+    if (this.transitioning) return;
     this.clearMenu();
     if (this.scene.closeMenuAnimation) this.scene.closeMenuAnimation();
   }
@@ -229,26 +253,17 @@ export default class Menu {
     }
   }
 
-  // Orbit crossfade: old menu orbits and fades out, new menu orbits and fades in, sharing the same path
-  orbitCrossfadeTransition(oldObjs, newObjs, newMenu, centerX, centerY, startY, spacing) {
+  orbitCrossfadeTransition(oldContainer, newContainer, newMenu, totalHeight, itemHeights) {
     this.transitioning = true;
-    const duration = 350; // Shorter fade time
+    const duration = 350;
     const orbitRadius = 60;
-    const orbitSpeed = Math.PI * 2; // One full circle
-    // Assign each line a unique phase offset
-    const oldPhases = oldObjs ? oldObjs.map((obj, i) => {
-      // Start from actual position
-      if (obj && obj.y !== undefined) {
-        const dy = obj.y - centerX;
-        return Math.atan2(obj.y - (centerX), obj.x - centerX);
-      }
-      return (i / (oldObjs.length || 1)) * Math.PI * 2;
-    }) : [];
-    const newPhases = newObjs.map((_, i) => (i / (newObjs.length || 1)) * Math.PI * 2);
+    const orbitSpeed = Math.PI * 2;
     // Animate old menu out
-    if (oldObjs && oldObjs.length > 0) {
-      oldObjs.forEach((obj, i) => {
-        const phase = oldPhases[i];
+    if (oldContainer) {
+      let completed = 0;
+      const total = oldContainer.list.length;
+      oldContainer.list.forEach((obj, i) => {
+        const phase = (i / total) * Math.PI * 2;
         this.scene.tweens.add({
           targets: obj,
           alpha: 0,
@@ -256,21 +271,26 @@ export default class Menu {
           onUpdate: (tween, target) => {
             const progress = tween.progress;
             const angle = phase + orbitSpeed * progress;
-            target.x = centerX + Math.cos(angle) * orbitRadius;
-            target.y = centerY + Math.sin(angle) * orbitRadius;
+            target.x = Math.cos(angle) * orbitRadius;
+            target.y = Math.sin(angle) * orbitRadius;
           },
           onComplete: () => {
             obj.destroy();
+            completed++;
+            if (completed === total) {
+              oldContainer.destroy();
+            }
           }
         });
       });
     }
     // Animate new menu in
-    newObjs.forEach((obj, i) => {
-      const phase = newPhases[i];
-      // Start mid-spiral
-      obj.x = centerX + Math.cos(phase + orbitSpeed * 0.5) * orbitRadius;
-      obj.y = centerY + Math.sin(phase + orbitSpeed * 0.5) * orbitRadius;
+    let newCompleted = 0;
+    const newTotal = newContainer.list.length;
+    newContainer.list.forEach((obj, i) => {
+      const phase = (i / newTotal) * Math.PI * 2;
+      obj.x = Math.cos(phase + orbitSpeed * 0.5) * orbitRadius;
+      obj.y = Math.sin(phase + orbitSpeed * 0.5) * orbitRadius;
       obj.setAlpha(0);
       this.scene.tweens.add({
         targets: obj,
@@ -279,22 +299,17 @@ export default class Menu {
         onUpdate: (tween, target) => {
           const progress = 1 - tween.progress;
           const angle = phase + orbitSpeed * progress;
-          target.x = centerX + Math.cos(angle) * orbitRadius;
-          target.y = centerY + Math.sin(angle) * orbitRadius;
+          target.x = Math.cos(angle) * orbitRadius;
+          target.y = Math.sin(angle) * orbitRadius;
         },
         onComplete: () => {
-          // At the end, snap to center
-          if (newMenu && newMenu[i] && (newMenu[i].slider || newMenu[i].password)) {
-            // For sliders/password, keep their y offset
-            obj.x = centerX;
-            obj.y = startY + i * spacing + (newMenu[i].slider ? 18 : (newMenu[i].password ? 40 : 0));
-          } else {
-            obj.x = centerX;
-            obj.y = startY + i * spacing;
-          }
+          obj.x = 0;
+          obj.y = -totalHeight / 2 + itemHeights[0] / 2 + i * 54;
           obj.setAlpha(1);
-          if (i === newObjs.length - 1) {
+          newCompleted++;
+          if (newCompleted === newTotal) {
             this.transitioning = false;
+            this.updateMenuPosition();
           }
         }
       });

@@ -5,8 +5,12 @@ export default class Game {
   constructor(config) {
     this.phaserGame = new Phaser.Game({
       type: Phaser.AUTO,
-      width: 800,
-      height: 600,
+      width: 1456,
+      height: 816,
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+      },
       scene: [DungeonScene],
       ...config,
     });
