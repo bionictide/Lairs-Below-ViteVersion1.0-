@@ -184,139 +184,143 @@ export default class Menu {
       }
     });
     if (menuKey === 'devMenu') {
-      // Custom debug menu rendering
-      let currentY = -180;
-      const centerX = 0;
-      const rowHeight = 54;
-      const boxSize = 32;
-      const labelOffset = 80;
-      const toggles = [
-        { key: 'godMode', label: 'God Mode' },
-        { key: 'minimap', label: 'MiniMap' },
-        { key: 'compass', label: 'Compass' },
-        { key: 'hitboxes', label: 'Hitboxes' },
-      ];
-      toggles.forEach((toggle, i) => {
-        const isOn = this.debugState[toggle.key];
-        const color = isOn ? 0x00cc44 : 0xcc2222;
-        const box = this.scene.add.rectangle(centerX - labelOffset, currentY, boxSize, boxSize, color)
-          .setStrokeStyle(2, 0x222222)
-          .setInteractive({ useHandCursor: true })
-          .setDepth(2000);
-        box.on('pointerdown', () => {
-          this.debugState[toggle.key] = !this.debugState[toggle.key];
-          this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'toggle', key: toggle.key, value: this.debugState[toggle.key] });
-          this.createMenu('devMenu', true);
-        });
-        const label = this.scene.add.text(centerX - labelOffset + 48, currentY, toggle.label, {
-          fontFamily: 'Arial', fontSize: '28px', color: '#000', align: 'left',
-        }).setOrigin(0, 0.5).setDepth(2000);
-        this.menuContainer.add([box, label]);
-        this.menuTexts.push(box, label);
-        // Minimap checkboxes
-        if (toggle.key === 'minimap' && this.debugState.minimap) {
-          const checks = ['players', 'gems', 'treasure', 'puzzles'];
-          checks.forEach((ck, j) => {
-            const cY = currentY + (j + 1) * 32;
-            const checked = this.debugState.minimapChecks[ck];
-            const cbox = this.scene.add.rectangle(centerX - labelOffset + 8 + j * 40, cY, 20, 20, checked ? 0x00cc44 : 0xcc2222)
-              .setStrokeStyle(1, 0x222222)
-              .setInteractive({ useHandCursor: true })
-              .setDepth(2000);
-            cbox.on('pointerdown', () => {
-              this.debugState.minimapChecks[ck] = !this.debugState.minimapChecks[ck];
-              this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'minimapCheck', key: ck, value: this.debugState.minimapChecks[ck] });
+      // Use the same rendering logic as other menus, but with custom row types
+      let totalHeight = 0;
+      let itemHeights = [];
+      const menu = this.getMenus()[menuKey];
+      menu.forEach(item => {
+        itemHeights.push(54);
+        totalHeight += 54;
+      });
+      let currentY = -totalHeight / 2 + itemHeights[0] / 2;
+      menu.forEach((item, i) => {
+        if (item.toggle) {
+          // Render label and switch to the right
+          const label = this.scene.add.text(0, currentY, item.text, {
+            fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'left', fixedWidth: 220
+          }).setOrigin(0.5, 0.5).setDepth(2000);
+          const isOn = this.debugState[item.toggle];
+          const color = isOn ? 0x00cc44 : 0xcc2222;
+          const box = this.scene.add.rectangle(120, currentY, 32, 32, color)
+            .setStrokeStyle(2, 0x222222)
+            .setInteractive({ useHandCursor: true })
+            .setDepth(2000);
+          box.on('pointerdown', () => {
+            this.debugState[item.toggle] = !this.debugState[item.toggle];
+            this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'toggle', key: item.toggle, value: this.debugState[item.toggle] });
+            this.createMenu('devMenu', true);
+          });
+          this.menuContainer.add([label, box]);
+          this.menuTexts.push(label, box);
+          // Minimap checkboxes (inline, under minimap row)
+          if (item.toggle === 'minimap' && this.debugState.minimap) {
+            const checks = ['players', 'gems', 'treasure', 'puzzles'];
+            checks.forEach((ck, j) => {
+              const checked = this.debugState.minimapChecks[ck];
+              const cbox = this.scene.add.rectangle(40 + j * 60, currentY + 32, 20, 20, checked ? 0x00cc44 : 0xcc2222)
+                .setStrokeStyle(1, 0x222222)
+                .setInteractive({ useHandCursor: true })
+                .setDepth(2000);
+              cbox.on('pointerdown', () => {
+                this.debugState.minimapChecks[ck] = !this.debugState.minimapChecks[ck];
+                this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'minimapCheck', key: ck, value: this.debugState.minimapChecks[ck] });
+                this.createMenu('devMenu', true);
+              });
+              const cLabel = this.scene.add.text(60 + j * 60, currentY + 32, ck.charAt(0).toUpperCase() + ck.slice(1), {
+                fontFamily: 'Arial', fontSize: '16px', color: '#000', align: 'left',
+              }).setOrigin(0, 0.5).setDepth(2000);
+              this.menuContainer.add([cbox, cLabel]);
+              this.menuTexts.push(cbox, cLabel);
+            });
+          }
+          currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+        } else if (item.selector === 'item') {
+          // Spawn Item selector row
+          const itemKeys = Object.keys((window.itemData || this.scene.bagManager?.constructor?.itemData) || {});
+          const itemData = window.itemData || this.scene.bagManager?.constructor?.itemData || {};
+          const items = itemKeys.length ? itemKeys : ['Potion1(red)', 'sword1', 'helm1', 'Emerald', 'BlueApatite', 'Amethyst', 'RawRuby', 'Key1'];
+          const itemIdx = this.debugState.itemIndex;
+          const itemKey = items[itemIdx] || items[0];
+          const itemObj = itemData[itemKey] || { name: itemKey, asset: itemKey };
+          const leftArrow = this.scene.add.text(-90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          leftArrow.on('pointerdown', () => {
+            this.debugState.itemIndex = (itemIdx - 1 + items.length) % items.length;
+            this.createMenu('devMenu', true);
+          });
+          const rightArrow = this.scene.add.text(90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          rightArrow.on('pointerdown', () => {
+            this.debugState.itemIndex = (itemIdx + 1) % items.length;
+            this.createMenu('devMenu', true);
+          });
+          const itemSprite = this.scene.add.text(0, currentY, itemObj.name, { fontSize: '28px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          itemSprite.on('pointerdown', () => {
+            this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'spawn_item', itemKey });
+          });
+          this.menuContainer.add([leftArrow, itemSprite, rightArrow]);
+          this.menuTexts.push(leftArrow, itemSprite, rightArrow);
+          currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+        } else if (item.selector === 'player') {
+          // Kick Player selector row
+          const players = (this.scene.currentTargetList && this.scene.currentTargetList.length) ? this.scene.currentTargetList : [{ id: 'p1', name: 'Player1' }, { id: 'p2', name: 'Player2' }];
+          const playerIdx = this.debugState.playerIndex;
+          const player = players[playerIdx % players.length];
+          const leftP = this.scene.add.text(-90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          leftP.on('pointerdown', () => {
+            this.debugState.playerIndex = (playerIdx - 1 + players.length) % players.length;
+            this.createMenu('devMenu', true);
+          });
+          const rightP = this.scene.add.text(90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          rightP.on('pointerdown', () => {
+            this.debugState.playerIndex = (playerIdx + 1) % players.length;
+            this.createMenu('devMenu', true);
+          });
+          const playerBox = this.scene.add.text(0, currentY, player.name, { fontSize: '28px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          playerBox.on('pointerdown', () => {
+            this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'kick_player', playerId: player.id });
+          });
+          this.menuContainer.add([leftP, playerBox, rightP]);
+          this.menuTexts.push(leftP, playerBox, rightP);
+          currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+        } else if (item.selector === 'encounter') {
+          // Force Encounter selector row (3 slots)
+          const charTypes = (window.getAllCharacterTypeKeys && window.getAllCharacterTypeKeys()) || ['Dwarf', 'Gnome', 'Elvaan', 'Bat', 'Baba', 'Minotaur', 'Troll', 'None'];
+          const slotLabels = ['Leader', 'Member 1', 'Member 2'];
+          for (let s = 0; s < 3; s++) {
+            const slotIdx = this.debugState.encounterSlots[s] || 0;
+            const leftE = this.scene.add.text(-90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            leftE.on('pointerdown', () => {
+              this.debugState.encounterSlots[s] = (slotIdx - 1 + charTypes.length) % charTypes.length;
               this.createMenu('devMenu', true);
             });
-            const cLabel = this.scene.add.text(centerX - labelOffset + 28 + j * 40, cY, ck.charAt(0).toUpperCase() + ck.slice(1), {
-              fontFamily: 'Arial', fontSize: '16px', color: '#000', align: 'left',
-            }).setOrigin(0, 0.5).setDepth(2000);
-            this.menuContainer.add([cbox, cLabel]);
-            this.menuTexts.push(cbox, cLabel);
-          });
-        }
-        currentY += rowHeight;
-      });
-      // Spawn Item selector
-      const itemKeys = Object.keys((window.itemData || this.scene.bagManager?.constructor?.itemData) || {});
-      const itemData = window.itemData || this.scene.bagManager?.constructor?.itemData || {};
-      const items = itemKeys.length ? itemKeys : ['Potion1(red)', 'sword1', 'helm1', 'Emerald', 'BlueApatite', 'Amethyst', 'RawRuby', 'Key1'];
-      const itemIdx = this.debugState.itemIndex;
-      const itemKey = items[itemIdx] || items[0];
-      const item = itemData[itemKey] || { name: itemKey, asset: itemKey };
-      const leftArrow = this.scene.add.text(centerX - 90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      leftArrow.on('pointerdown', () => {
-        this.debugState.itemIndex = (itemIdx - 1 + items.length) % items.length;
-        this.createMenu('devMenu', true);
-      });
-      const rightArrow = this.scene.add.text(centerX + 90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      rightArrow.on('pointerdown', () => {
-        this.debugState.itemIndex = (itemIdx + 1) % items.length;
-        this.createMenu('devMenu', true);
-      });
-      const itemSprite = this.scene.add.text(centerX, currentY, item.name, { fontSize: '28px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      itemSprite.on('pointerdown', () => {
-        this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'spawn_item', itemKey });
-      });
-      this.menuContainer.add([leftArrow, itemSprite, rightArrow]);
-      this.menuTexts.push(leftArrow, itemSprite, rightArrow);
-      currentY += rowHeight;
-      // Kick Player selector
-      const players = (this.scene.currentTargetList && this.scene.currentTargetList.length) ? this.scene.currentTargetList : [{ id: 'p1', name: 'Player1' }, { id: 'p2', name: 'Player2' }];
-      const playerIdx = this.debugState.playerIndex;
-      const player = players[playerIdx % players.length];
-      const leftP = this.scene.add.text(centerX - 90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      leftP.on('pointerdown', () => {
-        this.debugState.playerIndex = (playerIdx - 1 + players.length) % players.length;
-        this.createMenu('devMenu', true);
-      });
-      const rightP = this.scene.add.text(centerX + 90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      rightP.on('pointerdown', () => {
-        this.debugState.playerIndex = (playerIdx + 1) % players.length;
-        this.createMenu('devMenu', true);
-      });
-      const playerBox = this.scene.add.text(centerX, currentY, player.name, { fontSize: '28px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      playerBox.on('pointerdown', () => {
-        this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'kick_player', playerId: player.id });
-      });
-      this.menuContainer.add([leftP, playerBox, rightP]);
-      this.menuTexts.push(leftP, playerBox, rightP);
-      currentY += rowHeight;
-      // Force Encounter selector (3 slots)
-      const charTypes = (window.getAllCharacterTypeKeys && window.getAllCharacterTypeKeys()) || ['Dwarf', 'Gnome', 'Elvaan', 'Bat', 'Baba', 'Minotaur', 'Troll', 'None'];
-      const slotLabels = ['Leader', 'Member 1', 'Member 2'];
-      for (let s = 0; s < 3; s++) {
-        const slotIdx = this.debugState.encounterSlots[s] || 0;
-        const leftE = this.scene.add.text(centerX - 90, currentY, '<-', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        leftE.on('pointerdown', () => {
-          this.debugState.encounterSlots[s] = (slotIdx - 1 + charTypes.length) % charTypes.length;
-          this.createMenu('devMenu', true);
-        });
-        const rightE = this.scene.add.text(centerX + 90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        rightE.on('pointerdown', () => {
-          this.debugState.encounterSlots[s] = (slotIdx + 1) % charTypes.length;
-          this.createMenu('devMenu', true);
-        });
-        const type = charTypes[slotIdx] || 'None';
-        const slotBox = this.scene.add.text(centerX, currentY, `${slotLabels[s]}: ${type}`, { fontSize: '24px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        slotBox.on('pointerdown', () => {
-          // Only trigger on clicking the slot label, not arrows
-          if (type !== 'None') {
-            const slots = this.debugState.encounterSlots.map(idx => charTypes[idx]);
-            this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'force_encounter', slots });
+            const rightE = this.scene.add.text(90, currentY, '->', { fontSize: '32px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            rightE.on('pointerdown', () => {
+              this.debugState.encounterSlots[s] = (slotIdx + 1) % charTypes.length;
+              this.createMenu('devMenu', true);
+            });
+            const type = charTypes[slotIdx] || 'None';
+            const slotBox = this.scene.add.text(0, currentY, `${slotLabels[s]}: ${type}`, { fontSize: '24px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            slotBox.on('pointerdown', () => {
+              if (type !== 'None') {
+                const slots = this.debugState.encounterSlots.map(idx => charTypes[idx]);
+                this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'force_encounter', slots });
+              }
+            });
+            this.menuContainer.add([leftE, slotBox, rightE]);
+            this.menuTexts.push(leftE, slotBox, rightE);
+            currentY += 40;
           }
-        });
-        this.menuContainer.add([leftE, slotBox, rightE]);
-        this.menuTexts.push(leftE, slotBox, rightE);
-        currentY += 40;
-      }
-      // Back button
-      const backBtn = this.scene.add.text(centerX, currentY + 30, 'Back', {
-        fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: '#eee', padding: { x: 16, y: 8 }
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      backBtn.on('pointerdown', () => this.transitionBack());
-      this.menuContainer.add(backBtn);
-      this.menuTexts.push(backBtn);
+          currentY += 10;
+        } else if (item.action) {
+          // Back button or any other action
+          const btn = this.scene.add.text(0, currentY, item.text, {
+            fontFamily: 'Arial', fontSize: '32px', color: '#000', align: 'center', backgroundColor: '#eee', padding: { x: 16, y: 8 }
+          }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          btn.on('pointerdown', () => item.action());
+          this.menuContainer.add(btn);
+          this.menuTexts.push(btn);
+          currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
+        }
+      });
       this.updateMenuPosition();
       return;
     }
