@@ -455,8 +455,17 @@ export default class DungeonScene extends Phaser.Scene {
   updateMenuPosition() {
     if (!this.menuSprite) return;
     const smallYOffset = 24;
-    this.menuSprite.x = this.menuSprite.displayWidth / 2;
-    this.menuSprite.y = this.game.config.height - this.menuSprite.displayHeight / 2 + smallYOffset;
+    if (this.menuOpen) {
+      // If menu is open, keep it centered
+      this.menuSprite.x = this.game.config.width / 2;
+      this.menuSprite.y = this.game.config.height / 2;
+      this.menuSprite.setScale(1);
+    } else {
+      // Closed state: bottom-left
+      this.menuSprite.setScale(0.15);
+      this.menuSprite.x = this.menuSprite.displayWidth / 2;
+      this.menuSprite.y = this.game.config.height - this.menuSprite.displayHeight / 2 + smallYOffset;
+    }
   }
 
   openMenuAnimation() {
