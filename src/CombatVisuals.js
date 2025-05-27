@@ -77,9 +77,9 @@ export var CombatVisuals = /*#__PURE__*/ function() {
                 var screenHeight = this.scene.game.config.height;
                 console.log("[CombatVisuals] Triggering red flash + broken glass effect (Duration: ".concat(duration, "ms)"));
                 // 1. Create Solid Red Overlay
-                var redOverlay = this.scene.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, redColor) // <-- Added missing closing parenthesis here
-                .setAlpha(0) // Start transparent
-                .setDepth(151); // Make red overlay the TOP layer
+                var redOverlay = this.scene.add.rectangle(screenWidth / 2, screenHeight / 2, screenWidth, screenHeight, redColor)
+                .setAlpha(0)
+                .setDepth(3000); // Move red overlay to 3000
                 // --- Select Texture and Flip, Ensuring No Immediate Repeat ---
                 var selectedGlassKey, selectedFlip;
                 do {
@@ -98,12 +98,11 @@ export var CombatVisuals = /*#__PURE__*/ function() {
                 this.prevGlassKey = selectedGlassKey;
                 this.prevGlassFlip = selectedFlip;
                 // --- Create SINGLE Broken Glass Image ---
-                var glassImage = this.scene.add.image(screenWidth / 2, screenHeight / 2, selectedGlassKey // Use the selected key
-                );
-                glassImage.setFlip(selectedFlip.x, selectedFlip.y) // Apply selected flip
-                .setAlpha(0.8) // Set target opacity
-                .setScale(1.0) // Start at normal scale
-                .setDepth(150); // Place glass BELOW the red overlay
+                var glassImage = this.scene.add.image(screenWidth / 2, screenHeight / 2, selectedGlassKey);
+                glassImage.setFlip(selectedFlip.x, selectedFlip.y)
+                .setAlpha(0.8)
+                .setScale(1.0)
+                .setDepth(3001); // Move glass image to 3001
                 // 3. Fade In Animation (Red Overlay + Single Glass Image Smash)
                 this.scene.tweens.add({
                     targets: [

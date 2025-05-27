@@ -216,12 +216,12 @@ export default class DungeonScene extends Phaser.Scene {
     this.socket.on("ENCOUNTER_ATTACK_RESULT", (data) => {
       this.clearTempCombatTexts();
       if (data.dodged) {
-        const txt = this.add.text(400, 100, 'Attack dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        const txt = this.add.text(400, 100, 'Attack dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(3002);
         this.tempCombatTexts.push(txt);
         this.time.delayedCall(1200, () => this.clearTempCombatTexts());
       } else {
         this.combatVisuals.playPlayerDamageEffect();
-        const txt = this.add.text(400, 100, `Hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#ff4444', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        const txt = this.add.text(400, 100, `Hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#ff4444', backgroundColor: '#222' }).setOrigin(0.5).setDepth(3002);
         this.tempCombatTexts.push(txt);
         this.time.delayedCall(1200, () => this.clearTempCombatTexts());
       }
@@ -230,12 +230,12 @@ export default class DungeonScene extends Phaser.Scene {
     this.socket.on("ENCOUNTER_SPELL_RESULT", (data) => {
       this.clearTempCombatTexts();
       if (data.dodged) {
-        const txt = this.add.text(400, 140, 'Spell dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        const txt = this.add.text(400, 140, 'Spell dodged!', { font: '20px Arial', fill: '#00ffcc', backgroundColor: '#222' }).setOrigin(0.5).setDepth(3002);
         this.tempCombatTexts.push(txt);
         this.time.delayedCall(1200, () => this.clearTempCombatTexts());
       } else {
         this.combatVisuals.playPlayerDamageEffect();
-        const txt = this.add.text(400, 140, `Spell hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#44aaff', backgroundColor: '#222' }).setOrigin(0.5).setDepth(200);
+        const txt = this.add.text(400, 140, `Spell hit for ${data.damageDealt} damage!`, { font: '20px Arial', fill: '#44aaff', backgroundColor: '#222' }).setOrigin(0.5).setDepth(3002);
         this.tempCombatTexts.push(txt);
         this.time.delayedCall(1200, () => this.clearTempCombatTexts());
       }
@@ -431,7 +431,7 @@ export default class DungeonScene extends Phaser.Scene {
   showActionPrompt(text) {
     // Show a temporary prompt (reuse old logic or add a new text box)
     const prompt = this.add.text(400, 60, text, { fontSize: '20px', color: '#fff', backgroundColor: '#222', padding: { x: 12, y: 8 } })
-      .setOrigin(0.5).setDepth(200);
+      .setOrigin(0.5).setDepth(3002);
     this.time.delayedCall(1800, () => prompt.destroy());
   }
 

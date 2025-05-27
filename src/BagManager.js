@@ -178,7 +178,7 @@ export class BagManager {
   addBagSprite(data) {
     const { bagId, roomId } = data;
     if (!this.scene.player || this.scene.player.roomId !== roomId) return;
-    const sprite = this.scene.add.sprite(728, 571, 'bag').setVisible(false);
+    const sprite = this.scene.add.sprite(728, 571, 'bag').setDepth(30).setVisible(false);
     sprite.setInteractive();
     sprite.on('pointerdown', () => {
       this.socket.emit('LOOT_BAG_INTERACT', { bagId });
