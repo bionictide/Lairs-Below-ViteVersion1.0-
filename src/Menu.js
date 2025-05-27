@@ -14,6 +14,7 @@ export default class Menu {
     this.sfxVolume = 1;
     this.passwordInput = '';
     this.passwordCursorTimer = null;
+    this.verticalOffset = 96;
     this.createMenu('main', true);
     // Responsive: re-center on resize
     this.scene.scale.on('resize', this.updateMenuPosition, this);
@@ -80,9 +81,13 @@ export default class Menu {
     this.menuContainer = this.scene.add.container(0, 0).setDepth(2000);
     // Set container position to center (with offset) before adding children
     const rowWidth = 280;
-    const verticalOffset = 48;
     this.menuContainer.x = this.scene.scale.width / 2;
-    this.menuContainer.y = this.scene.scale.height / 2 + verticalOffset;
+    // Only offset the debug menu
+    if (menuKey === 'devMenu') {
+      this.menuContainer.y = this.scene.scale.height / 2 + 64;
+    } else {
+      this.menuContainer.y = this.scene.scale.height / 2;
+    }
     this.menuTexts = [];
     this.currentMenu = menuKey;
     const menu = this.getMenus()[menuKey];
@@ -119,13 +124,13 @@ export default class Menu {
             const slotRow = this.scene.add.container(0, currentY + (s + 1) * 32);
             this.debugRowContainers.push(slotRow);
             const slotIdx = this.debugState.encounterSlots[s] || 0;
-            const leftE = this.scene.add.text(-rowWidth / 2 + 24, 0, '<', { fontSize: '16px', color: '#222' })
+            const leftE = this.scene.add.text(-64, 0, '<', { fontSize: '18px', color: '#222' })
               .setOrigin(0.5).setInteractive({ useHandCursor: true });
             leftE.on('pointerdown', () => {
               this.debugState.encounterSlots[s] = (slotIdx - 1 + charTypes.length) % charTypes.length;
               this.createMenu('devMenu', true);
             });
-            const rightE = this.scene.add.text(rowWidth / 2 - 24, 0, '>', { fontSize: '16px', color: '#222' })
+            const rightE = this.scene.add.text(64, 0, '>', { fontSize: '18px', color: '#222' })
               .setOrigin(0.5).setInteractive({ useHandCursor: true });
             rightE.on('pointerdown', () => {
               this.debugState.encounterSlots[s] = (slotIdx + 1) % charTypes.length;
@@ -160,17 +165,20 @@ export default class Menu {
           currentY += 32;
           return;
         }
-        // All other rows: left-aligned label, right-aligned control
+        // All other rows: left-aligned label, right-aligned control group
         const row = this.scene.add.container(0, currentY);
         this.debugRowContainers.push(row);
         // Left label
         const label = this.scene.add.text(-rowWidth / 2, 0, item.text, mainFont).setOrigin(0, 0.5).setDepth(2000);
         row.add(label);
-        // Right control
+        // Right control group
+        let controlGroupX = rowWidth / 4; // Center of right half
+        if (item.toggle) controlGroupX = rowWidth / 2 - 24; // toggles stay right
+        const controlGroup = this.scene.add.container(controlGroupX, 0);
         if (item.toggle) {
           const isOn = this.debugState[item.toggle];
           const color = isOn ? 0x00cc44 : 0xcc2222;
-          const box = this.scene.add.rectangle(rowWidth / 2 - 24, 0, 18, 18, color)
+          const box = this.scene.add.rectangle(0, 0, 18, 18, color)
             .setStrokeStyle(2, 0x222222)
             .setInteractive({ useHandCursor: true })
             .setDepth(2000);
@@ -179,7 +187,7 @@ export default class Menu {
             this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'toggle', key: item.toggle, value: this.debugState[item.toggle] });
             this.createMenu('devMenu', true);
           });
-          row.add(box);
+          controlGroup.add(box);
         } else if (item.selector === 'item') {
           const itemKeys = Object.keys((window.itemData || this.scene.bagManager?.constructor?.itemData) || {});
           const itemData = window.itemData || this.scene.bagManager?.constructor?.itemData || {};
@@ -187,13 +195,13 @@ export default class Menu {
           const itemIdx = this.debugState.itemIndex;
           const itemKey = items[itemIdx] || items[0];
           const itemObj = itemData[itemKey] || { name: itemKey, asset: itemKey };
-          const leftArrow = this.scene.add.text(rowWidth / 2 - 60, 0, '<', { fontSize: '18px', color: '#222' })
+          const leftArrow = this.scene.add.text(-48, 0, '<', { fontSize: '18px', color: '#222' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
           leftArrow.on('pointerdown', () => {
             this.debugState.itemIndex = (itemIdx - 1 + items.length) % items.length;
             this.createMenu('devMenu', true);
           });
-          const rightArrow = this.scene.add.text(rowWidth / 2 - 24, 0, '>', { fontSize: '18px', color: '#222' })
+          const rightArrow = this.scene.add.text(48, 0, '>', { fontSize: '18px', color: '#222' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
           rightArrow.on('pointerdown', () => {
             this.debugState.itemIndex = (itemIdx + 1) % items.length;
@@ -201,36 +209,37 @@ export default class Menu {
           });
           let itemSprite;
           if (itemObj.asset && this.scene.textures.exists(itemObj.asset)) {
-            itemSprite = this.scene.add.sprite(rowWidth / 2 - 42, 0, itemObj.asset).setOrigin(0.5).setDisplaySize(20, 20).setInteractive({ useHandCursor: true });
+            itemSprite = this.scene.add.sprite(0, 0, itemObj.asset).setOrigin(0.5).setDisplaySize(20, 20).setInteractive({ useHandCursor: true });
           } else {
-            itemSprite = this.scene.add.text(rowWidth / 2 - 42, 0, itemObj.name, { fontSize: '14px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+            itemSprite = this.scene.add.text(0, 0, itemObj.name, { fontSize: '14px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
           }
           itemSprite.on('pointerdown', () => {
             this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'spawn_item', itemKey });
           });
-          row.add([leftArrow, itemSprite, rightArrow]);
+          controlGroup.add([leftArrow, itemSprite, rightArrow]);
         } else if (item.selector === 'player') {
           const players = (this.scene.currentTargetList && this.scene.currentTargetList.length) ? this.scene.currentTargetList : [{ id: 'p1', name: 'Player1' }, { id: 'p2', name: 'Player2' }];
           const playerIdx = this.debugState.playerIndex;
           const player = players[playerIdx % players.length];
-          const leftP = this.scene.add.text(rowWidth / 2 - 60, 0, '<', { fontSize: '18px', color: '#222' })
+          const leftP = this.scene.add.text(-48, 0, '<', { fontSize: '18px', color: '#222' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
           leftP.on('pointerdown', () => {
             this.debugState.playerIndex = (playerIdx - 1 + players.length) % players.length;
             this.createMenu('devMenu', true);
           });
-          const rightP = this.scene.add.text(rowWidth / 2 - 24, 0, '>', { fontSize: '18px', color: '#222' })
+          const rightP = this.scene.add.text(48, 0, '>', { fontSize: '18px', color: '#222' })
             .setOrigin(0.5).setInteractive({ useHandCursor: true });
           rightP.on('pointerdown', () => {
             this.debugState.playerIndex = (playerIdx + 1) % players.length;
             this.createMenu('devMenu', true);
           });
-          const playerBox = this.scene.add.text(rowWidth / 2 - 42, 0, player.name, { fontSize: '14px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+          const playerBox = this.scene.add.text(0, 0, player.name, { fontSize: '14px', color: '#000' }).setOrigin(0.5).setInteractive({ useHandCursor: true });
           playerBox.on('pointerdown', () => {
             this.scene.socket.emit('DEV_DEBUG_ACTION', { action: 'kick_player', playerId: player.id });
           });
-          row.add([leftP, playerBox, rightP]);
+          controlGroup.add([leftP, playerBox, rightP]);
         }
+        row.add(controlGroup);
         this.menuContainer.add(row);
         this.menuTexts.push(row);
         currentY += 32;
@@ -322,6 +331,12 @@ export default class Menu {
         currentY += itemHeights[i + 1] ? (itemHeights[i] + itemHeights[i + 1]) / 2 : itemHeights[i];
       }
     });
+    // After all rows are created, move the menu container down
+    if (menuKey === 'devMenu') {
+      this.menuContainer.y = this.scene.scale.height / 2 + 64;
+    } else {
+      this.menuContainer.y = this.scene.scale.height / 2;
+    }
     if (instant || !prevMenuContainer) {
       this.updateMenuPosition();
       return;
@@ -330,11 +345,13 @@ export default class Menu {
   }
 
   updateMenuPosition() {
-    // Add vertical offset for better centering
-    const verticalOffset = 32;
     if (this.menuContainer) {
       this.menuContainer.x = this.scene.scale.width / 2;
-      this.menuContainer.y = this.scene.scale.height / 2 + verticalOffset;
+      if (this.currentMenu === 'devMenu') {
+        this.menuContainer.y = this.scene.scale.height / 2 + 64;
+      } else {
+        this.menuContainer.y = this.scene.scale.height / 2;
+      }
     }
   }
 
