@@ -95,10 +95,25 @@ export default class Menu {
     // Calculate total menu height for perfect centering
     let totalHeight = 0;
     let itemHeights = [];
-    menu.forEach(item => {
-      itemHeights.push(54);
-      totalHeight += 54;
-    });
+    if (menuKey === 'devMenu') {
+      menu.forEach(item => {
+        if (item.selector === 'encounter') {
+          // Force Encounter header + 3 slots
+          itemHeights.push(32); // header
+          itemHeights.push(32); // slot 1
+          itemHeights.push(32); // slot 2
+          itemHeights.push(32); // slot 3
+        } else {
+          itemHeights.push(32);
+        }
+      });
+      totalHeight = itemHeights.reduce((a, b) => a + b, 0);
+    } else {
+      menu.forEach(item => {
+        itemHeights.push(54);
+        totalHeight += 54;
+      });
+    }
     let currentY = -totalHeight / 2 + itemHeights[0] / 2;
     // Track row containers for clean redraw
     if (!this.debugRowContainers) this.debugRowContainers = [];
@@ -118,10 +133,11 @@ export default class Menu {
           this.menuContainer.add(headerRow);
           this.menuTexts.push(headerRow);
           this.debugRowContainers.push(headerRow);
+          currentY += 32;
           // Three centered selector rows
           const charTypes = (window.getAllCharacterTypeKeys && window.getAllCharacterTypeKeys()) || ['Dwarf', 'Gnome', 'Elvaan', 'Bat', 'Baba', 'Minotaur', 'Troll', 'None'];
           for (let s = 0; s < 3; s++) {
-            const slotRow = this.scene.add.container(0, currentY + (s + 1) * 32);
+            const slotRow = this.scene.add.container(0, currentY);
             this.debugRowContainers.push(slotRow);
             const slotIdx = this.debugState.encounterSlots[s] || 0;
             const leftE = this.scene.add.text(-64, 0, '<', { fontSize: '18px', color: '#222' })
@@ -148,8 +164,8 @@ export default class Menu {
             slotRow.add([leftE, slotBox, rightE]);
             this.menuContainer.add(slotRow);
             this.menuTexts.push(slotRow);
+            currentY += 32;
           }
-          currentY += 32 * 4;
           return;
         }
         // Back button is centered
@@ -478,7 +494,8 @@ export default class Menu {
         },
         onComplete: () => {
           obj.x = 0;
-          obj.y = -totalHeight / 2 + itemHeights[0] / 2 + i * 54;
+          const yOffset = itemHeights.slice(0, i).reduce((a, b) => a + b, 0);
+          obj.y = -totalHeight / 2 + itemHeights[0] / 2 + yOffset;
           obj.setAlpha(1);
           newCompleted++;
           if (newCompleted === newTotal) {
