@@ -522,6 +522,7 @@ function CharacterSelectScreen({ onSelect, error }) {
               }}
               onClick={e => {
                 e.preventDefault();
+                console.log('[DEBUG] OK button clicked', { name, lockedType, char: characters[lockedType] });
                 if (!name.trim()) {
                   setLocalError('Please enter a name.');
                   return;
@@ -543,6 +544,7 @@ function CharacterSelectScreen({ onSelect, error }) {
                   return;
                 }
                 setLocalError('');
+                console.log('[DEBUG] Calling onSelect with:', { ...characters[lockedType], name: name.trim(), level: 1, type: characters[lockedType].name });
                 onSelect({ ...characters[lockedType], name: name.trim(), level: 1, type: characters[lockedType].name });
               }}
             >
@@ -972,23 +974,27 @@ function App() {
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
   const handleCharacterCreated = async (charData) => {
+    console.log('[DEBUG] handleCharacterCreated called with:', charData);
     setCharCreateError('');
     if (!user || !user.id) {
       setCharCreateError('User not logged in.');
       return;
     }
-    // Send only name and type to the server for secure character creation
     const socket = window.socket || clientSocket;
+    console.log('[DEBUG] Socket at character creation:', socket);
+    if (!socket || !socket.connected) {
+      setCharCreateError('Not connected to server.');
+      return;
+    }
     socket.emit(EVENTS.CHARACTER_CREATE, {
       name: charData.name,
       type: charData.type,
       user_id: user.id,
       level: charData.level || 1
     });
-    // Listen for server response
     socket.once(EVENTS.ACTION_RESULT, (result) => {
+      console.log('[DEBUG] Received ACTION_RESULT:', result);
       if (result.action === EVENTS.CHARACTER_CREATE && result.success) {
-        // On success, fetch the character list from Supabase
         fetchCharacters();
         setScreen('characterServerSelect');
       } else if (result.action === EVENTS.CHARACTER_CREATE) {
