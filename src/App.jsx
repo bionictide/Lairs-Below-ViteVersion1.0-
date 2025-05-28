@@ -951,6 +951,7 @@ function App() {
   const [notification, setNotification] = React.useState(null);
   const [connectionError, setConnectionError] = React.useState(false);
   const [dungeon, setDungeon] = React.useState(null);
+  const [connectionModal, setConnectionModal] = React.useState(null);
 
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
@@ -1125,6 +1126,14 @@ function App() {
     }
   }, [screen, dungeon]);
 
+  // Utility to disconnect socket safely
+  function disconnectSocket() {
+    if (window.socket && window.socket.connected) {
+      window.socket.disconnect();
+      window.socket = null;
+    }
+  }
+
   if (screen === 'intro') {
     return <IntroVideoScreen onFinish={() => {
       setScreen('login');
@@ -1134,11 +1143,34 @@ function App() {
   if (screen === 'login') {
     return <>
       <LoginScreen onLogin={loginData => {
-        // loginData: { token, playerId, user_id, user }
         setUser(loginData.user);
+        disconnectSocket();
+        window.socket = connectSocket(loginData.token);
+        // Add global error handlers
+        window.socket.on('connect_error', () => {
+          setConnectionModal({ message: 'Unable to Connect' });
+          disconnectSocket();
+        });
+        window.socket.on('disconnect', () => {
+          setConnectionModal({ message: 'Connection Lost' });
+          disconnectSocket();
+        });
         setScreen('characterServerSelect');
       }} />
       {fadeInLogin && <FadeInOverlay onDone={() => setFadeInLogin(false)} />}
+      {connectionModal && (
+        <div style={{
+          position: 'fixed', left: 0, top: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.7)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'auto',
+        }}>
+          <div style={{ background: '#222', border: '2px solid #fff', borderRadius: 4, padding: 32, minWidth: 320, textAlign: 'center', boxShadow: '0 4px 32px #000', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ color: '#fff', fontWeight: 700, fontSize: 20, marginBottom: 24 }}>{connectionModal.message}</div>
+            <button
+              style={{ background: '#2196f3', color: '#fff', border: '2px solid #2196f3', borderRadius: 2, width: 120, height: 40, fontSize: 16, fontWeight: 700, cursor: 'pointer', margin: '0 auto' }}
+              onClick={() => { setConnectionModal(null); setScreen('login'); }}
+            >Okay</button>
+          </div>
+        </div>
+      )}
     </>;
   }
   if (screen === 'loading') {
