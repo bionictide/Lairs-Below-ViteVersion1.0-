@@ -1091,8 +1091,11 @@ function App() {
         return;
       }
       const token = data.session.access_token;
-      const sock = connectSocket(token);
-      window.socket = sock;
+      const sock = window.socket;
+      if (!sock || !sock.connected) {
+        setConnectionError(true);
+        return;
+      }
 
       // Wire up notifications
       sock.on(EVENTS.PLAYER_JOIN_NOTIFICATION, ({ name }) => {
@@ -1152,16 +1155,9 @@ function App() {
       <LoginScreen onLogin={loginData => {
         setUser(loginData.user);
         disconnectSocket();
-        window.socket = connectSocket(loginData.token);
-        // Add global error handlers
-        window.socket.on('connect_error', () => {
-          setConnectionModal({ message: 'Unable to Connect' });
-          disconnectSocket();
-        });
-        window.socket.on('disconnect', () => {
-          setConnectionModal({ message: 'Connection Lost' });
-          disconnectSocket();
-        });
+        if (loginData.token) {
+          window.socket = connectSocket(loginData.token);
+        }
         setScreen('characterServerSelect');
       }} />
       {fadeInLogin && <FadeInOverlay onDone={() => setFadeInLogin(false)} />}
