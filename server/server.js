@@ -152,9 +152,17 @@ io.on("connection", (socket) => {
           return;
         }
       }
-      // Inject player as new entity into dungeon
+      // Coerce all stat fields to numbers, matching the old code and schema
+      const statblock = {
+        vit: Number(character.vit),
+        str: Number(character.str),
+        int: Number(character.int),
+        dex: Number(character.dex),
+        mnd: Number(character.mnd),
+        spd: Number(character.spd)
+      };
       const { PlayerStats } = await import('./PlayerStatsServer.js');
-      const playerStats = new PlayerStats(character, character.inventory || []);
+      const playerStats = new PlayerStats(statblock, character.inventory || []);
       players.set(playerId, {
         socket,
         character,
