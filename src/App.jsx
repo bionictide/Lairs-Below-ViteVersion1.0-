@@ -1157,8 +1157,12 @@ function App() {
         disconnectSocket();
         if (loginData.token) {
           window.socket = connectSocket(loginData.token);
+          window.socket.once('connect', () => {
+            setScreen('characterServerSelect');
+          });
+        } else {
+          setScreen('characterServerSelect');
         }
-        setScreen('characterServerSelect');
       }} />
       {fadeInLogin && <FadeInOverlay onDone={() => setFadeInLogin(false)} />}
       {connectionModal && (
