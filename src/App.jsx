@@ -953,6 +953,22 @@ function App() {
   const [dungeon, setDungeon] = React.useState(null);
   const [connectionModal, setConnectionModal] = React.useState(null);
 
+  // Move fetchCharacters to top-level scope
+  const fetchCharacters = async () => {
+    if (user && user.id) {
+      const { data, error } = await supabase
+        .from('characters')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('id', { ascending: true });
+      if (!error && data) {
+        const chars = Array(5).fill(null);
+        data.slice(0, 5).forEach((c, i) => { chars[i] = c; });
+        setCharacters(chars);
+      }
+    }
+  };
+
   // Character creation flow
   const handleCreateCharacter = () => setScreen('characterCreate');
   const handleCharacterCreated = async (charData) => {
@@ -984,21 +1000,6 @@ function App() {
 
   // Load characters from Supabase after login
   React.useEffect(() => {
-    async function fetchCharacters() {
-      if (user && user.id) {
-        const { data, error } = await supabase
-          .from('characters')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('id', { ascending: true });
-        if (!error && data) {
-          // Fill up to 5 slots
-          const chars = Array(5).fill(null);
-          data.slice(0, 5).forEach((c, i) => { chars[i] = c; });
-          setCharacters(chars);
-        }
-      }
-    }
     fetchCharacters();
   }, [user]);
 
