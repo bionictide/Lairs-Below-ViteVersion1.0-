@@ -986,6 +986,7 @@ function App() {
       setCharCreateError('Not connected to server.');
       return;
     }
+    console.log('[DEBUG] Emitting character_create on socket id:', socket.id);
     socket.emit(EVENTS.CHARACTER_CREATE, {
       name: charData.name,
       type: charData.type,

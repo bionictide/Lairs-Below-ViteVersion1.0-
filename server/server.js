@@ -92,11 +92,10 @@ global.RoomManagerServer = RoomManagerServer;
 console.log('[DEBUG] global.RoomManagerServer initialized:', typeof global.RoomManagerServer);
 
 io.on("connection", (socket) => {
-  console.log("[SOCKET] Client connected:", socket.id, "User:", socket.user?.id || '[no user]');
-
+  console.log("[SOCKET] New connection:", socket.id);
   // Catch-all event logger
   socket.onAny((event, ...args) => {
-    console.log('[SOCKET] Received event:', event, args);
+    console.log('[SOCKET] Received event:', event, 'from socket:', socket.id, args);
   });
 
   socket.on(EVENTS.PUZZLE_ATTEMPT, (data) => handlePuzzleAttempt(socket, data));
