@@ -184,12 +184,13 @@ io.on("connection", (socket) => {
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
-      // Attach roomId and derived stats to character object for client rendering only
-      const characterWithRoom = {
-        ...character,
-        roomId: spawnRoom.id,
-        maxHealth: playerStats.getMaxHealth(),
+      // Attach roomId and FINAL derived stats to character object for client rendering only
+      const characterForClient = {
+        id: character.id,
+        name: character.name,
+        type: character.type,
         health: playerStats.getCurrentHealth(),
+        maxHealth: playerStats.getMaxHealth(),
       };
       // Send current world state and spawn info to client
       socket.emit(EVENTS.ACTION_RESULT, {
@@ -198,7 +199,7 @@ io.on("connection", (socket) => {
         message: 'Joined',
         data: {
           playerId,
-          character: characterWithRoom,
+          character: characterForClient,
           spawnRoomId: spawnRoom.id,
           dungeon,
         },

@@ -111,6 +111,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.hintManager = new HintManager(this);
     const initialHealth = this.player?.health || 300;
     const maxHealth = this.player?.maxHealth || 300;
+    console.log('[DEBUG] Creating HealthBar with:', { initialHealth, maxHealth, player: this.player });
     this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.id);
 
     this.setupSocketListeners();
