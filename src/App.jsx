@@ -960,44 +960,24 @@ function App() {
       setCharCreateError('User not logged in.');
       return;
     }
-    // Get the stat block from CharacterTypes.js for the selected type
-    const def = getCharacterDisplayData(charData.type?.toLowerCase());
-    const stats = def?.stats || { vit: 0, str: 0, int: 0, dex: 0, mnd: 0, spd: 0 };
-    // Insert character into Supabase
-    const { data, error } = await supabase
-      .from('characters')
-      .insert([
-        {
-          user_id: user.id,
-          name: charData.name,
-          type: charData.type,
-          level: charData.level || 1,
-          vit: stats.vit,
-          str: stats.str,
-          int: stats.int,
-          dex: stats.dex,
-          mnd: stats.mnd,
-          spd: stats.spd,
-          inventory: [] // Add inventory as empty array on creation
-        }
-      ])
-      .select();
-    if (error) {
-      setCharCreateError('Failed to create character: ' + error.message);
-      return;
-    }
-    const newChar = data && data[0] ? { ...charData, id: data[0].id, ...stats, inventory: [] } : { ...charData, ...stats, inventory: [] };
-    const idx = characters.findIndex(c => !c);
-    if (idx !== -1) {
-      const newChars = [...characters];
-      newChars[idx] = newChar;
-      setCharacters(newChars);
-      setSelectedCharacter(idx);
-      // --- Expose supabase and current character ID for BagManager ---
-      window.supabase = supabase;
-      window.currentCharacterId = newChar.id;
-      setScreen('characterServerSelect');
-    }
+    // Send only name and type to the server for secure character creation
+    const socket = window.socket || clientSocket;
+    socket.emit(EVENTS.CHARACTER_CREATE, {
+      name: charData.name,
+      type: charData.type,
+      user_id: user.id,
+      level: charData.level || 1
+    });
+    // Listen for server response
+    socket.once(EVENTS.ACTION_RESULT, (result) => {
+      if (result.action === EVENTS.CHARACTER_CREATE && result.success) {
+        // On success, fetch the character list from Supabase
+        fetchCharacters();
+        setScreen('characterServerSelect');
+      } else if (result.action === EVENTS.CHARACTER_CREATE) {
+        setCharCreateError(result.message || 'Failed to create character.');
+      }
+    });
   };
   const handleHostServer = () => setScreen('loading');
 

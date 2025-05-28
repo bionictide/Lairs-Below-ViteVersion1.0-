@@ -308,6 +308,59 @@ io.on("connection", (socket) => {
     handleDevDebugAuth(socket, password);
   });
 
+  socket.on(EVENTS.CHARACTER_CREATE, async ({ name, type, user_id, level }) => {
+    try {
+      // Validate that the socket user matches the user_id
+      if (!socket.user || socket.user.id !== user_id) {
+        socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Auth mismatch' });
+        return;
+      }
+      // Validate name and type
+      if (!name || typeof name !== 'string' || !type || typeof type !== 'string') {
+        socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Invalid name or type' });
+        return;
+      }
+      // Get base stats from CharacterTypesServer
+      const { getCharacterDefinition } = await import('./CharacterTypesServer.js');
+      const def = getCharacterDefinition(type.toLowerCase());
+      if (!def || !def.stats) {
+        socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Invalid character type' });
+        return;
+      }
+      // Insert character into Supabase
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/characters`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+          apikey: SUPABASE_SERVICE_KEY,
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+        },
+        body: JSON.stringify({
+          user_id,
+          name,
+          type,
+          level: level || 1,
+          vit: def.stats.vit,
+          str: def.stats.str,
+          int: def.stats.int,
+          dex: def.stats.dex,
+          mnd: def.stats.mnd,
+          spd: def.stats.spd,
+          inventory: []
+        })
+      });
+      if (res.status !== 201) {
+        const err = await res.text();
+        socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Supabase error: ' + err });
+        return;
+      }
+      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: true });
+    } catch (err) {
+      socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Server error: ' + err.message });
+    }
+  });
+
   // Additional connections (player join/leave, room sync, etc.) would route here too
 });
 
