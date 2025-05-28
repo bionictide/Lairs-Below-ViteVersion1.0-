@@ -91,6 +91,8 @@ const hintManager = new HintManagerServer(io);
 global.RoomManagerServer = RoomManagerServer;
 console.log('[DEBUG] global.RoomManagerServer initialized:', typeof global.RoomManagerServer);
 
+console.log('[DEBUG] EVENTS.CHARACTER_CREATE (server):', EVENTS.CHARACTER_CREATE);
+
 io.on("connection", (socket) => {
   console.log("[SOCKET] New connection:", socket.id);
   // Catch-all event logger
