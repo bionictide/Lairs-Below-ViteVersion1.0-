@@ -53,6 +53,7 @@ export default class HealthBar {
       this.markers.lineStyle(2, 0x000000, 1); // 2px for visibility
       this.markers.lineBetween(px, this.y, px, this.y + this.barHeight);
     }
+    this.markers.setDepth(9999);
   }
   handleDeath(attackerId = null) {
     // --- Player-Specific Death Visuals/Input Lock ---

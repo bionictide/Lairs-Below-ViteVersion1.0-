@@ -109,8 +109,8 @@ export default class DungeonScene extends Phaser.Scene {
     this.lootUIManager = new LootUIManager(this, this.socket, this.player?.id);
     this.combatVisuals = new CombatVisuals(this);
     this.hintManager = new HintManager(this);
-    const initialHealth = this.player?.health || 100;
-    const maxHealth = this.player?.maxHealth || 100;
+    const initialHealth = this.player?.health || 300;
+    const maxHealth = this.player?.maxHealth || 300;
     this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.id);
 
     this.setupSocketListeners();
