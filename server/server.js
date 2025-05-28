@@ -153,9 +153,12 @@ io.on("connection", (socket) => {
         }
       }
       // Inject player as new entity into dungeon
+      const { PlayerStats } = await import('./PlayerStatsServer.js');
+      const playerStats = new PlayerStats(character, character.inventory || []);
       players.set(playerId, {
         socket,
         character,
+        playerStats, // Store the PlayerStatsServer instance for all future logic
         roomId: null,
         inventory: character.inventory || [],
         lastKnownRoom: null,
@@ -172,8 +175,13 @@ io.on("connection", (socket) => {
       if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
       rooms.get(spawnRoom.id).players.add(playerId);
       socket.join(spawnRoom.id);
-      // Attach roomId to character object for client
-      const characterWithRoom = { ...character, roomId: spawnRoom.id };
+      // Attach roomId and derived stats to character object for client rendering only
+      const characterWithRoom = {
+        ...character,
+        roomId: spawnRoom.id,
+        maxHealth: playerStats.getMaxHealth(),
+        health: playerStats.getCurrentHealth(),
+      };
       // Send current world state and spawn info to client
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
