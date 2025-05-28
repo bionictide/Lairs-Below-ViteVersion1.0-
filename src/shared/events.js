@@ -60,4 +60,5 @@ export const EVENTS = {
   CLEAR_HINT: 'clear_hint',
   ENCOUNTER_EFFECT_TICK: 'encounter_effect_tick',
   ENCOUNTER_EFFECT_END: 'encounter_effect_end',
+  CHARACTER_CREATE: 'character_create',
 };
