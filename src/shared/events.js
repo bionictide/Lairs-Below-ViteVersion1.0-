@@ -57,6 +57,7 @@ export const EVENTS = {
   MARK_BAG_CHECKED: 'mark_bag_checked',
   TAKE_TURN: 'take_turn',
   SHOW_HINT: 'show_hint',
+  CLEAR_HINT: 'clear_hint',
   ENCOUNTER_EFFECT_TICK: 'encounter_effect_tick',
   ENCOUNTER_EFFECT_END: 'encounter_effect_end',
 };

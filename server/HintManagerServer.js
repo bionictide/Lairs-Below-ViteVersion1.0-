@@ -38,4 +38,8 @@ export default class HintManagerServer {
   clearHints() {
     this.hints.clear();
   }
+
+  sendClearHintToPlayer(socket) {
+    socket.emit("CLEAR_HINT");
+  }
 }

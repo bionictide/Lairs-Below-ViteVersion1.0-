@@ -57,19 +57,28 @@ export class PlayerStats {
     const totalDefense = this._defenseRating + this.itemDefenseBonus;
     return Math.min(0.9, totalDefense * 0.01);
   }
-  applyDamage(rawDamage) {
+  applyDamage(rawDamage, socket, playerId) {
     const mitigation = 1.0 - this.getDefenseRating();
     const finalPhysicalDamage = Math.max(0, Math.floor(rawDamage * mitigation));
     this._currentHealth = Math.max(0, this._currentHealth - finalPhysicalDamage);
+    if (socket && playerId) {
+      socket.emit('HEALTH_UPDATE', { playerId, health: this._currentHealth, maxHealth: this._maxHealth });
+    }
     return finalPhysicalDamage;
   }
-  applyHealing(amount) {
+  applyHealing(amount, socket, playerId) {
     const previousHealth = this._currentHealth;
     this._currentHealth = Math.min(this.getMaxHealth(), this._currentHealth + amount);
+    if (socket && playerId) {
+      socket.emit('HEALTH_UPDATE', { playerId, health: this._currentHealth, maxHealth: this._maxHealth });
+    }
     return this._currentHealth - previousHealth;
   }
-  setHealth(newHealth) {
+  setHealth(newHealth, socket, playerId) {
     this._currentHealth = Math.max(0, Math.min(newHealth, this.getMaxHealth()));
+    if (socket && playerId) {
+      socket.emit('HEALTH_UPDATE', { playerId, health: this._currentHealth, maxHealth: this._maxHealth });
+    }
   }
   updateStatsFromInventory(items = []) {
     this.itemDefenseBonus = 0;

@@ -16,6 +16,7 @@ import { handleTreasureAccess } from "./TreasureManagerServer.js";
 import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
 import { handleDevDebugAuth } from './DebugHelperServer.js';
+import HintManagerServer from './HintManagerServer.js';
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGINS = [
@@ -84,6 +85,8 @@ const bags = new Map();    // bagId -> { roomId, items }
 const DUNGEON_SEED = process.env.DUNGEON_SEED || 'default-seed-2024';
 const dungeonCore = new DungeonCore();
 const dungeon = dungeonCore.generateDungeon(1, DUNGEON_SEED);
+
+const hintManager = new HintManagerServer(io);
 
 global.RoomManagerServer = RoomManagerServer;
 console.log('[DEBUG] global.RoomManagerServer initialized:', typeof global.RoomManagerServer);
@@ -203,10 +206,19 @@ io.on("connection", (socket) => {
     }
     // Drop loot bag in current room if player is alive
     if (player && player.alive && player.roomId) {
-      const bagId = `bag-${playerId}-${Date.now()}`;
-      bags.set(bagId, { roomId: player.roomId, items: player.inventory });
-      io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId, items: player.inventory });
+      // Use ManagerManager to create and emit loot bag drop
+      const bag = ManagerManager.createLootBag({
+        ownerId: playerId,
+        roomId: player.roomId,
+        facingDirection: player.facing || 'north',
+        items: player.inventory
+      });
+      if (bag && io) {
+        io.to(player.roomId).emit(EVENTS.LOOT_BAG_DROP, { roomId: player.roomId, bagId: bag.bagId, items: bag.contents });
+      }
     }
+    // Clear hint on leave
+    hintManager.sendClearHintToPlayer(socket);
     players.delete(playerId);
     socket.broadcast.emit(EVENTS.PLAYER_LEAVE, { playerId });
     if (players.size === 0) {
@@ -240,6 +252,17 @@ io.on("connection", (socket) => {
     // Calculate assetKey using RoomManagerServer
     const room = dungeonCore.getRoomById(roomId);
     const assetKey = global.RoomManagerServer.getRoomImageKey(room, player.facing, dungeonCore);
+    // Show or clear hint based on facing
+    if (room && player.facing) {
+      const hint = hintManager.hints.get(roomId);
+      if (hint && hint.facing === player.facing) {
+        hintManager.handlePlayerFacing(socket, roomId, player.facing);
+      } else {
+        hintManager.sendClearHintToPlayer(socket);
+      }
+    } else {
+      hintManager.sendClearHintToPlayer(socket);
+    }
     // Broadcast room update (only to this player for visited)
     socket.emit(EVENTS.ROOM_UPDATE, {
       roomId,
@@ -249,6 +272,20 @@ io.on("connection", (socket) => {
       assetKey,
     });
     socket.join(roomId);
+  });
+
+  // Handle explicit facing changes (if not already handled by ROOM_ENTER)
+  socket.on('player_face', ({ playerId, roomId, facing }) => {
+    const player = players.get(playerId);
+    if (!player) return;
+    player.facing = facing;
+    // Show or clear hint based on facing
+    const hint = hintManager.hints.get(roomId);
+    if (hint && hint.facing === facing) {
+      hintManager.handlePlayerFacing(socket, roomId, facing);
+    } else {
+      hintManager.sendClearHintToPlayer(socket);
+    }
   });
 
   socket.on('DEV_DEBUG_AUTH', (password) => {

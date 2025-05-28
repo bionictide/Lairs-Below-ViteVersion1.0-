@@ -6,6 +6,7 @@ import HintManager from "./HintManager.js";
 import { CharacterSprites } from '../server/CharacterSpritesServer.js';
 import { EVENTS } from './shared/events.js';
 import Menu from './Menu.js';
+import HealthBar from './HealthBar.js';
 
 function getEffectColor(effectType) {
   switch (effectType) {
@@ -36,6 +37,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.menuSprite = null;
     this.menuOpen = false;
     this.menuInstance = null;
+    this.playerHealthBar = null;
   }
 
   init(data) {
@@ -107,6 +109,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.lootUIManager = new LootUIManager(this, this.socket, this.player?.id);
     this.combatVisuals = new CombatVisuals(this);
     this.hintManager = new HintManager(this);
+    this.playerHealthBar = new HealthBar(this, 20, 20, 100, 10);
 
     this.setupSocketListeners();
     this.createRoom();
@@ -166,6 +169,7 @@ export default class DungeonScene extends Phaser.Scene {
           this.menuSprite.setDepth(1001);
         }
         // Optionally update other room state here
+        if (this.hintManager) this.hintManager.clearHint();
       });
       // List all event names registered on this socket (if possible)
       if (this.socket.eventNames) {
@@ -269,6 +273,12 @@ export default class DungeonScene extends Phaser.Scene {
     });
     this.socket.on("ENCOUNTER_TARGET_SELECTION", (data) => {
       this.renderTargetingMenu(data);
+    });
+
+    this.socket.on('HEALTH_UPDATE', ({ playerId, health, maxHealth }) => {
+      if (playerId === this.player?.id && this.playerHealthBar) {
+        this.playerHealthBar.update(health, maxHealth);
+      }
     });
   }
 
