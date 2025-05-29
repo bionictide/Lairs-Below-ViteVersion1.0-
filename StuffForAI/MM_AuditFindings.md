@@ -10,7 +10,7 @@ This document tracks all findings, missing logic, and critical notes from the on
 - Report findings as **Good** (logic present), **Bad** (logic present but incorrect/incomplete), or **Missing** (logic not found, with details).
 - Only expand on critical missing pieces; keep all other notes brief.
 - Maintain a "dumb renderer" client: all logic must be server-side, but client must still submit intent and process render instructions.
-
+- Always use ESM import/export
 ---
 
 ## Findings Log
