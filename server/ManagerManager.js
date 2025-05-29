@@ -581,7 +581,7 @@ export class ManagerManager {
    */
   static playerEnteredRoom(playerId, roomId, facing) {
     console.log('[MM] playerEnteredRoom', { playerId, roomId, facing });
-    RoomManagerServer.setPlayerRoom(playerId, roomId, facing);
+    PlayerManagerServer.updatePlayer(playerId, { location: { roomId, facing } });
     // Notify EncounterManagerServer if needed
     if (EncounterManagerServer.onPlayerEnteredRoom) {
       EncounterManagerServer.onPlayerEnteredRoom(playerId, roomId);
@@ -597,7 +597,10 @@ export class ManagerManager {
    */
   static playerTurned(playerId, direction) {
     console.log('[MM] playerTurned', { playerId, direction });
-    RoomManagerServer.setPlayerFacing(playerId, direction);
+    const player = PlayerManagerServer.getPlayer(playerId);
+    if (player && player.location) {
+      PlayerManagerServer.updatePlayer(playerId, { location: { ...player.location, facing: direction } });
+    }
     if (EncounterManagerServer.onPlayerTurned) {
       EncounterManagerServer.onPlayerTurned(playerId, direction);
     }
