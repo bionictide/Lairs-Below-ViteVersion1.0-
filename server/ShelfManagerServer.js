@@ -3,7 +3,7 @@
 
 import { EVENTS } from "../src/shared/events.js";
 import DungeonCore from "./DungeonCore.js";
-import ManagerManager from "./ManagerManager.js";
+import { ManagerManager } from "./ManagerManager.js";
 
 const shelves = {};
 
