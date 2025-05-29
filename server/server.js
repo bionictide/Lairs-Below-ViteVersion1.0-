@@ -155,6 +155,11 @@ io.on("connection", (socket) => {
         }
       }
       console.log('[DEBUG] PLAYER_JOIN Supabase character:', character);
+      // Assign spawn location (random room for now)
+      const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
+      // Add player to PlayerManagerServer for authoritative state (via MM, after stat derivation)
+      ManagerManager.addPlayer(playerId, character, { location: { roomId: spawnRoom.id, facing: 'north' } });
+      // Now get derived values from MM (PlayerManagerServer has correct player object)
       const healthObj = ManagerManager.getHealth(playerId);
       const roomId = ManagerManager.getRoomId(playerId);
       const type = ManagerManager.getType(playerId);
@@ -170,12 +175,8 @@ io.on("connection", (socket) => {
         maxHealth: healthObj.maxHealth,
         type,
       });
-      // Assign spawn location (random room for now)
-      const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
-      // Add player to PlayerManagerServer for authoritative state
-      ManagerManager.addPlayer(playerId, character, { location: { roomId: spawnRoom.id, facing: 'north' } });
       // Send only minimal data to client
       const minimalCharacterForClient = {
         playerId,
