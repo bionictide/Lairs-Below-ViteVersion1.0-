@@ -48,9 +48,7 @@ export class ManagerManager {
    * @returns {object}
    */
   static getPlayerStatus(playerId) {
-    const status = PlayerManagerServer.getStatus(playerId);
-    console.log(`[ManagerManager] getPlayerStatus(${playerId}) ->`, status);
-    return status;
+    return PlayerManagerServer.getPlayer(playerId);
   }
 
   /**
@@ -471,7 +469,7 @@ export class ManagerManager {
     if (player) {
       type = player.type;
       lootItems = player.inventory || [];
-      roomId = player.roomId || (encounter && encounter.roomId);
+      roomId = player.location?.roomId || (encounter && encounter.roomId);
       facingDirection = player.facing || 'north';
     } else if (encounter && encounter.npcs && encounter.npcs[targetId]) {
       const npc = encounter.npcs[targetId];
@@ -551,8 +549,8 @@ export class ManagerManager {
    * Utility: Get roomId for a player
    */
   static getRoomId(playerId) {
-    const player = this.players?.get(playerId) || global.players?.get(playerId);
-    const roomId = player?.derived?.roomId || player?.roomId || null;
+    const player = PlayerManagerServer.getPlayer(playerId);
+    const roomId = player?.location?.roomId || null;
     console.log('[DEBUG][MM.getRoomId] playerId:', playerId, 'roomId:', roomId);
     return roomId;
   }
@@ -560,9 +558,9 @@ export class ManagerManager {
    * Utility: Get health and maxHealth for a player
    */
   static getHealth(playerId) {
-    const player = this.players?.get(playerId) || global.players?.get(playerId);
-    const health = player?.derived?.health;
-    const maxHealth = player?.derived?.maxHealth;
+    const player = PlayerManagerServer.getPlayer(playerId);
+    const health = player?.health ?? player?.playerStats?.getCurrentHealth();
+    const maxHealth = player?.maxHealth ?? player?.playerStats?.getMaxHealth();
     console.log('[DEBUG][MM.getHealth] playerId:', playerId, 'health:', health, 'maxHealth:', maxHealth);
     return { health, maxHealth };
   }
@@ -570,8 +568,8 @@ export class ManagerManager {
    * Utility: Get type for a player
    */
   static getType(playerId) {
-    const player = this.players?.get(playerId) || global.players?.get(playerId);
-    const type = player?.derived?.type;
+    const player = PlayerManagerServer.getPlayer(playerId);
+    const type = player?.type;
     console.log('[DEBUG][MM.getType] playerId:', playerId, 'type:', type);
     return type;
   }

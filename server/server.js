@@ -159,34 +159,33 @@ io.on("connection", (socket) => {
       console.log('[DEBUG] PLAYER_JOIN Supabase character:', character);
       // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
+      // Ensure the room exists and add the player to its .players Set
+      if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
+      rooms.get(spawnRoom.id).players.add(playerId);
       // Add player to PlayerManagerServer for authoritative state (via MM, after stat derivation)
       ManagerManager.addPlayer(playerId, character, { location: { roomId: spawnRoom.id, facing: 'north' } });
-      // Now get derived values from MM (PlayerManagerServer has correct player object)
-      const healthObj = ManagerManager.getHealth(playerId);
-      const roomId = ManagerManager.getRoomId(playerId);
-      const type = ManagerManager.getType(playerId);
+      // Fetch authoritative player object
+      const authoritativePlayer = ManagerManager.getPlayerStatus(playerId) || {};
+      // Ensure visitedRooms is initialized
+      if (!global.visitedRooms.has(playerId)) global.visitedRooms.set(playerId, new Set([spawnRoom.id]));
       // Store only what is needed for session and routing
       players.set(playerId, {
         socket,
-        roomId,
-        lastKnownRoom: roomId,
+        roomId: authoritativePlayer.location?.roomId || spawnRoom.id,
+        lastKnownRoom: authoritativePlayer.location?.roomId || spawnRoom.id,
         alive: true,
         facing: 'north',
-        // Optionally: keep derived health/type for quick access
-        health: healthObj.health,
-        maxHealth: healthObj.maxHealth,
-        type,
+        health: authoritativePlayer.health ?? authoritativePlayer.playerStats?.getCurrentHealth(),
+        maxHealth: authoritativePlayer.maxHealth ?? authoritativePlayer.playerStats?.getMaxHealth(),
+        type: authoritativePlayer.type ?? character.type,
       });
-      players.get(playerId).roomId = spawnRoom.id;
-      players.get(playerId).lastKnownRoom = spawnRoom.id;
       // Send only minimal data to client
       const minimalCharacterForClient = {
         playerId,
-        health: healthObj.health,
-        maxHealth: healthObj.maxHealth,
-        roomId: spawnRoom.id,
-        type,
-        // Add any other minimal fields needed for rendering
+        health: authoritativePlayer.health ?? authoritativePlayer.playerStats?.getCurrentHealth(),
+        maxHealth: authoritativePlayer.maxHealth ?? authoritativePlayer.playerStats?.getMaxHealth(),
+        roomId: authoritativePlayer.location?.roomId || spawnRoom.id,
+        type: authoritativePlayer.type ?? character.type,
       };
       console.log('[DEBUG] PLAYER_JOIN minimalCharacterForClient sent to client:', minimalCharacterForClient);
       socket.emit(EVENTS.ACTION_RESULT, {
@@ -246,9 +245,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId, facing }) => {
-    ManagerManager.playerEnteredRoom(playerId, roomId, facing);
-    // Ensure the room exists before accessing its properties
+    // Ensure the room exists and add the player to its .players Set
     if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
+    rooms.get(roomId).players.add(playerId);
+    ManagerManager.playerEnteredRoom(playerId, roomId, facing);
     // Broadcast room update (only to this player for visited)
     const assetKey = global.RoomManagerServer.getRoomImageKey(
       dungeonCore.getRoomById(roomId),
@@ -259,7 +259,7 @@ io.on("connection", (socket) => {
       roomId,
       players: Array.from(rooms.get(roomId).players),
       entities: rooms.get(roomId).entities,
-      visited: Array.from(global.visitedRooms.get(playerId)),
+      visited: Array.from(global.visitedRooms.get(playerId) || []),
       assetKey,
     });
     socket.join(roomId);
