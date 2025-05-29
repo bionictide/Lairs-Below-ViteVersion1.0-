@@ -15,7 +15,7 @@ import * as PuzzleManagerServer from './PuzzleManagerServer.js';
 import HintManagerServer from './HintManagerServer.js';
 import { NPCLootManagerServer } from './NPCLootManagerServer.js';
 import { ItemManagerServer } from './ItemManagerServer.js';
-import { PlayerStats, createStatsFromDefinition } from './PlayerStatsServer.js';
+import { PlayerStats, createStatsFromDefinition, resolvePlayerStatsFromSupabase } from './PlayerStatsServer.js';
 import * as CharacterTypesServer from './CharacterTypesServer.js';
 import * as StatDefinitionsServer from './StatDefinitionsServer.js';
 import * as SpellManagerServer from './SpellManagerServer.js';
@@ -543,7 +543,6 @@ export class ManagerManager {
    * PlayerStatsServer: Only entry point for stat derivation from Supabase row
    */
   static resolvePlayerStatsFromSupabase(character) {
-    const { resolvePlayerStatsFromSupabase } = require('./PlayerStatsServer.js');
     return resolvePlayerStatsFromSupabase(character);
   }
 
