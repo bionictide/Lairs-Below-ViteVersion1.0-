@@ -12,12 +12,18 @@ class PlayerManagerServer {
   /**
    * Add a new player to the system.
    * @param {string} playerId
-   * @param {object} statBlock - { vit, str, int, dex, mnd, spd }
+   * @param {object} playerObj - { vit, str, int, dex, mnd, spd }
    * @param {object} options - { location, groupId, encounterId, buffs, debuffs, resistances }
    */
-  addPlayer(playerId, statBlock, options = {}) {
+  addPlayer(playerId, playerObj, options = {}) {
     if (this.players.has(playerId)) throw new Error(`Player ${playerId} already exists`);
-    const playerStats = new PlayerStats(statBlock, options.inventory || []);
+    // If playerObj already has playerStats, store as-is (from PlayerStatsServer)
+    if (playerObj.playerStats) {
+      this.players.set(playerId, playerObj);
+      return playerObj;
+    }
+    // Otherwise, create PlayerStats as before (legacy/utility)
+    const playerStats = new PlayerStats(playerObj, options.inventory || []);
     const player = {
       playerId,
       location: options.location || null, // { roomId, facing }
