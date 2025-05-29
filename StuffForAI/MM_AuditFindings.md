@@ -53,6 +53,11 @@ This document tracks all findings, missing logic, and critical notes from the on
 - **Status:** **Missing. Critical.**
 - **Action:** Must be repaired after the audit. Further tracing of item manager logic will be done when those managers are reviewed in detail.
 
+#### [Critical] AI Combat Behavior (handleAIAction) (**Critical**)
+- **Missing in new:** No server-side AI combat/turn logic (e.g., handleAIAction, standardAction, angryAction, lowHealthAction) in EncounterManagerServer. NPCs/entities do not act on their own.
+- **Exists in old:** Fully implemented in old EncounterManager.js using aiBehavior from CharacterTypes.js.
+- **Repair required:** Port AI turn logic (handleAIAction and all aiBehavior types) to the server. Ensure all enemy/NPC actions are server-driven and routed through MM.
+
 #### [Add further findings below as audit continues]
 
 ---
@@ -88,6 +93,11 @@ This document tracks all findings, missing logic, and critical notes from the on
 - **Repair required:**
   - Port invite logic to server, including group state changes and notifications.
   - Ensure all invite actions are handled server-side and results are emitted to clients.
+
+### 4. AI Combat Behavior (handleAIAction) (**Critical**)
+- **Missing in new:** No server-side AI combat/turn logic (e.g., handleAIAction, standardAction, angryAction, lowHealthAction) in EncounterManagerServer. NPCs/entities do not act on their own.
+- **Exists in old:** Fully implemented in old EncounterManager.js using aiBehavior from CharacterTypes.js.
+- **Repair required:** Port AI turn logic (handleAIAction and all aiBehavior types) to the server. Ensure all enemy/NPC actions are server-driven and routed through MM.
 
 ---
 

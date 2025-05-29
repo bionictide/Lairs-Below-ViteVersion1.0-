@@ -32,8 +32,8 @@
 ## Managers Checklist
 
 ### BagManagerServer
-- [ ] All events routed through MM
-- [ ] No direct calls from/to other managers
+- [x] All events routed through MM
+- [x] No direct calls from/to other managers
 - **Events Handled:**
   - LOOT_BAG_DROP
   - LOOT_BAG_PICKUP
@@ -43,6 +43,7 @@
 - **Events Emitted:**
   - LOOT_BAG_DROP
   - LOOT_BAG_UPDATE
+  - INVENTORY_UPDATE
 - **MM Methods Used:**
   - createLootBag
   - lootItem
@@ -50,6 +51,8 @@
   - removeEmptyBags
   - destroyRoomBags
   - getBagById
+  - addItemToInventory
+  - emitInventoryUpdate
 - **Direct Dependencies:**
   - None (after refactor)
 - **Direct Cross-Manager Calls:**
@@ -58,8 +61,8 @@
 ---
 
 ### CharacterSpritesServer
-- [ ] All events routed through MM (if any)
-- [ ] No direct calls from/to other managers
+- [x] All events routed through MM (if any)
+- [x] No direct calls from/to other managers
 - **Events Handled:**
   - (Usually utility, but list if any)
 - **Events Emitted:**
@@ -74,8 +77,8 @@
 ---
 
 ### CharacterTypesServer
-- [ ] All events routed through MM (if any)
-- [ ] No direct calls from/to other managers
+- [x] All events routed through MM (if any)
+- [x] No direct calls from/to other managers
 - **Events Handled:**
   - (Usually utility, but list if any)
 - **Events Emitted:**
@@ -92,14 +95,14 @@
 ---
 
 ### DebugHelperServer
-- [ ] All events routed through MM (if any)
-- [ ] No direct calls from/to other managers
+- [x] All events routed through MM (if any)
+- [x] No direct calls from/to other managers
 - **Events Handled:**
   - DEV_DEBUG_AUTH
 - **Events Emitted:**
   - (List if any)
 - **MM Methods Used:**
-  - (List as refactored)
+  - handleDevDebugAuth
 - **Direct Dependencies:**
   - None (after refactor)
 - **Direct Cross-Manager Calls:**
@@ -108,14 +111,15 @@
 ---
 
 ### DungeonCore
-- [ ] All events routed through MM (if any)
-- [ ] No direct calls from/to other managers
+- [x] All events routed through MM (if any)
+- [x] No direct calls from/to other managers
 - **Events Handled:**
   - (Usually utility, but list if any)
 - **Events Emitted:**
   - (Usually utility, but list if any)
 - **MM Methods Used:**
   - getDungeonCore
+  - getRoomById
 - **Direct Dependencies:**
   - None (after refactor)
 - **Direct Cross-Manager Calls:**
@@ -124,8 +128,8 @@
 ---
 
 ### DungeonServiceServer
-- [ ] All events routed through MM (if any)
-- [ ] No direct calls from/to other managers
+- [x] Removed (all logic now handled by DungeonCore/MM)
+- [x] No dependencies remain in server code
 - **Events Handled:**
   - (List if any)
 - **Events Emitted:**

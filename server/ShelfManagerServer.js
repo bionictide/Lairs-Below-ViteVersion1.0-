@@ -3,6 +3,7 @@
 
 import { EVENTS } from "../src/shared/events.js";
 import DungeonCore from "./DungeonCore.js";
+import ManagerManager from "./ManagerManager.js";
 
 const shelves = {};
 
@@ -39,7 +40,7 @@ export function removeItemFromShelf(roomId, facingDirection, itemId) {
 export function handleShelfPickup(io, socket, { playerId, roomId, itemKey }) {
   // Validate player and room
   const player = global.players?.get(playerId);
-  const room = DungeonCore.getRoomById ? DungeonCore.getRoomById(roomId) : (DungeonCore.rooms?.find?.(r => r.id === roomId));
+  const room = ManagerManager.getRoomById(roomId);
   if (!player || !room) {
     socket.emit('ERROR', { message: 'Player or room not found', code: 'NOT_FOUND' });
     return { success: false, error: 'NOT_FOUND' };

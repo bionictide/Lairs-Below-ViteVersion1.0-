@@ -623,5 +623,42 @@ export class ManagerManager {
     RoomManagerServer.setRoomState(roomId, state);
   }
 
+  /**
+   * Add an item to a player's inventory (authoritative, via BagManagerServer)
+   */
+  static addItemToInventory(playerId, item) {
+    console.log('[MM] addItemToInventory', { playerId, item });
+    return BagManagerServer.addItem(playerId, item);
+  }
+  /**
+   * Emit an INVENTORY_UPDATE event to the player (authoritative)
+   */
+  static emitInventoryUpdate(playerId) {
+    const inventory = BagManagerServer.getInventory(playerId);
+    console.log('[MM] emitInventoryUpdate', { playerId, inventory });
+    if (global.players && global.players.has(playerId)) {
+      const player = global.players.get(playerId);
+      if (player && player.socket && global.io) {
+        global.io.to(player.socket.id).emit(EVENTS.INVENTORY_UPDATE, { playerId, inventory });
+      }
+    }
+  }
+
+  /**
+   * Debug: Handle dev debug authentication
+   */
+  static handleDevDebugAuth(socket, password) {
+    console.log('[ManagerManager] handleDevDebugAuth', { socketId: socket.id });
+    return require('./DebugHelperServer.js').handleDevDebugAuth(socket, password);
+  }
+
+  /**
+   * Get a room by ID (delegates to DungeonCore)
+   */
+  static getRoomById(roomId) {
+    console.log('[ManagerManager] getRoomById', roomId);
+    return DungeonCore.getRoomById(roomId);
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 

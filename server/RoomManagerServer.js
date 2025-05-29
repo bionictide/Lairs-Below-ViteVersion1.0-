@@ -89,15 +89,15 @@ export class RoomManager {
     west: { south: 'left', west: 'forward', north: 'right' }
   };
 
-  getRoomImageKey(room, facing, dungeonService) {
-    const visibleDoors = this.getVisibleDoors(room, facing, dungeonService);
+  getRoomImageKey(room, facing) {
+    const visibleDoors = this.getVisibleDoors(room, facing);
     const key = visibleDoors.length > 0 ? visibleDoors.sort().join('-') : 'none';
     return this.findBestMatchingRoomAsset(key);
   }
 
-  getVisibleDoors(room, facing, dungeonService) {
+  getVisibleDoors(room, facing) {
     const cardinalDirections = new Set();
-    const connectedRooms = room.doors.map(id => dungeonService.getRoomById(id));
+    const connectedRooms = room.doors.map(id => require('./DungeonCore.js').getRoomById(id));
     connectedRooms.forEach(target => {
       if (!target) return;
       const cardinalDir = this.getCardinalDirection(room, target);

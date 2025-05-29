@@ -3,6 +3,7 @@
 
 import { EVENTS } from "../src/shared/events.js";
 import DungeonCore from "./DungeonCore.js";
+import ManagerManager from "./ManagerManager.js";
 
 const puzzles = {};
 
@@ -36,7 +37,7 @@ export function handlePuzzleAttempt(socket, data) {
 export function handlePuzzlePickup(io, socket, data) {
   const { playerId, roomId, itemKey } = data;
   // Validate room and puzzle
-  const room = DungeonCore.getRoomById(roomId);
+  const room = ManagerManager.getRoomById(roomId);
   if (!room || room.puzzleType !== 'key') return socket.emit(EVENTS.ERROR, { message: 'No key puzzle in this room.' });
   // Remove the key from the room
   room.puzzleType = null;

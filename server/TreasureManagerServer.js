@@ -3,6 +3,7 @@
 
 import { EVENTS } from "../src/shared/events.js";
 import DungeonCore from "./DungeonCore.js";
+import { ManagerManager } from "./ManagerManager.js";
 
 const treasures = {};
 
@@ -41,7 +42,7 @@ export function removeItemFromTreasure(roomId, facingDirection, itemId) {
 export function handleTreasurePickup(io, socket, { playerId, roomId, itemKey }) {
   // Validate player and room
   const player = global.players?.get(playerId);
-  const room = DungeonCore.getRoomById ? DungeonCore.getRoomById(roomId) : (DungeonCore.rooms?.find?.(r => r.id === roomId));
+  const room = ManagerManager.getRoomById(roomId);
   if (!player || !room) {
     socket.emit('ERROR', { message: 'Player or room not found', code: 'NOT_FOUND' });
     return { success: false, error: 'NOT_FOUND' };
@@ -51,14 +52,13 @@ export function handleTreasurePickup(io, socket, { playerId, roomId, itemKey }) 
     socket.emit('ERROR', { message: 'Treasure not found', code: 'TREASURE_NOT_FOUND' });
     return { success: false, error: 'TREASURE_NOT_FOUND' };
   }
-  // Add item to inventory
-  const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}` };
-  newItem.gridX = -1;
-  newItem.gridY = -1;
-  player.inventory.push(newItem);
-  io.to(player.socket.id).emit('INVENTORY_UPDATE', { playerId, inventory: player.inventory });
+  // Add item to inventory via MM
+  const newItem = { itemKey, instanceId: `${itemKey}-${Date.now()}`, gridX: -1, gridY: -1 };
+  console.log('[DEBUG][TreasureManagerServer] Adding item to inventory via MM:', newItem);
+  ManagerManager.addItemToInventory(playerId, newItem);
+  ManagerManager.emitInventoryUpdate(playerId);
   // Remove the treasure from the room and emit update to all clients
   room.treasureLevel = null;
-  io.emit('TREASURE_UPDATE', { roomId, itemKey });
+  io.emit(EVENTS.TREASURE_UPDATE, { roomId, itemKey });
   return { success: true };
 }

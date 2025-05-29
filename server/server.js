@@ -269,7 +269,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on('DEV_DEBUG_AUTH', (password) => {
-    handleDevDebugAuth(socket, password);
+    ManagerManager.handleDevDebugAuth(socket, password);
   });
 
   socket.on(EVENTS.CHARACTER_CREATE, async ({ name, type, user_id, level }) => {
@@ -285,8 +285,7 @@ io.on("connection", (socket) => {
         return;
       }
       // Get base stats from CharacterTypesServer
-      const { getCharacterDefinition } = await import('./CharacterTypesServer.js');
-      const def = getCharacterDefinition(type.toLowerCase());
+      const def = ManagerManager.getCharacterDefinition(type.toLowerCase());
       if (!def || !def.stats) {
         socket.emit(EVENTS.ACTION_RESULT, { action: EVENTS.CHARACTER_CREATE, success: false, message: 'Invalid character type' });
         return;
