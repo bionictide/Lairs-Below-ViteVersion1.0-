@@ -287,7 +287,7 @@ export function processEffectTick(player, effectType) {
 
 // Accepts a full Supabase row, coerces, derives, and returns minimal player object
 export function resolvePlayerStatsFromSupabase(character) {
-  // Coerce all stat fields to numbers
+  console.log('[DEBUG] Supabase character row:', character);
   const statblock = {
     vit: Number(character.vit),
     str: Number(character.str),
@@ -297,9 +297,16 @@ export function resolvePlayerStatsFromSupabase(character) {
     spd: Number(character.spd),
     level: Number(character.level)
   };
-  // Derive all stats and apply inventory/buffs/debuffs
+  console.log('[DEBUG] Coerced statblock:', statblock);
   const playerStats = new PlayerStats(statblock, character.inventory || []);
-  // Return minimal, render-only object plus non-stat fields
+  console.log('[DEBUG] Derived stats:', {
+    health: playerStats.getCurrentHealth(),
+    maxHealth: playerStats.getMaxHealth(),
+    physicalDamage: playerStats.getPhysicalDamage(),
+    defense: playerStats.getDefenseRating(),
+    evasion: playerStats.getEvasion(),
+    inventory: character.inventory || []
+  });
   return {
     id: character.id,
     user_id: character.user_id,
@@ -308,6 +315,9 @@ export function resolvePlayerStatsFromSupabase(character) {
     level: statblock.level,
     health: playerStats.getCurrentHealth(),
     maxHealth: playerStats.getMaxHealth(),
+    physicalDamage: playerStats.getPhysicalDamage(),
+    defense: playerStats.getDefenseRating(),
+    evasion: playerStats.getEvasion(),
     inventory: character.inventory || [],
     roomId: character.roomId || null,
     // Add any other non-stat fields needed for the client

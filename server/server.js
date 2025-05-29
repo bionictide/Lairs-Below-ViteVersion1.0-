@@ -153,31 +153,43 @@ io.on("connection", (socket) => {
           return;
         }
       }
-      // Use ManagerManager to resolve all player stats from Supabase row
-      const characterForClient = ManagerManager.resolvePlayerStatsFromSupabase(character);
-      // Store player state in players map (session, state, reference to derived stats)
+      console.log('[DEBUG] PLAYER_JOIN Supabase character:', character);
+      const healthObj = ManagerManager.getHealth(playerId);
+      const roomId = ManagerManager.getRoomId(playerId);
+      const type = ManagerManager.getType(playerId);
+      // Store only what is needed for session and routing
       players.set(playerId, {
         socket,
-        character, // raw Supabase data for reference only
-        derived: characterForClient, // authoritative derived stat instance
-        roomId: null,
-        inventory: characterForClient.inventory || [],
-        lastKnownRoom: null,
+        roomId,
+        lastKnownRoom: roomId,
         alive: true,
         facing: 'north',
+        // Optionally: keep derived health/type for quick access
+        health: healthObj.health,
+        maxHealth: healthObj.maxHealth,
+        type,
       });
       // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
-      // Send current world state and spawn info to client
+      // Send only minimal data to client
+      const minimalCharacterForClient = {
+        playerId,
+        health: healthObj.health,
+        maxHealth: healthObj.maxHealth,
+        roomId: spawnRoom.id,
+        type,
+        // Add any other minimal fields needed for rendering
+      };
+      console.log('[DEBUG] PLAYER_JOIN minimalCharacterForClient sent to client:', minimalCharacterForClient);
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
         success: true,
         message: 'Joined',
         data: {
           playerId,
-          character: { ...characterForClient, roomId: spawnRoom.id },
+          character: minimalCharacterForClient,
           spawnRoomId: spawnRoom.id,
           dungeon,
         },
@@ -228,38 +240,13 @@ io.on("connection", (socket) => {
   });
 
   socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId, facing }) => {
-    const player = players.get(playerId);
-    if (!player) return;
-    // Remove from old room
-    if (player.roomId && rooms.has(player.roomId)) {
-      rooms.get(player.roomId).players.delete(playerId);
-    }
-    // Add to new room
-    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
-    rooms.get(roomId).players.add(playerId);
-    player.roomId = roomId;
-    player.lastKnownRoom = roomId;
-    // Update facing if provided
-    if (facing) player.facing = facing;
-    // Track visited rooms per player
-    if (!global.visitedRooms) global.visitedRooms = new Map();
-    if (!global.visitedRooms.has(playerId)) global.visitedRooms.set(playerId, new Set());
-    global.visitedRooms.get(playerId).add(roomId);
-    // Calculate assetKey using RoomManagerServer
-    const room = dungeonCore.getRoomById(roomId);
-    const assetKey = global.RoomManagerServer.getRoomImageKey(room, player.facing, dungeonCore);
-    // Show or clear hint based on facing
-    if (room && player.facing) {
-      const hint = hintManager.hints.get(roomId);
-      if (hint && hint.facing === player.facing) {
-        hintManager.handlePlayerFacing(socket, roomId, player.facing);
-      } else {
-        hintManager.sendClearHintToPlayer(socket);
-      }
-    } else {
-      hintManager.sendClearHintToPlayer(socket);
-    }
+    ManagerManager.playerEnteredRoom(playerId, roomId, facing);
     // Broadcast room update (only to this player for visited)
+    const assetKey = global.RoomManagerServer.getRoomImageKey(
+      dungeonCore.getRoomById(roomId),
+      facing,
+      dungeonCore
+    );
     socket.emit(EVENTS.ROOM_UPDATE, {
       roomId,
       players: Array.from(rooms.get(roomId).players),
@@ -270,11 +257,8 @@ io.on("connection", (socket) => {
     socket.join(roomId);
   });
 
-  // Handle explicit facing changes (if not already handled by ROOM_ENTER)
   socket.on('player_face', ({ playerId, roomId, facing }) => {
-    const player = players.get(playerId);
-    if (!player) return;
-    player.facing = facing;
+    ManagerManager.playerTurned(playerId, facing);
     // Show or clear hint based on facing
     const hint = hintManager.hints.get(roomId);
     if (hint && hint.facing === facing) {

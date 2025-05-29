@@ -546,5 +546,82 @@ export class ManagerManager {
     return resolvePlayerStatsFromSupabase(character);
   }
 
+  /**
+   * Utility: Get roomId for a player
+   */
+  static getRoomId(playerId) {
+    const player = this.players?.get(playerId) || global.players?.get(playerId);
+    const roomId = player?.derived?.roomId || player?.roomId || null;
+    console.log('[DEBUG][MM.getRoomId] playerId:', playerId, 'roomId:', roomId);
+    return roomId;
+  }
+  /**
+   * Utility: Get health and maxHealth for a player
+   */
+  static getHealth(playerId) {
+    const player = this.players?.get(playerId) || global.players?.get(playerId);
+    const health = player?.derived?.health;
+    const maxHealth = player?.derived?.maxHealth;
+    console.log('[DEBUG][MM.getHealth] playerId:', playerId, 'health:', health, 'maxHealth:', maxHealth);
+    return { health, maxHealth };
+  }
+  /**
+   * Utility: Get type for a player
+   */
+  static getType(playerId) {
+    const player = this.players?.get(playerId) || global.players?.get(playerId);
+    const type = player?.derived?.type;
+    console.log('[DEBUG][MM.getType] playerId:', playerId, 'type:', type);
+    return type;
+  }
+
+  /**
+   * Player entered a room: update room, notify encounter, loot, etc.
+   */
+  static playerEnteredRoom(playerId, roomId, facing) {
+    console.log('[MM] playerEnteredRoom', { playerId, roomId, facing });
+    RoomManagerServer.setPlayerRoom(playerId, roomId, facing);
+    // Notify EncounterManagerServer if needed
+    if (EncounterManagerServer.onPlayerEnteredRoom) {
+      EncounterManagerServer.onPlayerEnteredRoom(playerId, roomId);
+    }
+    // Notify BagManagerServer if needed
+    if (BagManagerServer.onPlayerEnteredRoom) {
+      BagManagerServer.onPlayerEnteredRoom(playerId, roomId);
+    }
+    // Add more as needed
+  }
+  /**
+   * Player turned: update facing, notify managers as needed
+   */
+  static playerTurned(playerId, direction) {
+    console.log('[MM] playerTurned', { playerId, direction });
+    RoomManagerServer.setPlayerFacing(playerId, direction);
+    if (EncounterManagerServer.onPlayerTurned) {
+      EncounterManagerServer.onPlayerTurned(playerId, direction);
+    }
+    // Add more as needed
+  }
+  /**
+   * Encounter started: notify all relevant managers
+   */
+  static encounterStarted(encounterId, participants) {
+    console.log('[MM] encounterStarted', { encounterId, participants });
+    if (RoomManagerServer.onEncounterStarted) {
+      RoomManagerServer.onEncounterStarted(encounterId, participants);
+    }
+    if (BagManagerServer.onEncounterStarted) {
+      BagManagerServer.onEncounterStarted(encounterId, participants);
+    }
+    // Add more as needed
+  }
+  /**
+   * Update room state
+   */
+  static updateRoomState(roomId, state) {
+    console.log('[MM] updateRoomState', { roomId, state });
+    RoomManagerServer.setRoomState(roomId, state);
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 
