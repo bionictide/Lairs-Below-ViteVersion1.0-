@@ -17,28 +17,12 @@ class PlayerManagerServer {
    */
   addPlayer(playerId, playerObj, options = {}) {
     if (this.players.has(playerId)) throw new Error(`Player ${playerId} already exists`);
-    // If playerObj already has playerStats, store as-is (from PlayerStatsServer)
-    if (playerObj.playerStats) {
-      this.players.set(playerId, playerObj);
-      return playerObj;
+    // Only accept player objects with playerStats (from PlayerStatsServer)
+    if (!playerObj.playerStats) {
+      throw new Error('Player object must be fully derived and include playerStats (use PlayerStatsServer)');
     }
-    // Otherwise, create PlayerStats as before (legacy/utility)
-    const playerStats = new PlayerStats(playerObj, options.inventory || []);
-    const player = {
-      playerId,
-      location: options.location || null, // { roomId, facing }
-      groupId: options.groupId || null,
-      encounterId: options.encounterId || null,
-      playerStats,
-      buffs: options.buffs || [],
-      debuffs: options.debuffs || [],
-      resistances: options.resistances || {},
-      alive: true,
-      state: 'idle', // idle, in_encounter, in_group, dead, etc.
-      lastActive: Date.now(),
-    };
-    this.players.set(playerId, player);
-    return player;
+    this.players.set(playerId, playerObj);
+    return playerObj;
   }
 
   /**

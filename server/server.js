@@ -245,6 +245,8 @@ io.on("connection", (socket) => {
 
   socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId, facing }) => {
     ManagerManager.playerEnteredRoom(playerId, roomId, facing);
+    // Ensure the room exists before accessing its properties
+    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
     // Broadcast room update (only to this player for visited)
     const assetKey = global.RoomManagerServer.getRoomImageKey(
       dungeonCore.getRoomById(roomId),
