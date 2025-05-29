@@ -307,19 +307,17 @@ export function resolvePlayerStatsFromSupabase(character) {
     evasion: playerStats.getEvasion(),
     inventory: character.inventory || []
   });
-  return {
-    id: character.id,
-    user_id: character.user_id,
-    name: character.name,
-    type: character.type,
-    level: statblock.level,
+  // Build the final player object: all derived values + all non-stat fields
+  const derived = {
     health: playerStats.getCurrentHealth(),
     maxHealth: playerStats.getMaxHealth(),
     physicalDamage: playerStats.getPhysicalDamage(),
     defense: playerStats.getDefenseRating(),
     evasion: playerStats.getEvasion(),
     inventory: character.inventory || [],
-    roomId: character.roomId || null,
-    // Add any other non-stat fields needed for the client
+    playerStats, // Attach the PlayerStats instance for future calculations
   };
+  // Add all non-stat fields from the Supabase row
+  const nonStatFields = Object.fromEntries(Object.entries(character).filter(([k]) => !['vit','str','int','dex','mnd','spd','level','health','maxHealth','physicalDamage','defense','evasion','inventory'].includes(k)));
+  return { ...nonStatFields, ...derived };
 }

@@ -17,6 +17,7 @@ import EncounterManagerServer from "./EncounterManagerServer.js";
 import { ManagerManager } from './ManagerManager.js';
 import { handleDevDebugAuth } from './DebugHelperServer.js';
 import HintManagerServer from './HintManagerServer.js';
+import PlayerManagerServer from './PlayerManagerServer.js';
 
 const PORT = process.env.PORT || 3001;
 const ALLOWED_ORIGINS = [
@@ -173,6 +174,8 @@ io.on("connection", (socket) => {
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
+      // Add player to PlayerManagerServer for authoritative state
+      ManagerManager.addPlayer(playerId, character, { location: { roomId: spawnRoom.id, facing: 'north' } });
       // Send only minimal data to client
       const minimalCharacterForClient = {
         playerId,

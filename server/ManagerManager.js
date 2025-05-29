@@ -664,5 +664,15 @@ export class ManagerManager {
     return DungeonCore.getRoomById(roomId);
   }
 
+  /**
+   * Add a player to the game (authoritative, via PlayerManagerServer)
+   * Accepts a full Supabase row, resolves stats, and adds to PlayerManagerServer
+   */
+  static addPlayer(playerId, supabaseRow, options = {}) {
+    // Get the final authoritative player object from PlayerStatsServer
+    const playerObj = this.resolvePlayerStatsFromSupabase(supabaseRow);
+    return PlayerManagerServer.addPlayer(playerId, playerObj, options);
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 
