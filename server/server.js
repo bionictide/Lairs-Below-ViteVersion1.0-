@@ -153,26 +153,15 @@ io.on("connection", (socket) => {
           return;
         }
       }
-      // Coerce only stat fields to numbers
-      const statblock = {
-        vit: Number(character.vit),
-        str: Number(character.str),
-        int: Number(character.int),
-        dex: Number(character.dex),
-        mnd: Number(character.mnd),
-        spd: Number(character.spd)
-      };
-      // Pass all Supabase data to PlayerStatsServer
-      const { PlayerStats } = await import('./PlayerStatsServer.js');
-      // PlayerStatsServer derives all usable stats (including inventory)
-      const playerStats = new PlayerStats(statblock, character.inventory || []);
-      // Store player state in players map (session, state, reference to PlayerStats)
+      // Use ManagerManager to resolve all player stats from Supabase row
+      const characterForClient = ManagerManager.resolvePlayerStatsFromSupabase(character);
+      // Store player state in players map (session, state, reference to derived stats)
       players.set(playerId, {
         socket,
         character, // raw Supabase data for reference only
-        playerStats, // authoritative stat instance
+        derived: characterForClient, // authoritative derived stat instance
         roomId: null,
-        inventory: character.inventory || [],
+        inventory: characterForClient.inventory || [],
         lastKnownRoom: null,
         alive: true,
         facing: 'north',
@@ -181,15 +170,6 @@ io.on("connection", (socket) => {
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
       players.get(playerId).roomId = spawnRoom.id;
       players.get(playerId).lastKnownRoom = spawnRoom.id;
-      // Build minimal, authoritative player object for client rendering
-      const characterForClient = {
-        id: character.id,
-        name: character.name,
-        type: character.type,
-        health: playerStats.getCurrentHealth(),
-        maxHealth: playerStats.getMaxHealth(),
-        roomId: spawnRoom.id, // for background rendering
-      };
       // Send current world state and spawn info to client
       socket.emit(EVENTS.ACTION_RESULT, {
         action: EVENTS.PLAYER_JOIN,
@@ -197,7 +177,7 @@ io.on("connection", (socket) => {
         message: 'Joined',
         data: {
           playerId,
-          character: characterForClient,
+          character: { ...characterForClient, roomId: spawnRoom.id },
           spawnRoomId: spawnRoom.id,
           dungeon,
         },

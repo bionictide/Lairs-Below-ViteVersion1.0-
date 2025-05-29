@@ -539,5 +539,13 @@ export class ManagerManager {
     if (global.io) global.io.emit(EVENTS.ENCOUNTER_EFFECT_END, { encounterId, playerId, effectType });
   }
 
+  /**
+   * PlayerStatsServer: Only entry point for stat derivation from Supabase row
+   */
+  static resolvePlayerStatsFromSupabase(character) {
+    const { resolvePlayerStatsFromSupabase } = require('./PlayerStatsServer.js');
+    return resolvePlayerStatsFromSupabase(character);
+  }
+
   // Add more methods as needed, always delegating and logging.
 } 
