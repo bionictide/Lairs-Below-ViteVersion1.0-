@@ -1,6 +1,8 @@
 // RoomManagerServer.js
 // Server-authoritative room and room state management.
 
+import DungeonCore from "./DungeonCore.js";
+
 export class RoomManager {
   constructor() {
     this.rooms = new Map(); // roomId -> room object
@@ -97,7 +99,7 @@ export class RoomManager {
 
   getVisibleDoors(room, facing) {
     const cardinalDirections = new Set();
-    const connectedRooms = room.doors.map(id => require('./DungeonCore.js').getRoomById(id));
+    const connectedRooms = room.doors.map(id => DungeonCore.getRoomById(id));
     connectedRooms.forEach(target => {
       if (!target) return;
       const cardinalDir = this.getCardinalDirection(room, target);

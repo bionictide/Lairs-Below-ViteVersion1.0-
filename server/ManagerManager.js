@@ -3,6 +3,7 @@
 // ESM, stateless, pure delegation, and beautiful.
 
 import { EVENTS } from '../src/shared/events.js';
+import { handleDevDebugAuth } from './DebugHelperServer.js';
 import PlayerManagerServer from './PlayerManagerServer.js';
 import RoomManagerServer from './RoomManagerServer.js';
 import GroupManagerServer from './GroupManagerServer.js';
@@ -649,7 +650,7 @@ export class ManagerManager {
    */
   static handleDevDebugAuth(socket, password) {
     console.log('[ManagerManager] handleDevDebugAuth', { socketId: socket.id });
-    return require('./DebugHelperServer.js').handleDevDebugAuth(socket, password);
+    return handleDevDebugAuth(socket, password);
   }
 
   /**
