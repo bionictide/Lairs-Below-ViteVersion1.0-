@@ -157,35 +157,28 @@ io.on("connection", (socket) => {
         }
       }
       console.log('[DEBUG] PLAYER_JOIN Supabase character:', character);
+      // Derive stats and build authoritative character object
+      const authoritativePlayer = ManagerManager.resolvePlayerStatsFromSupabase(character);
       // Assign spawn location (random room for now)
       const spawnRoom = dungeon.rooms[Math.floor(Math.random() * dungeon.rooms.length)];
-      // Ensure the room exists and add the player to its .players Set
-      if (!rooms.has(spawnRoom.id)) rooms.set(spawnRoom.id, { players: new Set(), entities: [] });
-      rooms.get(spawnRoom.id).players.add(playerId);
-      // Add player to PlayerManagerServer for authoritative state (via MM, after stat derivation)
-      ManagerManager.addPlayer(playerId, character, { location: { roomId: spawnRoom.id, facing: 'north' } });
-      // Fetch authoritative player object
-      const authoritativePlayer = ManagerManager.getPlayerStatus(playerId) || {};
-      // Ensure visitedRooms is initialized
-      if (!global.visitedRooms.has(playerId)) global.visitedRooms.set(playerId, new Set([spawnRoom.id]));
-      // Store only what is needed for session and routing
+      authoritativePlayer.roomId = spawnRoom.id;
+      // Store player in server state (if needed)
       players.set(playerId, {
         socket,
-        roomId: authoritativePlayer.location?.roomId || spawnRoom.id,
-        lastKnownRoom: authoritativePlayer.location?.roomId || spawnRoom.id,
+        roomId: authoritativePlayer.roomId,
+        lastKnownRoom: authoritativePlayer.roomId,
         alive: true,
         facing: 'north',
-        health: authoritativePlayer.health ?? authoritativePlayer.playerStats?.getCurrentHealth(),
-        maxHealth: authoritativePlayer.maxHealth ?? authoritativePlayer.playerStats?.getMaxHealth(),
-        type: authoritativePlayer.type ?? character.type,
+        ...authoritativePlayer,
       });
-      // Send only minimal data to client
+      // Build minimal character object for client
       const minimalCharacterForClient = {
         playerId,
-        health: authoritativePlayer.health ?? authoritativePlayer.playerStats?.getCurrentHealth(),
-        maxHealth: authoritativePlayer.maxHealth ?? authoritativePlayer.playerStats?.getMaxHealth(),
-        roomId: authoritativePlayer.location?.roomId || spawnRoom.id,
-        type: authoritativePlayer.type ?? character.type,
+        health: authoritativePlayer.health,
+        maxHealth: authoritativePlayer.maxHealth,
+        roomId: authoritativePlayer.roomId,
+        type: authoritativePlayer.type,
+        name: authoritativePlayer.name,
       };
       console.log('[DEBUG] PLAYER_JOIN minimalCharacterForClient sent to client:', minimalCharacterForClient);
       socket.emit(EVENTS.ACTION_RESULT, {

@@ -1080,12 +1080,6 @@ function App() {
         return;
       }
 
-      // Update the local characters array with the freshChar
-      const idx = lockedCharacter;
-      const newChars = [...characters];
-      newChars[idx] = freshChar;
-      setCharacters(newChars);
-
       // Get Supabase session (JWT)
       const { data, error } = await supabase.auth.getSession();
       if (error || !data.session || !data.session.access_token) {
@@ -1113,9 +1107,8 @@ function App() {
       joinPlayer(
         { playerId: freshChar.id, user_id: freshChar.user_id },
         (data) => {
-          // Merge Supabase statblock with server's authoritative roomId
-          const mergedCharacter = { ...freshChar, roomId: data.character.roomId };
-          window.currentCharacter = mergedCharacter;
+          // Use only the minimal, derived info from the server
+          window.currentCharacter = data.character;
           setDungeon(data.dungeon);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
