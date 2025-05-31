@@ -280,6 +280,9 @@ export default class DungeonScene extends Phaser.Scene {
 
     this.socket.on('HEALTH_UPDATE', ({ playerId, health, maxHealth }) => {
       if (playerId === this.player?.id && this.playerHealthBar) {
+        if (typeof maxHealth === 'number') {
+          this.playerHealthBar.maxHealth = maxHealth;
+        }
         this.playerHealthBar.updateHealth(health);
       }
     });
