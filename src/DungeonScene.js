@@ -107,17 +107,17 @@ export default class DungeonScene extends Phaser.Scene {
     this.add.sprite(400, 500, "player");
 
     this.bagManager = new BagManager(this);
-    this.lootUIManager = new LootUIManager(this, this.socket, this.player?.id);
+    this.lootUIManager = new LootUIManager(this, this.socket, this.player?.playerId);
     this.combatVisuals = new CombatVisuals(this);
     this.hintManager = new HintManager(this);
     const initialHealth = this.player?.health;
     const maxHealth = this.player?.maxHealth;
     if (typeof initialHealth === 'number' && typeof maxHealth === 'number') {
-      this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.id);
+      this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.playerId);
     } else {
       // Request health update from server if not valid
-      if (this.socket && this.player?.id) {
-        this.socket.emit('REQUEST_HEALTH_UPDATE', { playerId: this.player.id });
+      if (this.socket && this.player?.playerId) {
+        this.socket.emit('REQUEST_HEALTH_UPDATE', { playerId: this.player.playerId });
       }
     }
 
@@ -128,7 +128,7 @@ export default class DungeonScene extends Phaser.Scene {
       const { amount } = tickResult;
       if (!amount || amount === 0) return;
       const color = getEffectColor(effectType);
-      const isPlayer = playerId === this.player?.id;
+      const isPlayer = playerId === this.player?.playerId;
       let x, y, z;
       if (isPlayer) {
         // Place below health bar (assume health bar at y=60, adjust as needed)
@@ -192,20 +192,20 @@ export default class DungeonScene extends Phaser.Scene {
     }
     console.log('[DEBUG 11] DungeonScene create END');
     // Emit ROOM_ENTER after scene is ready and handler is registered
-    if (this.socket && this.player && this.player.roomId && this.player.id) {
+    if (this.socket && this.player && this.player.roomId && this.player.playerId) {
       console.log('[DEBUG][ROOM_ENTER] Emitting ROOM_ENTER', {
-        playerId: this.player.id,
+        playerId: this.player.playerId,
         roomId: this.player.roomId,
         facing: this.player.facing || 'north'
       });
       this.socket.emit(EVENTS.ROOM_ENTER, {
-        playerId: this.player.id,
+        playerId: this.player.playerId,
         roomId: this.player.roomId,
         facing: this.player.facing || 'north'
       });
       this.setupNavigationButtons();
       console.log('[DEBUG 12] Emitted ROOM_ENTER after scene create', {
-        playerId: this.player.id,
+        playerId: this.player.playerId,
         roomId: this.player.roomId,
         facing: this.player.facing || 'north'
       });
@@ -294,9 +294,9 @@ export default class DungeonScene extends Phaser.Scene {
     });
 
     this.socket.on('HEALTH_UPDATE', ({ playerId, health, maxHealth }) => {
-      if (playerId === this.player?.id) {
+      if (playerId === this.player?.playerId) {
         if (!this.playerHealthBar && typeof health === 'number' && typeof maxHealth === 'number') {
-          this.playerHealthBar = new HealthBar(this, 20, 20, health, maxHealth, this.player?.id);
+          this.playerHealthBar = new HealthBar(this, 20, 20, health, maxHealth, this.player?.playerId);
         } else if (this.playerHealthBar) {
           if (typeof maxHealth === 'number') {
             this.playerHealthBar.maxHealth = maxHealth;
@@ -652,14 +652,14 @@ export default class DungeonScene extends Phaser.Scene {
         else if (rotation === 'around') index = (index + 2) % 4;
         this.player.facing = directions[index];
         console.log('[DEBUG][ROOM_ENTER] Emitting ROOM_ENTER (turn)', {
-          playerId: this.player.id,
+          playerId: this.player.playerId,
           roomId: this.player.roomId,
           facing: this.player.facing
         });
         // Emit ROOM_ENTER with new facing (server authoritative)
-        if (this.socket && this.player && this.player.roomId && this.player.id) {
+        if (this.socket && this.player && this.player.roomId && this.player.playerId) {
           this.socket.emit(EVENTS.ROOM_ENTER, {
-            playerId: this.player.id,
+            playerId: this.player.playerId,
             roomId: this.player.roomId,
             facing: this.player.facing
           });
