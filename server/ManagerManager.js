@@ -580,11 +580,12 @@ export class ManagerManager {
   static playerEnteredRoom(playerId, roomId, facing) {
     console.log('[MM] playerEnteredRoom', { playerId, roomId, facing });
     PlayerManagerServer.updatePlayer(playerId, { location: { roomId, facing } });
+    const player = PlayerManagerServer.getPlayer(playerId);
+    console.log('[DEBUG][MM.playerEnteredRoom] Updated player location:', player?.location);
     // Notify EncounterManagerServer if needed
     if (EncounterManagerServer.onPlayerEnteredRoom) {
       EncounterManagerServer.onPlayerEnteredRoom(playerId, roomId);
     }
-    // Notify BagManagerServer if needed
     if (BagManagerServer.onPlayerEnteredRoom) {
       BagManagerServer.onPlayerEnteredRoom(playerId, roomId);
     }
@@ -669,6 +670,11 @@ export class ManagerManager {
   static addPlayer(playerId, supabaseRow, options = {}) {
     // Get the final authoritative player object from PlayerStatsServer
     const playerObj = this.resolvePlayerStatsFromSupabase(supabaseRow);
+    // Assign initial location if provided
+    if (options.location && options.location.roomId) {
+      playerObj.location = { roomId: options.location.roomId, facing: options.location.facing || 'north' };
+      console.log('[DEBUG][MM.addPlayer] Assigned initial location:', playerObj.location);
+    }
     return PlayerManagerServer.addPlayer(playerId, playerObj, options);
   }
 

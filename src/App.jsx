@@ -1110,6 +1110,7 @@ function App() {
           // Use only the minimal, derived info from the server
           window.currentCharacter = data.character;
           setDungeon(data.dungeon);
+          console.log('[DEBUG] Using server-provided roomId:', data.character.roomId);
           if (data.dungeon && data.dungeon.rooms) {
             console.log('Received dungeon from server:', data.dungeon.rooms.map(r => r.id).slice(0, 5));
           }
