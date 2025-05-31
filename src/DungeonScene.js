@@ -658,7 +658,7 @@ export default class DungeonScene extends Phaser.Scene {
         });
         // Emit ROOM_ENTER with new facing (server authoritative)
         if (this.socket && this.player && this.player.roomId && this.player.id) {
-          this.socket.emit('room_enter', {
+          this.socket.emit(EVENTS.ROOM_ENTER, {
             playerId: this.player.id,
             roomId: this.player.roomId,
             facing: this.player.facing
