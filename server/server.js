@@ -238,25 +238,41 @@ io.on("connection", (socket) => {
   });
 
   socket.on(EVENTS.ROOM_ENTER, ({ playerId, roomId, facing }) => {
-    // Ensure the room exists and add the player to its .players Set
-    if (!rooms.has(roomId)) rooms.set(roomId, { players: new Set(), entities: [] });
-    rooms.get(roomId).players.add(playerId);
-    ManagerManager.playerEnteredRoom(playerId, roomId, facing);
-    // Broadcast room update (only to this player for visited)
-    const assetKey = global.RoomManagerServer.getRoomImageKey(
-      dungeonCore.getRoomById(roomId),
-      facing,
-      dungeonCore
-    );
-    console.log('[DEBUG][ROOM_ENTER] Sending ROOM_UPDATE with assetKey:', assetKey, 'for roomId:', roomId, 'facing:', facing);
-    socket.emit(EVENTS.ROOM_UPDATE, {
-      roomId,
-      players: Array.from(rooms.get(roomId).players),
-      entities: rooms.get(roomId).entities,
-      visited: Array.from(global.visitedRooms.get(playerId) || []),
-      assetKey,
-    });
-    socket.join(roomId);
+    try {
+      if (!playerId || !roomId) {
+        console.error('[ROOM_ENTER][ERROR] Missing playerId or roomId:', { playerId, roomId, facing });
+        socket.emit(EVENTS.ERROR, { message: 'Missing playerId or roomId', code: 'ROOM_ENTER_MISSING_DATA' });
+        return;
+      }
+      const room = dungeonCore.getRoomById(roomId);
+      if (!room) {
+        console.error('[ROOM_ENTER][ERROR] Invalid roomId, room not found:', { roomId, playerId, facing });
+        socket.emit(EVENTS.ERROR, { message: 'Invalid roomId', code: 'ROOM_ENTER_INVALID_ROOM' });
+        return;
+      }
+      if (!facing) {
+        console.warn('[ROOM_ENTER][WARN] Missing facing, defaulting to north:', { playerId, roomId });
+        facing = 'north';
+      }
+      const assetKey = global.RoomManagerServer.getRoomImageKey(room, facing, dungeonCore);
+      if (!assetKey) {
+        console.error('[ROOM_ENTER][ERROR] assetKey is undefined:', { roomId, playerId, facing });
+        socket.emit(EVENTS.ERROR, { message: 'assetKey is undefined', code: 'ROOM_ENTER_ASSETKEY_UNDEFINED' });
+        return;
+      }
+      console.log('[DEBUG][ROOM_ENTER] Sending ROOM_UPDATE with assetKey:', assetKey, 'for roomId:', roomId, 'facing:', facing);
+      socket.emit(EVENTS.ROOM_UPDATE, {
+        roomId,
+        players: Array.from(rooms.get(roomId).players),
+        entities: rooms.get(roomId).entities,
+        visited: Array.from(global.visitedRooms.get(playerId) || []),
+        assetKey,
+      });
+      socket.join(roomId);
+    } catch (err) {
+      console.error('[ROOM_ENTER][EXCEPTION]', err, { playerId, roomId, facing });
+      socket.emit(EVENTS.ERROR, { message: 'Server error in ROOM_ENTER', code: 'ROOM_ENTER_EXCEPTION', details: err.message });
+    }
   });
 
   socket.on('player_face', ({ playerId, roomId, facing }) => {
