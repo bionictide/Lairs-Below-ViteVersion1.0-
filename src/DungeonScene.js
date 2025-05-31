@@ -161,7 +161,7 @@ export default class DungeonScene extends Phaser.Scene {
       console.log('[DEBUG 6] Registering ROOM_UPDATE on socket:', this.socket, 'Type:', typeof this.socket);
       this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
         try {
-          console.log('[DEBUG 7] ROOM_UPDATE assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
+          console.log('[DEBUG][CLIENT] ROOM_UPDATE received assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
         } catch (err) {
           console.error('[DEBUG 8] Error in ROOM_UPDATE handler:', err);
         }

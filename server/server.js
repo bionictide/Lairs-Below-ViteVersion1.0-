@@ -248,6 +248,7 @@ io.on("connection", (socket) => {
       facing,
       dungeonCore
     );
+    console.log('[DEBUG][ROOM_ENTER] Sending ROOM_UPDATE with assetKey:', assetKey, 'for roomId:', roomId, 'facing:', facing);
     socket.emit(EVENTS.ROOM_UPDATE, {
       roomId,
       players: Array.from(rooms.get(roomId).players),
