@@ -38,6 +38,7 @@ export default class DungeonScene extends Phaser.Scene {
     this.menuOpen = false;
     this.menuInstance = null;
     this.playerHealthBar = null;
+    this.navButtons = null;
   }
 
   init(data) {
@@ -179,6 +180,7 @@ export default class DungeonScene extends Phaser.Scene {
         }
         // Optionally update other room state here
         if (this.hintManager) this.hintManager.clearHint();
+        this.setupNavigationButtons();
       });
       // List all event names registered on this socket (if possible)
       if (this.socket.eventNames) {
@@ -195,6 +197,7 @@ export default class DungeonScene extends Phaser.Scene {
         roomId: this.player.roomId,
         facing: this.player.facing || 'north'
       });
+      this.setupNavigationButtons();
       console.log('[DEBUG 12] Emitted ROOM_ENTER after scene create', {
         playerId: this.player.id,
         roomId: this.player.roomId,
@@ -578,5 +581,74 @@ export default class DungeonScene extends Phaser.Scene {
       }
     };
     playReverseFrames();
+  }
+
+  // --- Navigation Buttons (Pixel-perfect from old code) ---
+  setupNavigationButtons() {
+    if (this.navButtons) this.navButtons.destroy();
+    // Only show nav buttons if not in encounter AND bag is closed AND loot UI is closed
+    if (!this.isInEncounter && !this.bagManager.isOpen && !this.lootUIManager.isOpen) {
+      this.navButtons = this.add.container(this.game.config.width / 2, this.game.config.height - 50).setDepth(70); // Depth 70
+      const buttons = [
+        {
+          text: 'Turn Left',
+          callback: () => this.handleTurn('left'),
+          x: -200
+        },
+        {
+          text: 'Turn Around',
+          callback: () => this.handleTurn('around'),
+          x: 0
+        },
+        {
+          text: 'Turn Right',
+          callback: () => this.handleTurn('right'),
+          x: 200
+        }
+      ];
+      buttons.forEach(button => {
+        const bg = this.add.rectangle(button.x, 0, 150, 50, 0x333333)
+          .setStrokeStyle(2, 0xffffff)
+          .setInteractive({ useHandCursor: true });
+        const text = this.add.text(button.x, 0, button.text, {
+          fontSize: '20px',
+          color: '#ffffff'
+        }).setOrigin(0.5);
+        bg.on('pointerdown', button.callback);
+        bg.on('pointerover', () => bg.setFillStyle(0x555555));
+        bg.on('pointerout', () => bg.setFillStyle(0x333333));
+        this.navButtons.add([bg, text]);
+      });
+    } else {
+      this.navButtons = null; // Ensure reference is cleared
+    }
+  }
+
+  handleTurn(rotation) {
+    // Block if rearranging, in encounter, OR bag is open, OR loot UI is open
+    if (this.isRearranging || this.isInEncounter || this.bagManager.isOpen || this.lootUIManager.isOpen) return;
+    this.cameras.main.fade(250, 0, 0, 0, false, (camera, progress) => {
+      if (progress === 1) {
+        const oldFacing = this.player.facing;
+        // Rotate facing (must match server logic)
+        const directions = ['north', 'east', 'south', 'west'];
+        let index = directions.indexOf(this.player.facing || 'north');
+        if (rotation === 'left') index = (index - 1 + 4) % 4;
+        else if (rotation === 'right') index = (index + 1) % 4;
+        else if (rotation === 'around') index = (index + 2) % 4;
+        this.player.facing = directions[index];
+        // Emit ROOM_ENTER with new facing (server authoritative)
+        if (this.socket && this.player && this.player.roomId && this.player.id) {
+          this.socket.emit('room_enter', {
+            playerId: this.player.id,
+            roomId: this.player.roomId,
+            facing: this.player.facing
+          });
+        }
+        // Re-show nav buttons after fade
+        this.setupNavigationButtons();
+        this.cameras.main.fadeIn(250);
+      }
+    });
   }
 }
