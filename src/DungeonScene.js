@@ -585,6 +585,11 @@ export default class DungeonScene extends Phaser.Scene {
 
   // --- Navigation Buttons (Pixel-perfect from old code) ---
   setupNavigationButtons() {
+    console.log('[DEBUG] setupNavigationButtons called:', {
+      isInEncounter: this.isInEncounter,
+      bagOpen: this.bagManager && this.bagManager.isOpen,
+      lootOpen: this.lootUIManager && this.lootUIManager.isOpen
+    });
     if (this.navButtons) this.navButtons.destroy();
     // Only show nav buttons if not in encounter AND bag is closed AND loot UI is closed
     if (!this.isInEncounter && !this.bagManager.isOpen && !this.lootUIManager.isOpen) {
@@ -618,8 +623,11 @@ export default class DungeonScene extends Phaser.Scene {
         bg.on('pointerover', () => bg.setFillStyle(0x555555));
         bg.on('pointerout', () => bg.setFillStyle(0x333333));
         this.navButtons.add([bg, text]);
+        console.log(`[DEBUG] Nav button created: ${button.text} at x=${button.x}`);
       });
+      console.log('[DEBUG] Nav buttons container created:', this.navButtons);
     } else {
+      console.log('[DEBUG] Nav buttons not shown due to state.');
       this.navButtons = null; // Ensure reference is cleared
     }
   }
