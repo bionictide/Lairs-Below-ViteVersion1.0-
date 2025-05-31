@@ -111,8 +111,14 @@ export default class DungeonScene extends Phaser.Scene {
     this.hintManager = new HintManager(this);
     const initialHealth = this.player?.health;
     const maxHealth = this.player?.maxHealth;
-    console.log('[DEBUG] Creating HealthBar with:', { initialHealth, maxHealth, player: this.player });
-    this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.id);
+    if (typeof initialHealth === 'number' && typeof maxHealth === 'number') {
+      this.playerHealthBar = new HealthBar(this, 20, 20, initialHealth, maxHealth, this.player?.id);
+    } else {
+      // Request health update from server if not valid
+      if (this.socket && this.player?.id) {
+        this.socket.emit('REQUEST_HEALTH_UPDATE', { playerId: this.player.id });
+      }
+    }
 
     this.setupSocketListeners();
     this.createRoom();
@@ -279,11 +285,15 @@ export default class DungeonScene extends Phaser.Scene {
     });
 
     this.socket.on('HEALTH_UPDATE', ({ playerId, health, maxHealth }) => {
-      if (playerId === this.player?.id && this.playerHealthBar) {
-        if (typeof maxHealth === 'number') {
-          this.playerHealthBar.maxHealth = maxHealth;
+      if (playerId === this.player?.id) {
+        if (!this.playerHealthBar && typeof health === 'number' && typeof maxHealth === 'number') {
+          this.playerHealthBar = new HealthBar(this, 20, 20, health, maxHealth, this.player?.id);
+        } else if (this.playerHealthBar) {
+          if (typeof maxHealth === 'number') {
+            this.playerHealthBar.maxHealth = maxHealth;
+          }
+          this.playerHealthBar.updateHealth(health);
         }
-        this.playerHealthBar.updateHealth(health);
       }
     });
   }
