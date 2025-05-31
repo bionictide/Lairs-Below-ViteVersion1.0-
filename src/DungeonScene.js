@@ -39,11 +39,20 @@ export default class DungeonScene extends Phaser.Scene {
     this.menuInstance = null;
     this.playerHealthBar = null;
     this.navButtons = null;
+    this.waitingForServer = true;
   }
 
   init(data) {
     this.socket = data.socket;
-    this.player = data.playerData;
+    this.player = data.playerData || {};
+    // Default facing to 'north' if not present
+    this.player.facing = this.player.facing || 'north';
+    if (!this.player.roomId) {
+      console.error('[ERROR] No roomId in player data. Waiting for server.');
+      this.waitingForServer = true;
+      return;
+    }
+    this.waitingForServer = false;
     this.dungeon = data.serverDungeon;
     console.log('[DEBUG 1] DungeonScene.init playerData:', data.playerData);
     console.log('[DEBUG 2] DungeonScene.init this.player:', this.player);
@@ -101,6 +110,10 @@ export default class DungeonScene extends Phaser.Scene {
   }
 
   create() {
+    if (this.waitingForServer || !this.player || !this.player.roomId) {
+      console.error('[ERROR] DungeonScene.create called before server data ready. Aborting render.');
+      return;
+    }
     console.log('[DEBUG 4] DungeonScene create START');
     console.log('[DEBUG 5] DungeonScene.create this.socket:', this.socket, 'Type:', typeof this.socket);
     this.add.image(400, 300, "floor");
@@ -161,6 +174,11 @@ export default class DungeonScene extends Phaser.Scene {
     if (this.socket && this.socket.on) {
       console.log('[DEBUG 6] Registering ROOM_UPDATE on socket:', this.socket, 'Type:', typeof this.socket);
       this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
+        if (!data || !data.roomId) {
+          console.error('[ERROR] ROOM_UPDATE missing roomId. Waiting for server.');
+          return;
+        }
+        this.player.roomId = data.roomId;
         console.log('[DEBUG][ROOM_UPDATE] Received ROOM_UPDATE', data);
         try {
           console.log('[DEBUG][CLIENT] ROOM_UPDATE received assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
