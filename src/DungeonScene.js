@@ -161,6 +161,7 @@ export default class DungeonScene extends Phaser.Scene {
     if (this.socket && this.socket.on) {
       console.log('[DEBUG 6] Registering ROOM_UPDATE on socket:', this.socket, 'Type:', typeof this.socket);
       this.socket.on(EVENTS.ROOM_UPDATE, (data) => {
+        console.log('[DEBUG][ROOM_UPDATE] Received ROOM_UPDATE', data);
         try {
           console.log('[DEBUG][CLIENT] ROOM_UPDATE received assetKey:', data.assetKey, 'Loaded keys:', this.textures.getTextureKeys(), 'Time:', performance.now());
         } catch (err) {
@@ -192,6 +193,11 @@ export default class DungeonScene extends Phaser.Scene {
     console.log('[DEBUG 11] DungeonScene create END');
     // Emit ROOM_ENTER after scene is ready and handler is registered
     if (this.socket && this.player && this.player.roomId && this.player.id) {
+      console.log('[DEBUG][ROOM_ENTER] Emitting ROOM_ENTER', {
+        playerId: this.player.id,
+        roomId: this.player.roomId,
+        facing: this.player.facing || 'north'
+      });
       this.socket.emit(EVENTS.ROOM_ENTER, {
         playerId: this.player.id,
         roomId: this.player.roomId,
@@ -645,6 +651,11 @@ export default class DungeonScene extends Phaser.Scene {
         else if (rotation === 'right') index = (index + 1) % 4;
         else if (rotation === 'around') index = (index + 2) % 4;
         this.player.facing = directions[index];
+        console.log('[DEBUG][ROOM_ENTER] Emitting ROOM_ENTER (turn)', {
+          playerId: this.player.id,
+          roomId: this.player.roomId,
+          facing: this.player.facing
+        });
         // Emit ROOM_ENTER with new facing (server authoritative)
         if (this.socket && this.player && this.player.roomId && this.player.id) {
           this.socket.emit('room_enter', {
